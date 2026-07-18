@@ -1,0 +1,16 @@
+{
+  "name": "website-template-extractor",
+  "version": "1.0.0",
+  "description": "Wklej link do strony -> dostań pakiet szablonu (zrzuty układu + design tokeny + szkielet HTML) do wklejenia do Claude Code jako wzór layoutu.",
+  "type": "module",
+  "bin": {
+    "extract-template": "extract.mjs"
+  },
+  "scripts": {
+    "extract": "node extract.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  },
+  "license": "MIT"
+}
