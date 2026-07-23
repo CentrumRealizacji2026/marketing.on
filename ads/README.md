@@ -44,3 +44,10 @@ Kreacja główna w 3 formatach, każdy w 1× i 2× (ostrość na retinie):
 Story respektuje strefy bezpieczne Meta (~250 px od góry, ~350 px od dołu);
 format 4:5 zostawia dolne ~10% wolne. Kafelki foto/wideo w czacie to
 placeholdery do podmiany na prawdziwe kadry z sesji.
+
+## Test A/B (`meta/`)
+
+- **Wersja A** (`marketingon-story/feed-*.png`) — kreacja narracyjna: rozmowa na czacie.
+- **Wersja B** (`marketingon-B-*.png`, `ad1-wersja-b.html`) — oferta wprost: cena
+  „od 980 zł" + checklist „W CENIE / GRATIS" na ciemnym tle. Te same formaty
+  i strefy bezpieczne co wersja A. Test: historia vs konkret cenowy.

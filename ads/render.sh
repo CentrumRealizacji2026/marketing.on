@@ -34,3 +34,14 @@ variant v4-rozmowa-z-nami.html feed   1080x1350 meta/marketingon-feed-4x5-2160x2
 variant v4-rozmowa-z-nami.html square 1080x1080 meta/marketingon-feed-1x1-1080x1080.png 1
 variant v4-rozmowa-z-nami.html square 1080x1080 meta/marketingon-feed-1x1-2160x2160.png 2
 ls previews/ meta/
+
+# wersja B (test A/B): oferta wprost
+variant ad1-wersja-b.html story  1080x1920 previews/ad1-wersja-b-story.png
+variant ad1-wersja-b.html feed   1080x1350 previews/ad1-wersja-b-feed.png
+variant ad1-wersja-b.html square 1080x1080 previews/ad1-wersja-b-square.png
+variant ad1-wersja-b.html story  1080x1920 meta/marketingon-B-story-9x16-1080x1920.png 1
+variant ad1-wersja-b.html story  1080x1920 meta/marketingon-B-story-9x16-2160x3840.png 2
+variant ad1-wersja-b.html feed   1080x1350 meta/marketingon-B-feed-4x5-1080x1350.png 1
+variant ad1-wersja-b.html feed   1080x1350 meta/marketingon-B-feed-4x5-2160x2700.png 2
+variant ad1-wersja-b.html square 1080x1080 meta/marketingon-B-feed-1x1-1080x1080.png 1
+variant ad1-wersja-b.html square 1080x1080 meta/marketingon-B-feed-1x1-2160x2160.png 2
