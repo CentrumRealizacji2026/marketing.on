@@ -1,10 +1,11 @@
 #!/bin/bash
-# Renderuje podglady (previews/) oraz paczke pod Meta Ads (meta/) w 1x i 2x.
+# Renderuje podglady (previews/) oraz finalne pliki kampanii do ../reklamy/mon/www/1 (A i B, 1x i 2x).
 set -e
 cd "$(dirname "$0")"
 HS=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell
 FLAGS="--disable-gpu --no-sandbox --hide-scrollbars --virtual-time-budget=6000"
-mkdir -p previews meta /tmp/ads-build
+OUT=../reklamy/mon/www/1
+mkdir -p previews "$OUT/A" "$OUT/B" /tmp/ads-build
 cp -r fonts /tmp/ads-build/ 2>/dev/null || true
 
 variant() { # $1 plik.html  $2 klasa-body  $3 WxH  $4 wyjscie.png  $5 scale
@@ -27,21 +28,21 @@ done
 variant v4-rozmowa-z-nami.html square 1080x1080 previews/v4-rozmowa-z-nami-square.png
 
 # paczka Meta: glowna kreacja w 3 formatach, 1x + 2x
-variant v4-rozmowa-z-nami.html story  1080x1920 meta/marketingon-story-9x16-1080x1920.png 1
-variant v4-rozmowa-z-nami.html story  1080x1920 meta/marketingon-story-9x16-2160x3840.png 2
-variant v4-rozmowa-z-nami.html feed   1080x1350 meta/marketingon-feed-4x5-1080x1350.png 1
-variant v4-rozmowa-z-nami.html feed   1080x1350 meta/marketingon-feed-4x5-2160x2700.png 2
-variant v4-rozmowa-z-nami.html square 1080x1080 meta/marketingon-feed-1x1-1080x1080.png 1
-variant v4-rozmowa-z-nami.html square 1080x1080 meta/marketingon-feed-1x1-2160x2160.png 2
-ls previews/ meta/
+variant v4-rozmowa-z-nami.html story  1080x1920 $OUT/A/mon-www-1A-story-9x16-1080x1920.png 1
+variant v4-rozmowa-z-nami.html story  1080x1920 $OUT/A/mon-www-1A-story-9x16-2160x3840.png 2
+variant v4-rozmowa-z-nami.html feed   1080x1350 $OUT/A/mon-www-1A-feed-4x5-1080x1350.png 1
+variant v4-rozmowa-z-nami.html feed   1080x1350 $OUT/A/mon-www-1A-feed-4x5-2160x2700.png 2
+variant v4-rozmowa-z-nami.html square 1080x1080 $OUT/A/mon-www-1A-feed-1x1-1080x1080.png 1
+variant v4-rozmowa-z-nami.html square 1080x1080 $OUT/A/mon-www-1A-feed-1x1-2160x2160.png 2
 
 # wersja B (test A/B): oferta wprost
 variant ad1-wersja-b.html story  1080x1920 previews/ad1-wersja-b-story.png
 variant ad1-wersja-b.html feed   1080x1350 previews/ad1-wersja-b-feed.png
 variant ad1-wersja-b.html square 1080x1080 previews/ad1-wersja-b-square.png
-variant ad1-wersja-b.html story  1080x1920 meta/marketingon-B-story-9x16-1080x1920.png 1
-variant ad1-wersja-b.html story  1080x1920 meta/marketingon-B-story-9x16-2160x3840.png 2
-variant ad1-wersja-b.html feed   1080x1350 meta/marketingon-B-feed-4x5-1080x1350.png 1
-variant ad1-wersja-b.html feed   1080x1350 meta/marketingon-B-feed-4x5-2160x2700.png 2
-variant ad1-wersja-b.html square 1080x1080 meta/marketingon-B-feed-1x1-1080x1080.png 1
-variant ad1-wersja-b.html square 1080x1080 meta/marketingon-B-feed-1x1-2160x2160.png 2
+variant ad1-wersja-b.html story  1080x1920 $OUT/B/mon-www-1B-story-9x16-1080x1920.png 1
+variant ad1-wersja-b.html story  1080x1920 $OUT/B/mon-www-1B-story-9x16-2160x3840.png 2
+variant ad1-wersja-b.html feed   1080x1350 $OUT/B/mon-www-1B-feed-4x5-1080x1350.png 1
+variant ad1-wersja-b.html feed   1080x1350 $OUT/B/mon-www-1B-feed-4x5-2160x2700.png 2
+variant ad1-wersja-b.html square 1080x1080 $OUT/B/mon-www-1B-feed-1x1-1080x1080.png 1
+variant ad1-wersja-b.html square 1080x1080 $OUT/B/mon-www-1B-feed-1x1-2160x2160.png 2
+ls "$OUT/A" "$OUT/B"

@@ -31,23 +31,13 @@ Wynikowe PNG trafiają do `previews/`. Skrypt używa preinstalowanego
 Chromium headless-shell; wersję feed generuje podmieniając klasę `body`
 ze `story` na `feed`.
 
-## Paczka Meta Ads (`meta/`)
+## Finalne pliki kampanii
 
-Kreacja główna w 3 formatach, każdy w 1× i 2× (ostrość na retinie):
+Gotowe kreacje leżą w `reklamy/mon/www/1/` (A = czat, B = oferta) —
+szczegóły w tamtejszym README. Ten katalog (`ads/`) to warsztat: źródła
+HTML, fonty i `render.sh`, który nadpisuje pliki w `reklamy/`.
 
-| Umiejscowienie | Format | Pliki |
-|---|---|---|
-| Instagram/FB Stories, Reels | 9:16 | `marketingon-story-9x16-1080x1920.png`, `…-2160x3840.png` |
-| Feed IG/FB (pionowy) | 4:5 | `marketingon-feed-4x5-1080x1350.png`, `…-2160x2700.png` |
-| Feed IG/FB (kwadrat) | 1:1 | `marketingon-feed-1x1-1080x1080.png`, `…-2160x2160.png` |
+## Test A/B
 
-Story respektuje strefy bezpieczne Meta (~250 px od góry, ~350 px od dołu);
-format 4:5 zostawia dolne ~10% wolne. Kafelki foto/wideo w czacie to
-placeholdery do podmiany na prawdziwe kadry z sesji.
-
-## Test A/B (`meta/`)
-
-- **Wersja A** (`marketingon-story/feed-*.png`) — kreacja narracyjna: rozmowa na czacie.
-- **Wersja B** (`marketingon-B-*.png`, `ad1-wersja-b.html`) — oferta wprost: cena
-  „od 980 zł" + checklist „W CENIE / GRATIS" na ciemnym tle. Te same formaty
-  i strefy bezpieczne co wersja A. Test: historia vs konkret cenowy.
+- **Wersja A** — kreacja narracyjna: rozmowa na czacie (`v4-rozmowa-z-nami.html`).
+- **Wersja B** — oferta wprost: cena i checklist (`ad1-wersja-b.html`).
