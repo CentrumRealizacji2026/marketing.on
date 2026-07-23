@@ -1,13 +1,13 @@
 <!-- marketing.on — wariant 4: rozmowa z nami (czat, pozytywne lustro v3) -->
 <meta charset="utf-8">
-<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="fonts/fonts.css"><link rel="stylesheet" href="fonts/fonts2.css">
 <style>
   :root{
     --ink:#0A0E1A; --paper:#F6F4EF; --lime:#C8F031; --lime-deep:#8FB60E;
     --muted:#5B6272; --line:#E3DFD4;
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Inter',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  body{font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
   .canvas{position:relative;width:1080px;overflow:hidden;background:var(--paper);display:flex;flex-direction:column}
   body.story .canvas{height:1920px;padding:84px 76px 80px}
   body.feed  .canvas{height:1350px;padding:60px 64px 56px}
@@ -15,12 +15,12 @@
   .slash2{position:absolute;inset:0;pointer-events:none;background:linear-gradient(245deg,transparent 25%,rgba(10,14,26,.14) 25.2%,transparent 26.6%)}
 
   .brand{display:flex;align-items:center;position:relative}
-  .wordmark{font-family:'Space Grotesk';font-weight:700;font-size:50px;letter-spacing:-.02em;display:flex;align-items:center}
+  .wordmark{font-family:'Plus Jakarta Sans';font-weight:700;font-size:50px;letter-spacing:-.02em;display:flex;align-items:center}
   .on-badge{display:inline-flex;align-items:center;gap:9px;background:var(--ink);border-radius:999px;padding:9px 20px 9px 11px;margin-left:9px}
   .on-badge i{width:24px;height:24px;border-radius:50%;background:var(--lime);box-shadow:0 0 16px rgba(200,240,49,.9)}
-  .on-badge b{font-family:'Space Grotesk';font-weight:700;font-size:31px;color:#fff;letter-spacing:.02em}
+  .on-badge b{font-family:'Plus Jakarta Sans';font-weight:700;font-size:31px;color:#fff;letter-spacing:.02em}
 
-  .headline{position:relative;font-family:'Space Grotesk';font-weight:700;letter-spacing:-.03em}
+  .headline{position:relative;font-family:'Plus Jakarta Sans';font-weight:700;letter-spacing:-.03em}
   body.story .headline{font-size:100px;line-height:1.03;margin-top:56px}
   body.feed  .headline{font-size:84px;line-height:1.0;margin-top:42px}
   .headline .q{background:var(--lime);border-radius:14px;padding:0 20px 8px;margin-left:-6px;
@@ -36,7 +36,7 @@
     overflow:hidden;transform:rotate(-1.4deg)}
   body.feed .phone{width:700px}
   .ph-top{display:flex;align-items:center;gap:16px;padding:20px 28px;background:#FBFAF6;border-bottom:1.5px solid #EFECE3}
-  .ph-top .ava{width:52px;height:52px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;color:var(--ink);font-weight:700;font-size:21px;font-family:'Space Grotesk'}
+  .ph-top .ava{width:52px;height:52px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;color:var(--ink);font-weight:700;font-size:21px;font-family:'Plus Jakarta Sans'}
   .ph-top b{display:block;font-size:25px;font-weight:700}
   .ph-top span{display:block;font-size:19px;color:#9A937F;font-weight:500;margin-top:2px}
   .msgs{display:flex;flex-direction:column;gap:15px;padding:28px 30px 32px;background:
@@ -51,7 +51,7 @@
     box-shadow:0 30px 70px -22px rgba(10,14,26,.5)}
   body.story .answer{margin-top:56px}
   body.feed  .answer{padding:32px 40px;margin-top:32px}
-  .answer h2{font-family:'Space Grotesk';font-weight:700;font-size:41px;letter-spacing:-.02em;line-height:1.15}
+  .answer h2{font-family:'Plus Jakarta Sans';font-weight:700;font-size:41px;letter-spacing:-.02em;line-height:1.15}
   .answer h2 em{font-style:normal;color:var(--lime)}
   .arow{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
   .achip{display:flex;align-items:center;gap:10px;border:1.5px solid #2A3350;background:rgba(255,255,255,.05);

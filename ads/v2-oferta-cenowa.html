@@ -1,13 +1,13 @@
 <!-- marketing.on — wariant 2: oferta cenowa (ciemny, styl Pixel Network) -->
 <meta charset="utf-8">
-<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="fonts/fonts.css"><link rel="stylesheet" href="fonts/fonts2.css">
 <style>
   :root{
     --ink:#0A0E1A; --ink2:#111729; --paper:#F6F4EF; --lime:#C8F031; --lime-deep:#9CC410;
     --muted:#9AA3B8; --line:#232C44;
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Inter',sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+  body{font-family:'Plus Jakarta Sans',sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
   .canvas{position:relative;width:1080px;overflow:hidden;display:flex;flex-direction:column;
     background:radial-gradient(1200px 800px at 85% -10%,#1C2743 0%,transparent 60%),
                radial-gradient(900px 700px at -15% 108%,#18233E 0%,transparent 55%),var(--ink)}
@@ -20,10 +20,10 @@
     -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 55%)}
 
   .top{display:flex;align-items:center;justify-content:space-between;position:relative}
-  .wordmark{font-family:'Space Grotesk';font-weight:700;font-size:50px;letter-spacing:-.02em;color:#fff;display:flex;align-items:center}
+  .wordmark{font-family:'Plus Jakarta Sans';font-weight:700;font-size:50px;letter-spacing:-.02em;color:#fff;display:flex;align-items:center}
   .on-badge{display:inline-flex;align-items:center;gap:10px;background:var(--lime);border-radius:999px;padding:9px 20px 9px 12px;margin-left:10px}
   .on-badge i{width:24px;height:24px;border-radius:50%;background:var(--ink)}
-  .on-badge b{font-family:'Space Grotesk';font-weight:700;font-size:32px;color:var(--ink);letter-spacing:.02em}
+  .on-badge b{font-family:'Plus Jakarta Sans';font-weight:700;font-size:32px;color:var(--ink);letter-spacing:.02em}
   .eyebrow{display:inline-flex;align-items:center;gap:12px;border:1.5px solid var(--line);background:rgba(255,255,255,.04);
     border-radius:999px;padding:14px 28px;font-size:25px;font-weight:600;letter-spacing:.16em;color:var(--lime)}
   .eyebrow i{width:12px;height:12px;border-radius:50%;background:var(--lime);box-shadow:0 0 14px var(--lime)}
@@ -31,18 +31,18 @@
   .offer{position:relative}
   body.story .offer{margin-top:96px}
   body.feed  .offer{margin-top:56px}
-  .offer h1{font-family:'Space Grotesk';font-weight:700;letter-spacing:-.02em;line-height:1.04}
+  .offer h1{font-family:'Plus Jakarta Sans';font-weight:700;letter-spacing:-.02em;line-height:1.04}
   body.story .offer h1{font-size:98px}
   body.feed  .offer h1{font-size:82px}
   .offer h1 small{display:block;font-size:.5em;font-weight:500;color:var(--muted);letter-spacing:0;margin-bottom:10px}
   .price{display:flex;align-items:baseline;gap:22px;position:relative}
   body.story .price{margin:34px 0 10px}
   body.feed  .price{margin:24px 0 6px}
-  .price .od{font-family:'Space Grotesk';font-weight:500;font-size:56px;color:var(--muted)}
-  .price .val{font-family:'Space Grotesk';font-weight:700;font-size:210px;line-height:.95;letter-spacing:-.04em;color:var(--lime);
+  .price .od{font-family:'Plus Jakarta Sans';font-weight:500;font-size:56px;color:var(--muted)}
+  .price .val{font-family:'Plus Jakarta Sans';font-weight:700;font-size:210px;line-height:.95;letter-spacing:-.04em;color:var(--lime);
     text-shadow:0 0 80px rgba(200,240,49,.35)}
   body.feed .price .val{font-size:170px}
-  .price .cur{font-family:'Space Grotesk';font-weight:700;font-size:84px;color:var(--lime)}
+  .price .cur{font-family:'Plus Jakarta Sans';font-weight:700;font-size:84px;color:var(--lime)}
   .price .net{font-size:30px;color:var(--muted);font-weight:500;margin-left:6px}
 
   .list{position:relative;display:flex;flex-direction:column}
@@ -57,7 +57,7 @@
   .item p{font-size:33px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
   body.feed .item p{font-size:29px}
   .item p span{color:var(--muted);font-weight:500}
-  .item .free{margin-left:auto;flex:none;font-family:'Space Grotesk';font-weight:700;font-size:26px;color:var(--lime);
+  .item .free{margin-left:auto;flex:none;font-family:'Plus Jakarta Sans';font-weight:700;font-size:26px;color:var(--lime);
     border:1.5px solid rgba(200,240,49,.45);border-radius:999px;padding:8px 22px;letter-spacing:.06em}
 
   .note{position:relative;display:flex;align-items:center;gap:14px;color:#E8C15A;font-size:26px;font-weight:600}
@@ -69,7 +69,7 @@
   body.story .steps{margin-top:56px}
   body.feed  .steps{display:none}
   .step{flex:1;border:1.5px solid var(--line);border-radius:24px;padding:28px 26px;background:rgba(255,255,255,.03)}
-  .step b{display:flex;align-items:center;gap:12px;font-family:'Space Grotesk';font-weight:700;font-size:27px;letter-spacing:-.01em}
+  .step b{display:flex;align-items:center;gap:12px;font-family:'Plus Jakarta Sans';font-weight:700;font-size:27px;letter-spacing:-.01em}
   .step b i{font-style:normal;color:var(--lime);font-size:24px}
   .step p{margin-top:10px;font-size:22px;line-height:1.4;color:var(--muted);font-weight:500}
 

@@ -19,7 +19,7 @@ z sesją i nagrywkami, potem robimy stronę. Przekaz wyłącznie pozytywny
 
 - Logotyp tekstowy: `marketing` + plakietka-przełącznik `on` (motyw „włączamy Twój marketing")
 - Kolory: granat `#0A0E1A`, krem `#F6F4EF`, limonka `#C8F031`
-- Typografia: Space Grotesk (nagłówki) + Inter (tekst), subset latin + latin-ext
+- Typografia: Plus Jakarta Sans (całość), subset latin + latin-ext
 
 ## Render podglądów
 
