@@ -1,0 +1,117 @@
+<!-- marketing.on — wariant 2: oferta cenowa (ciemny, styl Pixel Network) -->
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  :root{
+    --ink:#0A0E1A; --ink2:#111729; --paper:#F6F4EF; --lime:#C8F031; --lime-deep:#9CC410;
+    --muted:#9AA3B8; --line:#232C44;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+  .canvas{position:relative;width:1080px;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(1200px 800px at 85% -10%,#1C2743 0%,transparent 60%),
+               radial-gradient(900px 700px at -15% 108%,#18233E 0%,transparent 55%),var(--ink)}
+  body.story .canvas{height:1920px;padding:88px 76px 80px}
+  body.feed  .canvas{height:1350px;padding:64px 64px 60px}
+  .glow{position:absolute;width:760px;height:760px;border-radius:50%;pointer-events:none;filter:blur(130px);opacity:.24;
+    background:radial-gradient(circle,var(--lime) 0%,transparent 62%);top:-300px;right:-260px}
+  .dots{position:absolute;inset:0;pointer-events:none;opacity:.35;
+    background-image:radial-gradient(rgba(255,255,255,.14) 1.5px,transparent 1.5px);background-size:44px 44px;
+    -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 55%)}
+
+  .top{display:flex;align-items:center;justify-content:space-between;position:relative}
+  .wordmark{font-family:'Space Grotesk';font-weight:700;font-size:50px;letter-spacing:-.02em;color:#fff;display:flex;align-items:center}
+  .on-badge{display:inline-flex;align-items:center;gap:10px;background:var(--lime);border-radius:999px;padding:9px 20px 9px 12px;margin-left:10px}
+  .on-badge i{width:24px;height:24px;border-radius:50%;background:var(--ink)}
+  .on-badge b{font-family:'Space Grotesk';font-weight:700;font-size:32px;color:var(--ink);letter-spacing:.02em}
+  .eyebrow{display:inline-flex;align-items:center;gap:12px;border:1.5px solid var(--line);background:rgba(255,255,255,.04);
+    border-radius:999px;padding:14px 28px;font-size:25px;font-weight:600;letter-spacing:.16em;color:var(--lime)}
+  .eyebrow i{width:12px;height:12px;border-radius:50%;background:var(--lime);box-shadow:0 0 14px var(--lime)}
+
+  .offer{position:relative}
+  body.story .offer{margin-top:96px}
+  body.feed  .offer{margin-top:56px}
+  .offer h1{font-family:'Space Grotesk';font-weight:700;letter-spacing:-.02em;line-height:1.04}
+  body.story .offer h1{font-size:98px}
+  body.feed  .offer h1{font-size:82px}
+  .offer h1 small{display:block;font-size:.5em;font-weight:500;color:var(--muted);letter-spacing:0;margin-bottom:10px}
+  .price{display:flex;align-items:baseline;gap:22px;position:relative}
+  body.story .price{margin:34px 0 10px}
+  body.feed  .price{margin:24px 0 6px}
+  .price .od{font-family:'Space Grotesk';font-weight:500;font-size:56px;color:var(--muted)}
+  .price .val{font-family:'Space Grotesk';font-weight:700;font-size:210px;line-height:.95;letter-spacing:-.04em;color:var(--lime);
+    text-shadow:0 0 80px rgba(200,240,49,.35)}
+  body.feed .price .val{font-size:170px}
+  .price .cur{font-family:'Space Grotesk';font-weight:700;font-size:84px;color:var(--lime)}
+  .price .net{font-size:30px;color:var(--muted);font-weight:500;margin-left:6px}
+
+  .list{position:relative;display:flex;flex-direction:column}
+  body.story .list{gap:26px;margin-top:64px}
+  body.feed  .list{gap:18px;margin-top:38px}
+  .item{display:flex;align-items:center;gap:24px;background:rgba(255,255,255,.045);border:1.5px solid var(--line);
+    border-radius:24px;padding:26px 30px}
+  body.feed .item{padding:20px 26px;border-radius:20px}
+  .item .chk{flex:none;width:56px;height:56px;border-radius:16px;background:var(--lime);color:var(--ink);
+    display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800}
+  body.feed .item .chk{width:48px;height:48px;font-size:26px}
+  .item p{font-size:33px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
+  body.feed .item p{font-size:29px}
+  .item p span{color:var(--muted);font-weight:500}
+  .item .free{margin-left:auto;flex:none;font-family:'Space Grotesk';font-weight:700;font-size:26px;color:var(--lime);
+    border:1.5px solid rgba(200,240,49,.45);border-radius:999px;padding:8px 22px;letter-spacing:.06em}
+
+  .note{position:relative;display:flex;align-items:center;gap:14px;color:#E8C15A;font-size:26px;font-weight:600}
+  body.story .note{margin-top:44px}
+  body.feed  .note{margin-top:30px}
+  .note i{width:14px;height:14px;border-radius:50%;background:#E8C15A;flex:none}
+
+  .steps{position:relative;display:flex;gap:20px}
+  body.story .steps{margin-top:56px}
+  body.feed  .steps{display:none}
+  .step{flex:1;border:1.5px solid var(--line);border-radius:24px;padding:28px 26px;background:rgba(255,255,255,.03)}
+  .step b{display:flex;align-items:center;gap:12px;font-family:'Space Grotesk';font-weight:700;font-size:27px;letter-spacing:-.01em}
+  .step b i{font-style:normal;color:var(--lime);font-size:24px}
+  .step p{margin-top:10px;font-size:22px;line-height:1.4;color:var(--muted);font-weight:500}
+
+  .bottom{position:relative;margin-top:auto;display:flex;align-items:center;gap:30px}
+  .cta{flex:1;display:flex;align-items:center;justify-content:center;gap:18px;background:var(--lime);color:var(--ink);
+    border-radius:999px;padding:32px 40px;font-size:37px;font-weight:800;letter-spacing:-.01em;
+    box-shadow:0 24px 60px -16px rgba(200,240,49,.45)}
+  .cta i{font-style:normal;font-weight:800}
+  .handle{flex:none;font-size:26px;font-weight:600;color:var(--muted)}
+</style>
+<body class="story">
+<div class="canvas">
+  <div class="glow"></div><div class="dots"></div>
+
+  <div class="top">
+    <div class="wordmark">marketing<span class="on-badge"><i></i><b>on</b></span></div>
+    <div class="eyebrow"><i></i>OFERTA</div>
+  </div>
+
+  <div class="offer">
+    <h1><small>Strona internetowa dla Twojej firmy</small>Strona, która<br>wyróżnia Cię<br>na tle konkurencji</h1>
+    <div class="price">
+      <span class="od">od</span><span class="val">980</span><span class="cur">zł</span><span class="net">netto</span>
+    </div>
+  </div>
+
+  <div class="list">
+    <div class="item"><span class="chk">✓</span><p>Sesja zdjęciowa na stronę</p><span class="free">GRATIS</span></div>
+    <div class="item"><span class="chk">✓</span><p>Krótkie wideo dla Twojej firmy</p><span class="free">GRATIS</span></div>
+    <div class="item"><span class="chk">✓</span><p>Miesiąc prowadzenia social mediów <span>lub pakiet materiałów do publikacji</span></p><span class="free">GRATIS</span></div>
+  </div>
+
+  <div class="note"><i></i>Liczba realizacji w miesiącu jest ograniczona</div>
+
+  <div class="steps">
+    <div class="step"><b><i>01</i> Wycena</b><p>Bezpłatna i niezobowiązująca — odpowiadamy w 24 h.</p></div>
+    <div class="step"><b><i>02</i> Projekt</b><p>Strona szyta na miarę + sesja zdjęciowa i wideo.</p></div>
+    <div class="step"><b><i>03</i> Start</b><p>Publikacja strony i miesiąc social mediów gratis.</p></div>
+  </div>
+
+  <div class="bottom">
+    <span class="cta">Rezerwuję termin <i>→</i></span>
+  </div>
+</div>
+</body>
