@@ -6,7 +6,7 @@ HS=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell
 FLAGS="--disable-gpu --no-sandbox --hide-scrollbars --virtual-time-budget=5000"
 mkdir -p previews /tmp/ads-build
 
-for f in v1-jasny-premium v2-oferta-cenowa v3-z-pazurem v4-rozmowa-z-nami; do
+for f in v1-jasny-premium v2-oferta-cenowa v4-rozmowa-z-nami; do
   # story
   $HS $FLAGS --window-size=1080,1920 --screenshot=previews/$f-story.png "file://$PWD/$f.html" 2>/dev/null
   # feed: podmiana klasy body i wysokości
