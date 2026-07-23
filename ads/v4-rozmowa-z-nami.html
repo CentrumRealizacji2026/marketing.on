@@ -36,7 +36,6 @@
   .chat{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:22px 0 0}
   body.story .m{font-size:20px;padding:11px 18px}
   body.story .msgs{gap:9px}
-  body.story .tile{width:158px;height:96px}
   body.story .answer{margin-top:32px}
   .phone{width:750px;background:#fff;border-radius:40px;border:1.5px solid var(--line);
     box-shadow:0 40px 90px -28px rgba(10,14,26,.30),0 12px 30px -12px rgba(10,14,26,.14);
@@ -53,18 +52,6 @@
   .out{align-self:flex-end;background:var(--ink);color:#fff;border-bottom-right-radius:8px}
   .m small{display:block;font-size:16px;font-weight:500;opacity:.5;margin-top:5px;text-align:right}
   .in.hl{background:var(--lime);color:var(--ink);font-weight:700}
-  .tiles{display:flex;gap:9px;margin-top:10px}
-  .tile{width:168px;height:104px;border-radius:12px;position:relative;overflow:hidden;flex:none;
-    background:radial-gradient(46px 46px at 72% 24%,rgba(200,240,49,.85) 0 44%,transparent 46%),
-               linear-gradient(140deg,#39496C 0%,#141B2E 100%)}
-  .tile::after{content:"";position:absolute;left:0;right:0;bottom:0;height:56%;
-    background:linear-gradient(165deg,#46587F 0%,#232E4C 90%);
-    clip-path:polygon(0 100%,0 58%,30% 18%,52% 62%,71% 34%,100% 78%,100% 100%)}
-  .play{position:absolute;inset:0;margin:auto;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.94);z-index:2}
-  .play::after{content:"";position:absolute;left:15px;top:11px;border-left:14px solid var(--ink);
-    border-top:9px solid transparent;border-bottom:9px solid transparent}
-  .tile b{position:absolute;right:9px;bottom:8px;z-index:2;background:rgba(0,0,0,.55);color:#fff;
-    font-size:14px;font-weight:600;padding:2px 9px;border-radius:7px}
 
   .answer{position:relative;background:var(--ink);color:#fff;border-radius:28px;padding:32px 38px;
     box-shadow:0 30px 70px -22px rgba(10,14,26,.5)}
@@ -93,10 +80,6 @@
   body.feed .msgs{gap:9px;padding:16px 20px 20px}
   body.feed .m{font-size:19px;padding:10px 16px;border-radius:16px}
   body.feed .m small{font-size:14px;margin-top:4px}
-  body.feed .tiles{gap:8px;margin-top:9px}
-  body.feed .tile{width:140px;height:86px;border-radius:11px}
-  body.feed .play{width:40px;height:40px}
-  body.feed .play::after{left:15px;top:11px;border-left:14px solid var(--ink);border-top:9px solid transparent;border-bottom:9px solid transparent}
   body.feed .answer h2{font-size:33px}
   body.feed .achip{font-size:21px;padding:10px 18px}
   body.feed .cta-row{margin-top:22px}
@@ -114,10 +97,6 @@
   body.square .msgs{gap:8px;padding:14px 18px 18px}
   body.square .m{font-size:18px;padding:9px 15px;border-radius:14px}
   body.square .m small{font-size:13px;margin-top:3px}
-  body.square .tiles{gap:8px;margin-top:9px}
-  body.square .tile{width:140px;height:86px;border-radius:11px}
-  body.square .play{width:36px;height:36px}
-  body.square .play::after{left:14px;top:10px;border-left:12px solid var(--ink);border-top:8px solid transparent;border-bottom:8px solid transparent}
   body.square .answer{padding:26px 32px;border-radius:24px}
   body.square .answer h2{font-size:28px}
   body.square .arow{margin-top:16px;gap:9px}
@@ -148,9 +127,8 @@
       <div class="msgs">
         <div class="m out">Chcę zamówić stronę, ale muszę przesłać zdjęcia… a ja ich nie mam 😅 <small>9:41 ✓✓</small></div>
         <div class="m in hl">U nas masz sesję w cenie — przyjedziemy i pozyskamy u Ciebie materiały na&nbsp;stronę&nbsp;📸 <small>9:41</small></div>
-        <div class="m in">Nagramy na miejscu. Potem robimy stronę, która się wyróżnia 🎬
-          <span class="tiles"><span class="tile"></span><span class="tile"><i class="play"></i><b>0:30</b></span></span>
-          <small>9:43</small></div>
+        <div class="m out">A wideo na stronę? <small>9:42 ✓✓</small></div>
+        <div class="m in">Nagramy na miejscu. Potem robimy stronę, która się wyróżnia 🎬 <small>9:43</small></div>
         <div class="m out">To kiedy możecie wpaść? 😄 <small>9:44 ✓✓</small></div>
       </div>
     </div>
