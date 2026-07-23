@@ -9,8 +9,10 @@
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
   .canvas{position:relative;width:1080px;overflow:hidden;background:var(--paper);display:flex;flex-direction:column}
-  body.story .canvas{height:1920px;padding:84px 76px 80px}
-  body.feed  .canvas{height:1350px;padding:60px 64px 56px}
+  /* story: strefy bezpieczne Meta — gora ~250px i dol ~350px wolne od tresci */
+  body.story  .canvas{height:1920px;padding:256px 72px 352px}
+  body.feed   .canvas{height:1350px;padding:56px 64px 138px}
+  body.square .canvas{height:1080px;padding:52px 60px 60px}
   .slash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(245deg,var(--lime) 0%,var(--lime) 26%,transparent 26.2%)}
   .slash2{position:absolute;inset:0;pointer-events:none;background:linear-gradient(245deg,transparent 25%,rgba(10,14,26,.14) 25.2%,transparent 26.6%)}
 
@@ -21,8 +23,9 @@
   .on-badge b{font-family:'Plus Jakarta Sans';font-weight:700;font-size:31px;color:#fff;letter-spacing:.02em}
 
   .headline{position:relative;font-family:'Plus Jakarta Sans';font-weight:700;letter-spacing:-.03em}
-  body.story .headline{font-size:82px;line-height:1.12;margin-top:48px}
-  body.feed  .headline{font-size:64px;line-height:1.1;margin-top:36px}
+  body.story  .headline{font-size:58px;line-height:1.14;margin-top:28px}
+  body.feed   .headline{font-size:64px;line-height:1.1;margin-top:36px}
+  body.square .headline{font-size:48px;line-height:1.12;margin-top:18px}
   .headline .q{background:var(--lime);border-radius:14px;padding:0 20px 8px;margin-left:-6px;
     -webkit-box-decoration-break:clone;box-decoration-break:clone}
   .sub{position:relative;font-size:34px;line-height:1.4;font-weight:500;color:#3A4152;max-width:900px}
@@ -30,54 +33,101 @@
   body.feed  .sub{margin-top:26px;font-size:31px}
   .sub b{font-weight:700;color:var(--ink)}
 
-  .chat{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:36px 0 0}
-  .phone{width:730px;background:#fff;border-radius:44px;border:1.5px solid var(--line);
+  .chat{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:22px 0 0}
+  body.story .m{font-size:20px;padding:11px 18px}
+  body.story .msgs{gap:9px}
+  body.story .tile{width:158px;height:96px}
+  body.story .answer{margin-top:32px}
+  .phone{width:750px;background:#fff;border-radius:40px;border:1.5px solid var(--line);
     box-shadow:0 40px 90px -28px rgba(10,14,26,.30),0 12px 30px -12px rgba(10,14,26,.14);
     overflow:hidden;transform:rotate(-1.4deg)}
   body.feed .phone{width:700px}
-  .ph-top{display:flex;align-items:center;gap:16px;padding:20px 28px;background:#FBFAF6;border-bottom:1.5px solid #EFECE3}
-  .ph-top .ava{width:52px;height:52px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;color:var(--ink);font-weight:700;font-size:21px;font-family:'Plus Jakarta Sans'}
-  .ph-top b{display:block;font-size:25px;font-weight:700}
-  .ph-top span{display:block;font-size:19px;color:#9A937F;font-weight:500;margin-top:2px}
-  .msgs{display:flex;flex-direction:column;gap:13px;padding:22px 30px 26px;background:
+  .ph-top{display:flex;align-items:center;gap:14px;padding:16px 26px;background:#FBFAF6;border-bottom:1.5px solid #EFECE3}
+  .ph-top .ava{width:46px;height:46px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;color:var(--ink);font-weight:700;font-size:19px;font-family:'Plus Jakarta Sans'}
+  .ph-top b{display:block;font-size:23px;font-weight:700}
+  .ph-top span{display:block;font-size:17px;color:#9A937F;font-weight:500;margin-top:1px}
+  .msgs{display:flex;flex-direction:column;gap:10px;padding:16px 26px 20px;background:
     radial-gradient(circle at 20% 10%,#FCFBF7 0%,#F7F5EE 100%)}
-  .m{max-width:80%;border-radius:24px;padding:16px 24px;font-size:25px;line-height:1.33;font-weight:500;position:relative}
+  .m{max-width:82%;border-radius:20px;padding:12px 20px;font-size:21px;line-height:1.32;font-weight:500;position:relative}
   .in{align-self:flex-start;background:#EFEDE4;color:#2A3040;border-bottom-left-radius:8px}
   .out{align-self:flex-end;background:var(--ink);color:#fff;border-bottom-right-radius:8px}
-  .m small{display:block;font-size:17px;font-weight:500;opacity:.5;margin-top:6px;text-align:right}
-  .m.big{background:var(--lime);color:var(--ink);font-weight:700;border-bottom-right-radius:8px;align-self:flex-end}
+  .m small{display:block;font-size:16px;font-weight:500;opacity:.5;margin-top:5px;text-align:right}
+  .in.hl{background:var(--lime);color:var(--ink);font-weight:700}
+  .tiles{display:flex;gap:9px;margin-top:10px}
+  .tile{width:168px;height:104px;border-radius:12px;position:relative;overflow:hidden;flex:none;
+    background:radial-gradient(46px 46px at 72% 24%,rgba(200,240,49,.85) 0 44%,transparent 46%),
+               linear-gradient(140deg,#39496C 0%,#141B2E 100%)}
+  .tile::after{content:"";position:absolute;left:0;right:0;bottom:0;height:56%;
+    background:linear-gradient(165deg,#46587F 0%,#232E4C 90%);
+    clip-path:polygon(0 100%,0 58%,30% 18%,52% 62%,71% 34%,100% 78%,100% 100%)}
+  .play{position:absolute;inset:0;margin:auto;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.94);z-index:2}
+  .play::after{content:"";position:absolute;left:15px;top:11px;border-left:14px solid var(--ink);
+    border-top:9px solid transparent;border-bottom:9px solid transparent}
+  .tile b{position:absolute;right:9px;bottom:8px;z-index:2;background:rgba(0,0,0,.55);color:#fff;
+    font-size:14px;font-weight:600;padding:2px 9px;border-radius:7px}
 
-  .answer{position:relative;background:var(--ink);color:#fff;border-radius:32px;padding:44px 48px;
+  .answer{position:relative;background:var(--ink);color:#fff;border-radius:28px;padding:32px 38px;
     box-shadow:0 30px 70px -22px rgba(10,14,26,.5)}
-  body.story .answer{margin-top:56px}
+  body.story .answer{margin-top:38px}
   body.feed  .answer{padding:32px 40px;margin-top:32px}
-  .answer h2{font-family:'Plus Jakarta Sans';font-weight:700;font-size:41px;letter-spacing:-.02em;line-height:1.15}
+  .answer h2{font-family:'Plus Jakarta Sans';font-weight:700;font-size:34px;letter-spacing:-.02em;line-height:1.2}
   .answer h2 em{font-style:normal;color:var(--lime)}
   .arow{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
   .achip{display:flex;align-items:center;gap:10px;border:1.5px solid #2A3350;background:rgba(255,255,255,.05);
-    border-radius:999px;padding:12px 22px;font-size:24px;font-weight:600;color:#DDE3F0}
+    border-radius:999px;padding:10px 18px;font-size:21px;font-weight:600;color:#DDE3F0}
   .achip em{font-style:normal;color:var(--lime);font-weight:800}
-  .cta-row{display:flex;align-items:center;gap:24px;margin-top:32px}
+  .cta-row{display:flex;align-items:center;gap:24px;margin-top:26px}
   .cta{display:flex;align-items:center;gap:16px;background:var(--lime);color:var(--ink);border-radius:999px;
-    padding:22px 42px;font-size:30px;font-weight:800}
+    padding:17px 34px;font-size:26px;font-weight:800}
   .handle{font-size:24px;font-weight:600;color:#8B93A7}
 
   /* ciasniejszy uklad dla formatu feed 1080x1350 */
   body.feed .sub{display:none}
-  body.feed .headline{margin-top:40px}
-  body.feed .chat{padding:24px 0 18px}
-  body.feed .ph-top{padding:15px 22px}
-  body.feed .ph-top .ava{width:44px;height:44px;font-size:19px}
+  body.feed .headline{margin-top:28px;font-size:56px}
+  body.feed .chat{padding:12px 0 8px}
+  body.feed .answer{margin-top:24px}
+  body.feed .ph-top{padding:14px 22px}
+  body.feed .ph-top .ava{width:42px;height:42px;font-size:18px}
   body.feed .ph-top b{font-size:21px}
   body.feed .ph-top span{font-size:16px}
-  body.feed .msgs{gap:10px;padding:18px 20px 22px}
-  body.feed .m{font-size:21px;padding:12px 18px;border-radius:18px}
+  body.feed .msgs{gap:9px;padding:16px 20px 20px}
+  body.feed .m{font-size:19px;padding:10px 16px;border-radius:16px}
   body.feed .m small{font-size:14px;margin-top:4px}
-  body.feed .answer h2{font-size:34px}
+  body.feed .tiles{gap:8px;margin-top:9px}
+  body.feed .tile{width:140px;height:86px;border-radius:11px}
+  body.feed .play{width:40px;height:40px}
+  body.feed .play::after{left:15px;top:11px;border-left:14px solid var(--ink);border-top:9px solid transparent;border-bottom:9px solid transparent}
+  body.feed .answer h2{font-size:33px}
   body.feed .achip{font-size:21px;padding:10px 18px}
-  body.feed .cta-row{margin-top:24px}
+  body.feed .cta-row{margin-top:22px}
   body.feed .cta{font-size:26px;padding:17px 34px}
-  body.feed .handle{font-size:21px}
+
+  /* format kwadratowy 1:1 1080x1080 */
+  body.square .sub{display:none}
+  body.story .sq-hide,body.square .sq-hide{display:none}
+  body.square .chat{padding:14px 0 10px}
+  body.square .phone{width:680px;border-radius:32px}
+  body.square .ph-top{padding:12px 20px}
+  body.square .ph-top .ava{width:38px;height:38px;font-size:16px}
+  body.square .ph-top b{font-size:19px}
+  body.square .ph-top span{font-size:14px}
+  body.square .msgs{gap:8px;padding:14px 18px 18px}
+  body.square .m{font-size:18px;padding:9px 15px;border-radius:14px}
+  body.square .m small{font-size:13px;margin-top:3px}
+  body.square .tiles{gap:8px;margin-top:9px}
+  body.square .tile{width:140px;height:86px;border-radius:11px}
+  body.square .play{width:36px;height:36px}
+  body.square .play::after{left:14px;top:10px;border-left:12px solid var(--ink);border-top:8px solid transparent;border-bottom:8px solid transparent}
+  body.square .answer{padding:26px 32px;border-radius:24px}
+  body.square .answer h2{font-size:28px}
+  body.square .arow{margin-top:16px;gap:9px}
+  body.square .achip{font-size:18px;padding:8px 15px}
+  body.square .cta-row{margin-top:18px}
+  body.square .cta{font-size:22px;padding:14px 28px}
+  body.square .wordmark{font-size:42px}
+  body.square .on-badge{padding:7px 16px 7px 9px;margin-left:8px}
+  body.square .on-badge i{width:20px;height:20px}
+  body.square .on-badge b{font-size:26px}
 </style>
 <body class="story">
 <div class="canvas">
@@ -87,7 +137,7 @@
     <div class="wordmark">marketing<span class="on-badge"><i></i><b>on</b></span></div>
   </div>
 
-  <div class="headline">Planujesz stronę WWW i nie masz zdjęć ani filmów? <span class="q">Świetnie się składa.</span></div>
+  <div class="headline">Planujesz stronę WWW i&nbsp;nie masz zdjęć ani filmów? <span class="q">Świetnie się składa.</span></div>
 
   <div class="chat">
     <div class="phone">
@@ -97,24 +147,24 @@
       </div>
       <div class="msgs">
         <div class="m out">Chcę zamówić stronę, ale muszę przesłać zdjęcia… a ja ich nie mam 😅 <small>9:41 ✓✓</small></div>
-        <div class="m in">U nas masz sesję w cenie — przyjedziemy i pozyskamy u Ciebie materiały na&nbsp;stronę&nbsp;📸</div>
-        <div class="m out">A wideo na stronę? <small>9:42 ✓✓</small></div>
-        <div class="m in">Nagramy na miejscu. Potem robimy stronę, która się wyróżnia 🎬</div>
-        <div class="m big">To kiedy możecie wpaść? 😄</div>
+        <div class="m in hl">U nas masz sesję w cenie — przyjedziemy i pozyskamy u Ciebie materiały na&nbsp;stronę&nbsp;📸 <small>9:41</small></div>
+        <div class="m in">Nagramy na miejscu. Potem robimy stronę, która się wyróżnia 🎬
+          <span class="tiles"><span class="tile"></span><span class="tile"><i class="play"></i><b>0:30</b></span></span>
+          <small>9:43</small></div>
+        <div class="m out">To kiedy możecie wpaść? 😄 <small>9:44 ✓✓</small></div>
       </div>
     </div>
   </div>
 
   <div class="answer">
-    <h2>Ty nie załatwiasz niczego. <em>Zdjęcia, wideo i stronę</em> robimy my — od <em>980 zł netto.</em></h2>
+    <h2>Ty nie musisz załatwiać niczego. <em>Zdjęcia, wideo i&nbsp;stronę</em> robimy my — od <em>980 zł netto.</em></h2>
     <div class="arow">
       <span class="achip"><em>✓</em> przyjazd do Ciebie</span>
       <span class="achip"><em>✓</em> sesja + nagrania</span>
-      <span class="achip"><em>✓</em> strona od 980 zł netto</span>
+      <span class="achip"><em>✓</em> miesiąc social mediów gratis</span>
     </div>
     <div class="cta-row">
-      <span class="cta">Umów przyjazd →</span>
-      <span class="handle">Bezpłatna wycena w 24 h</span>
+      <span class="cta">Bezpłatna wycena w 24 h →</span>
     </div>
   </div>
 </div>
