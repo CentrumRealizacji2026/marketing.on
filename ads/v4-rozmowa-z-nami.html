@@ -1,4 +1,4 @@
-<!-- marketing.on — wariant 3: z pazurem (czat, styl CalmSite) -->
+<!-- marketing.on — wariant 4: rozmowa z nami (czat, pozytywne lustro v3) -->
 <meta charset="utf-8">
 <link rel="stylesheet" href="fonts/fonts.css">
 <style>
@@ -11,8 +11,8 @@
   .canvas{position:relative;width:1080px;overflow:hidden;background:var(--paper);display:flex;flex-direction:column}
   body.story .canvas{height:1920px;padding:84px 76px 80px}
   body.feed  .canvas{height:1350px;padding:60px 64px 56px}
-  .slash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,var(--lime) 0%,var(--lime) 26%,transparent 26.2%)}
-  .slash2{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 25%,rgba(10,14,26,.14) 25.2%,transparent 26.6%)}
+  .slash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(245deg,var(--lime) 0%,var(--lime) 26%,transparent 26.2%)}
+  .slash2{position:absolute;inset:0;pointer-events:none;background:linear-gradient(245deg,transparent 25%,rgba(10,14,26,.14) 25.2%,transparent 26.6%)}
 
   .brand{display:flex;align-items:center;position:relative}
   .wordmark{font-family:'Space Grotesk';font-weight:700;font-size:50px;letter-spacing:-.02em;display:flex;align-items:center}
@@ -22,7 +22,7 @@
 
   .headline{position:relative;font-family:'Space Grotesk';font-weight:700;letter-spacing:-.03em}
   body.story .headline{font-size:100px;line-height:1.03;margin-top:56px}
-  body.feed  .headline{font-size:74px;line-height:1.0;margin-top:36px}
+  body.feed  .headline{font-size:84px;line-height:1.0;margin-top:42px}
   .headline .q{color:transparent;-webkit-text-stroke:2.5px var(--ink)}
   .sub{position:relative;font-size:34px;line-height:1.4;font-weight:500;color:#3A4152;max-width:900px}
   body.story .sub{margin-top:30px}
@@ -32,10 +32,10 @@
   .chat{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:34px 0 26px}
   .phone{width:640px;background:#fff;border-radius:44px;border:1.5px solid var(--line);
     box-shadow:0 40px 90px -28px rgba(10,14,26,.30),0 12px 30px -12px rgba(10,14,26,.14);
-    overflow:hidden;transform:rotate(1.4deg)}
-  body.feed .phone{width:680px}
+    overflow:hidden;transform:rotate(-1.4deg)}
+  body.feed .phone{width:600px}
   .ph-top{display:flex;align-items:center;gap:16px;padding:20px 28px;background:#FBFAF6;border-bottom:1.5px solid #EFECE3}
-  .ph-top .ava{width:52px;height:52px;border-radius:50%;background:linear-gradient(140deg,#39415A,#12182B);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:23px;font-family:'Space Grotesk'}
+  .ph-top .ava{width:52px;height:52px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;color:var(--ink);font-weight:700;font-size:21px;font-family:'Space Grotesk'}
   .ph-top b{display:block;font-size:25px;font-weight:700}
   .ph-top span{display:block;font-size:19px;color:#9A937F;font-weight:500;margin-top:2px}
   .msgs{display:flex;flex-direction:column;gap:13px;padding:24px 26px 28px;background:
@@ -69,8 +69,8 @@
   body.feed .ph-top .ava{width:44px;height:44px;font-size:19px}
   body.feed .ph-top b{font-size:21px}
   body.feed .ph-top span{font-size:16px}
-  body.feed .msgs{gap:9px;padding:16px 20px 20px}
-  body.feed .m{font-size:20px;padding:11px 17px;border-radius:17px}
+  body.feed .msgs{gap:10px;padding:18px 20px 22px}
+  body.feed .m{font-size:21px;padding:12px 18px;border-radius:18px}
   body.feed .m small{font-size:14px;margin-top:4px}
   body.feed .answer h2{font-size:34px}
   body.feed .achip{font-size:21px;padding:10px 18px}
@@ -86,34 +86,34 @@
     <div class="wordmark">marketing<span class="on-badge"><i></i><b>on</b></span></div>
   </div>
 
-  <div class="headline">Stronę zrobią.<br>Zdjęcia?<br><span class="q">Twój problem.</span></div>
-  <div class="sub">W większości agencji zdjęcia musisz załatwić i opłacić osobno. <b>U nas przyjeżdżamy ze sprzętem.</b></div>
+  <div class="headline">Nie masz zdjęć?<br><span class="q">Świetnie się składa.</span></div>
+  <div class="sub">Przyjeżdżamy do Ciebie ze sprzętem: sesja zdjęciowa, nagrania wideo — <b>a potem robimy stronę.</b></div>
 
   <div class="chat">
     <div class="phone">
       <div class="ph-top">
-        <span class="ava">A</span>
-        <span><b>Typowa agencja</b><span>online</span></span>
+        <span class="ava">on</span>
+        <span><b>marketing.on</b><span>online</span></span>
       </div>
       <div class="msgs">
-        <div class="m in">Do strony potrzebujemy zdjęć firmy. Proszę je przesłać 📎</div>
-        <div class="m out">Ale ja nie mam żadnych zdjęć… <small>14:02 ✓✓</small></div>
-        <div class="m in">To proszę zamówić fotografa we własnym zakresie 🙂</div>
-        <div class="m out">Czyli osobny fotograf i osobne koszty? <small>14:03 ✓✓</small></div>
-        <div class="m big">Nie, dziękuję. Znalazłem agencję, która przyjeżdża z aparatem 📸</div>
+        <div class="m out">Chcę stronę, ale nie mam żadnych zdjęć firmy… 😅 <small>9:41 ✓✓</small></div>
+        <div class="m in">Nie szkodzi. Przyjedziemy do Ciebie i zrobimy sesję zdjęciową 📸</div>
+        <div class="m out">A wideo na stronę? <small>9:42 ✓✓</small></div>
+        <div class="m in">Nagramy na miejscu. Potem robimy stronę, która się wyróżnia 🎬</div>
+        <div class="m big">To kiedy możecie wpaść? 😄</div>
       </div>
     </div>
   </div>
 
   <div class="answer">
-    <h2>My przyjeżdżamy do Ciebie: <em>sesja + nagrania wideo</em>, a potem robimy stronę. Od <em>980 zł netto.</em></h2>
+    <h2>Ty nie załatwiasz niczego. <em>Zdjęcia, wideo i stronę</em> robimy my — od <em>980 zł netto.</em></h2>
     <div class="arow">
-      <span class="achip"><em>✓</em> przyjazd i sesja zdjęciowa</span>
-      <span class="achip"><em>✓</em> nagrania wideo</span>
-      <span class="achip"><em>✓</em> strona, która się wyróżnia</span>
+      <span class="achip"><em>✓</em> przyjazd do Ciebie</span>
+      <span class="achip"><em>✓</em> sesja + nagrania</span>
+      <span class="achip"><em>✓</em> strona od 980 zł netto</span>
     </div>
     <div class="cta-row">
-      <span class="cta">Napisz do nas →</span>
+      <span class="cta">Umów przyjazd →</span>
       <span class="handle">Bezpłatna wycena w 24 h</span>
     </div>
   </div>
