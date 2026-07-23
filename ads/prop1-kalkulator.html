@@ -1,0 +1,58 @@
+<!-- propozycja 1: kalkulator/paragon — ile kosztuje osobno vs u nas -->
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts.css"><link rel="stylesheet" href="fonts/fonts2.css">
+<style>
+  :root{--ink:#0A0E1A;--paper:#F6F4EF;--lime:#C8F031;--lime-deep:#8FB60E;--muted:#5B6272;--line:#E3DFD4}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  .canvas{position:relative;width:1080px;height:1920px;overflow:hidden;background:var(--paper);
+    display:flex;flex-direction:column;padding:256px 76px 352px}
+  .slash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(245deg,var(--lime) 0%,var(--lime) 24%,transparent 24.2%)}
+  .wordmark{font-family:'Plus Jakarta Sans';font-weight:700;font-size:50px;letter-spacing:-.02em;display:flex;align-items:center;position:relative}
+  .on-badge{display:inline-flex;align-items:center;gap:9px;background:var(--ink);border-radius:999px;padding:9px 20px 9px 11px;margin-left:9px}
+  .on-badge i{width:24px;height:24px;border-radius:50%;background:var(--lime);box-shadow:0 0 16px rgba(200,240,49,.9)}
+  .on-badge b{font-weight:700;font-size:31px;color:#fff;letter-spacing:.02em}
+  .headline{position:relative;font-weight:700;letter-spacing:-.03em;font-size:74px;line-height:1.1;margin-top:34px}
+  .headline .q{background:var(--lime);border-radius:14px;padding:0 18px 6px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+  .stage{flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0}
+  .receipt{width:790px;background:#fff;border-radius:30px;border:1.5px solid var(--line);padding:44px 52px 40px;
+    box-shadow:0 40px 90px -28px rgba(10,14,26,.28);transform:rotate(-1.2deg)}
+  .receipt h3{font-size:27px;font-weight:700;letter-spacing:.12em;color:#9A937F;text-transform:uppercase}
+  .row{display:flex;align-items:baseline;justify-content:space-between;padding:20px 0;border-bottom:2px dashed #E8E4D8;font-size:30px;font-weight:600}
+  .row span{color:#3A4152}
+  .row b{font-weight:700;white-space:nowrap}
+  .sum{display:flex;align-items:baseline;justify-content:space-between;padding:26px 0 6px;font-size:33px;font-weight:700}
+  .sum b{text-decoration:line-through;text-decoration-thickness:5px;text-decoration-color:#E25B4A;font-size:44px}
+  .ours{margin-top:22px;background:var(--ink);border-radius:22px;padding:26px 30px;display:flex;align-items:center;justify-content:space-between;color:#fff}
+  .ours span{font-size:29px;font-weight:700}
+  .ours em{font-style:normal;font-size:24px;color:#AEB6C8;display:block;font-weight:500;margin-top:4px}
+  .ours b{font-size:52px;font-weight:800;color:var(--lime);white-space:nowrap}
+  .ours b small{font-size:24px;color:#AEB6C8;font-weight:500}
+  .foot{font-size:20px;color:#9A937F;font-weight:500;margin-top:18px}
+  .cta-row{position:relative;display:flex;justify-content:center;margin-top:36px}
+  .cta{background:var(--ink);color:#fff;border-radius:999px;padding:26px 54px;font-size:31px;font-weight:800}
+  .cta em{font-style:normal;color:var(--lime)}
+</style>
+<body>
+<div class="canvas">
+  <div class="slash"></div>
+  <div class="wordmark">marketing<span class="on-badge"><i></i><b>on</b></span></div>
+  <div class="headline">Strona, zdjęcia, wideo, social media. <span class="q">Jeden rachunek.</span></div>
+  <div class="stage">
+    <div class="receipt">
+      <h3>Zwykle płacisz osobno*</h3>
+      <div class="row"><span>Strona internetowa</span><b>~4 000 zł</b></div>
+      <div class="row"><span>Fotograf (sesja dla firmy)</span><b>~900 zł</b></div>
+      <div class="row"><span>Krótkie wideo</span><b>~1 200 zł</b></div>
+      <div class="row"><span>Social media (miesiąc)</span><b>~1 400 zł</b></div>
+      <div class="sum"><span>Razem</span><b>~7 500 zł</b></div>
+      <div class="ours">
+        <span>W marketing.on<em>wszystko w jednym pakiecie</em></span>
+        <b>od 980 zł <small>netto</small></b>
+      </div>
+      <div class="foot">* orientacyjne ceny rynkowe przy zamawianiu każdej usługi u innego wykonawcy</div>
+    </div>
+  </div>
+  <div class="cta-row"><span class="cta">Bezpłatna wycena w 24 h <em>→</em></span></div>
+</div>
+</body>

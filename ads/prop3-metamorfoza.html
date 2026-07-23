@@ -1,0 +1,96 @@
+<!-- propozycja 3: metamorfoza — wizytowka bez zdjec vs strona od marketing.on -->
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts.css"><link rel="stylesheet" href="fonts/fonts2.css">
+<style>
+  :root{--ink:#0A0E1A;--paper:#F6F4EF;--lime:#C8F031;--lime-deep:#8FB60E;--muted:#5B6272;--line:#E3DFD4}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  .canvas{position:relative;width:1080px;height:1920px;overflow:hidden;background:var(--paper);
+    display:flex;flex-direction:column;padding:256px 72px 352px}
+  .slash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,var(--lime) 0%,var(--lime) 22%,transparent 22.2%)}
+  .wordmark{font-weight:700;font-size:50px;letter-spacing:-.02em;display:flex;align-items:center;position:relative}
+  .on-badge{display:inline-flex;align-items:center;gap:9px;background:var(--ink);border-radius:999px;padding:9px 20px 9px 11px;margin-left:9px}
+  .on-badge i{width:24px;height:24px;border-radius:50%;background:var(--lime);box-shadow:0 0 16px rgba(200,240,49,.9)}
+  .on-badge b{font-weight:700;font-size:31px;color:#fff;letter-spacing:.02em}
+  .headline{position:relative;font-weight:700;letter-spacing:-.03em;font-size:72px;line-height:1.12;margin-top:34px}
+  .headline .q{background:var(--lime);border-radius:14px;padding:0 18px 6px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+  .stage{flex:1;display:flex;align-items:center;justify-content:center;gap:26px;position:relative;min-height:0}
+  .col{display:flex;flex-direction:column;align-items:center;gap:18px}
+  .lbl{font-size:24px;font-weight:700;letter-spacing:.1em;color:#9A937F}
+  .col.after .lbl{color:var(--lime-deep)}
+  .ph{width:360px;height:640px;border-radius:36px;background:#fff;border:1.5px solid var(--line);overflow:hidden;
+    box-shadow:0 34px 80px -26px rgba(10,14,26,.30)}
+  .col.before .ph{transform:rotate(-2deg)}
+  .col.after .ph{transform:rotate(2deg);width:390px;height:680px}
+  .bar{height:44px;background:#F4F2EA;border-bottom:1.5px solid #ECE9DD;display:flex;align-items:center;gap:6px;padding:0 16px}
+  .bar i{width:10px;height:10px;border-radius:50%;background:#DDD8C8}
+  .b-inner{padding:26px 22px;display:flex;flex-direction:column;gap:14px}
+  .b-inner .ttl{height:16px;width:60%;border-radius:8px;background:#E6E2D4}
+  .b-inner .box{height:150px;border-radius:14px;background:repeating-linear-gradient(45deg,#F0EDE2 0 14px,#E9E5D7 14px 28px);
+    display:flex;align-items:center;justify-content:center;color:#B4AD9A;font-size:19px;font-weight:600}
+  .b-inner .ln{height:11px;border-radius:6px;background:#ECE8DB}
+  .b-inner .ln.s{width:70%}
+  .a-hero{height:250px;background:
+    radial-gradient(130px 100px at 72% 24%,rgba(200,240,49,.55),transparent 60%),
+    linear-gradient(150deg,#101728 0%,#1E2B48 55%,#3E5178 100%);position:relative}
+  .a-hero b{position:absolute;left:20px;bottom:18px;color:#fff;font-size:24px;font-weight:700;letter-spacing:-.01em;line-height:1.2}
+  .a-hero b em{font-style:normal;color:var(--lime)}
+  .a-inner{padding:20px 22px;display:flex;flex-direction:column;gap:12px}
+  .a-chip{display:flex;gap:10px}
+  .a-chip i{height:34px;flex:1;border-radius:9px;background:#EFF6DA;border:1.5px solid #DDEBB2}
+  .a-card{height:86px;border-radius:14px;background:#FBFAF5;border:1.5px solid #EFECE1;display:flex;align-items:center;gap:12px;padding:0 16px}
+  .a-card .th{width:58px;height:58px;border-radius:12px;background:linear-gradient(140deg,#33415F,#141B2E)}
+  .a-card .tx{flex:1}
+  .a-card .tx i{display:block;height:10px;border-radius:5px;background:#E8E4D6;margin:6px 0}
+  .a-card .tx i.s{width:60%}
+  .a-btn{height:52px;border-radius:999px;background:var(--lime);display:flex;align-items:center;justify-content:center;
+    font-size:20px;font-weight:800;color:var(--ink)}
+  .arrow{flex:none;width:84px;height:84px;border-radius:50%;background:var(--ink);color:var(--lime);display:flex;align-items:center;justify-content:center;
+    font-size:38px;font-weight:800;box-shadow:0 16px 40px -10px rgba(10,14,26,.4);z-index:3}
+  .perks{position:relative;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  .perk{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:12px 22px;font-size:22px;font-weight:600}
+  .perk em{font-style:normal;color:var(--lime-deep);font-weight:800;margin-right:6px}
+  .cta-row{position:relative;display:flex;justify-content:center;margin-top:26px}
+  .cta{background:var(--ink);color:#fff;border-radius:999px;padding:24px 50px;font-size:30px;font-weight:800}
+  .cta em{font-style:normal;color:var(--lime)}
+</style>
+<body>
+<div class="canvas">
+  <div class="slash"></div>
+  <div class="wordmark">marketing<span class="on-badge"><i></i><b>on</b></span></div>
+  <div class="headline">Twoja firma w sieci — <span class="q">przed i po.</span></div>
+  <div class="stage">
+    <div class="col before">
+      <span class="lbl">TERAZ</span>
+      <div class="ph"><div class="bar"><i></i><i></i><i></i></div>
+        <div class="b-inner">
+          <div class="ttl"></div>
+          <div class="box">brak zdjęć</div>
+          <div class="ln"></div><div class="ln"></div><div class="ln s"></div>
+          <div class="box" style="height:110px">brak wideo</div>
+          <div class="ln"></div><div class="ln s"></div>
+        </div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="col after">
+      <span class="lbl">Z MARKETING.ON</span>
+      <div class="ph"><div class="bar"><i></i><i></i><i></i></div>
+        <div class="a-hero"><b>Twoja firma<br><em>w najlepszym wydaniu</em></b></div>
+        <div class="a-inner">
+          <div class="a-chip"><i></i><i></i><i></i></div>
+          <div class="a-card"><span class="th"></span><span class="tx"><i></i><i class="s"></i></span></div>
+          <div class="a-card"><span class="th" style="border-radius:50%"></span><span class="tx"><i></i><i class="s"></i></span></div>
+          <div class="a-btn">Umów wizytę</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="perks">
+    <span class="perk"><em>✓</em>sesja i wideo w cenie</span>
+    <span class="perk"><em>✓</em>od 980 zł netto</span>
+    <span class="perk"><em>✓</em>miesiąc social mediów gratis</span>
+  </div>
+  <div class="cta-row"><span class="cta">Bezpłatna wycena w 24 h <em>→</em></span></div>
+</div>
+</body>
