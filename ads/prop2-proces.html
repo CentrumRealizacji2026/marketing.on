@@ -5,9 +5,12 @@
   :root{--ink:#0A0E1A;--lime:#C8F031;--muted:#9AA3B8;--line:#232C44}
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'Plus Jakarta Sans',sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
-  .canvas{position:relative;width:1080px;height:1920px;overflow:hidden;display:flex;flex-direction:column;padding:256px 76px 352px;
+  .canvas{position:relative;width:1080px;overflow:hidden;display:flex;flex-direction:column;
     background:radial-gradient(1200px 800px at 85% -10%,#1C2743 0%,transparent 60%),
                radial-gradient(900px 700px at -15% 108%,#18233E 0%,transparent 55%),var(--ink)}
+  body.story  .canvas{height:1920px;padding:256px 76px 352px}
+  body.feed   .canvas{height:1350px;padding:56px 64px 138px}
+  body.square .canvas{height:1080px;padding:52px 60px 60px}
   .glow{position:absolute;width:760px;height:760px;border-radius:50%;pointer-events:none;filter:blur(130px);opacity:.22;
     background:radial-gradient(circle,var(--lime) 0%,transparent 62%);top:-300px;right:-260px}
   .wordmark{font-weight:700;font-size:50px;letter-spacing:-.02em;display:flex;align-items:center;position:relative}
@@ -33,8 +36,34 @@
   .cta-row{position:relative;display:flex;justify-content:center}
   .cta{background:var(--lime);color:var(--ink);border-radius:999px;padding:28px 54px;font-size:32px;font-weight:800;
     box-shadow:0 24px 60px -16px rgba(200,240,49,.45)}
+
+  /* feed 4:5 */
+  body.feed .wordmark{font-size:46px}
+  body.feed .headline{font-size:58px;margin-top:28px}
+  body.feed .step{padding:18px 0;gap:24px}
+  body.feed .rail{width:68px}
+  body.feed .num{width:68px;height:68px;font-size:30px}
+  body.feed .body h2{font-size:33px}
+  body.feed .body p{font-size:24px;margin-top:7px}
+  body.feed .tag{font-size:18px;padding:6px 15px;margin-top:10px}
+  body.feed .cta{font-size:28px;padding:22px 46px}
+
+  /* square 1:1 */
+  body.square .wordmark{font-size:42px}
+  body.square .on-badge{padding:7px 16px 7px 9px;margin-left:8px}
+  body.square .on-badge i{width:20px;height:20px}
+  body.square .on-badge b{font-size:26px}
+  body.square .headline{font-size:45px;margin-top:20px}
+  body.square .step{padding:12px 0;gap:18px}
+  body.square .rail{width:54px}
+  body.square .num{width:54px;height:54px;font-size:24px}
+  body.square .body{padding-top:4px}
+  body.square .body h2{font-size:27px}
+  body.square .body p{font-size:20px;margin-top:5px}
+  body.square .tag{font-size:15px;padding:5px 12px;margin-top:8px}
+  body.square .cta{font-size:23px;padding:16px 36px}
 </style>
-<body>
+<body class="story">
 <div class="canvas">
   <div class="glow"></div>
   <div class="wordmark">marketing<span class="on-badge"><i></i><b>on</b></span></div>

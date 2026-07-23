@@ -5,8 +5,10 @@
   :root{--ink:#0A0E1A;--paper:#F6F4EF;--lime:#C8F031;--lime-deep:#8FB60E;--muted:#5B6272;--line:#E3DFD4}
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
-  .canvas{position:relative;width:1080px;height:1920px;overflow:hidden;background:var(--paper);
-    display:flex;flex-direction:column;padding:256px 76px 352px}
+  .canvas{position:relative;width:1080px;overflow:hidden;background:var(--paper);display:flex;flex-direction:column}
+  body.story  .canvas{height:1920px;padding:256px 76px 352px}
+  body.feed   .canvas{height:1350px;padding:56px 64px 138px}
+  body.square .canvas{height:1080px;padding:52px 60px 60px}
   .slash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(245deg,var(--lime) 0%,var(--lime) 24%,transparent 24.2%)}
   .wordmark{font-family:'Plus Jakarta Sans';font-weight:700;font-size:50px;letter-spacing:-.02em;display:flex;align-items:center;position:relative}
   .on-badge{display:inline-flex;align-items:center;gap:9px;background:var(--ink);border-radius:999px;padding:9px 20px 9px 11px;margin-left:9px}
@@ -32,8 +34,46 @@
   .cta-row{position:relative;display:flex;justify-content:center;margin-top:36px}
   .cta{background:var(--ink);color:#fff;border-radius:999px;padding:26px 54px;font-size:31px;font-weight:800}
   .cta em{font-style:normal;color:var(--lime)}
+
+  /* feed 4:5 */
+  body.feed .wordmark{font-size:46px}
+  body.feed .headline{font-size:56px;margin-top:26px}
+  body.feed .receipt{width:780px;padding:32px 42px 28px}
+  body.feed .receipt h3{font-size:22px}
+  body.feed .row{font-size:25px;padding:15px 0}
+  body.feed .sum{font-size:27px;padding:20px 0 4px}
+  body.feed .sum b{font-size:36px}
+  body.feed .ours{padding:20px 26px;border-radius:18px;margin-top:16px}
+  body.feed .ours span{font-size:24px}
+  body.feed .ours em{font-size:19px}
+  body.feed .ours b{font-size:42px}
+  body.feed .ours b small{font-size:19px}
+  body.feed .foot{font-size:16px;margin-top:13px}
+  body.feed .cta-row{margin-top:24px}
+  body.feed .cta{font-size:27px;padding:21px 44px}
+
+  /* square 1:1 */
+  body.square .wordmark{font-size:42px}
+  body.square .on-badge{padding:7px 16px 7px 9px;margin-left:8px}
+  body.square .on-badge i{width:20px;height:20px}
+  body.square .on-badge b{font-size:26px}
+  body.square .headline{font-size:45px;margin-top:18px}
+  body.square .headline .q{padding:0 12px 4px;border-radius:10px}
+  body.square .receipt{width:740px;padding:24px 34px 22px;border-radius:24px;transform:rotate(-1deg)}
+  body.square .receipt h3{font-size:19px}
+  body.square .row{font-size:21px;padding:11px 0}
+  body.square .sum{font-size:23px;padding:15px 0 3px}
+  body.square .sum b{font-size:30px}
+  body.square .ours{padding:15px 22px;border-radius:15px;margin-top:12px}
+  body.square .ours span{font-size:20px}
+  body.square .ours em{font-size:16px;margin-top:2px}
+  body.square .ours b{font-size:34px}
+  body.square .ours b small{font-size:16px}
+  body.square .foot{font-size:13px;margin-top:10px}
+  body.square .cta-row{margin-top:18px}
+  body.square .cta{font-size:23px;padding:16px 34px}
 </style>
-<body>
+<body class="story">
 <div class="canvas">
   <div class="slash"></div>
   <div class="wordmark">marketing<span class="on-badge"><i></i><b>on</b></span></div>

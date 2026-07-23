@@ -46,3 +46,22 @@ variant ad1-wersja-b.html feed   1080x1350 $OUT/B/mon-www-1B-feed-4x5-2160x2700.
 variant ad1-wersja-b.html square 1080x1080 $OUT/B/mon-www-1B-feed-1x1-1080x1080.png 1
 variant ad1-wersja-b.html square 1080x1080 $OUT/B/mon-www-1B-feed-1x1-2160x2160.png 2
 ls "$OUT/A" "$OUT/B"
+
+# reklamy 2-4 (kalkulator, proces, typograficzna) -> reklamy/mon/www/{2,3,4}
+ROOT=../reklamy/mon/www
+render_ad() { # $1 nr  $2 zrodlo.html
+  local n=$1 src=$2
+  mkdir -p "$ROOT/$n"
+  variant $src story  1080x1920 previews/${src%.html}-story.png
+  variant $src feed   1080x1350 previews/${src%.html}-feed.png
+  variant $src square 1080x1080 previews/${src%.html}-square.png
+  variant $src story  1080x1920 "$ROOT/$n/mon-www-$n-story-9x16-1080x1920.png" 1
+  variant $src story  1080x1920 "$ROOT/$n/mon-www-$n-story-9x16-2160x3840.png" 2
+  variant $src feed   1080x1350 "$ROOT/$n/mon-www-$n-feed-4x5-1080x1350.png" 1
+  variant $src feed   1080x1350 "$ROOT/$n/mon-www-$n-feed-4x5-2160x2700.png" 2
+  variant $src square 1080x1080 "$ROOT/$n/mon-www-$n-feed-1x1-1080x1080.png" 1
+  variant $src square 1080x1080 "$ROOT/$n/mon-www-$n-feed-1x1-2160x2160.png" 2
+}
+render_ad 2 prop1-kalkulator.html
+render_ad 3 prop2-proces.html
+render_ad 4 prop4-typograficzna.html
