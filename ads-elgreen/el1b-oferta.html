@@ -1,0 +1,126 @@
+<!-- elgreen — reklama 1, wersja B (test A/B): oferta wprost, ciemne tlo. Logo = placeholder SVG -->
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  :root{
+    --ink:#0A1510; --green:#3BD46C; --green-deep:#1D9A48;
+    --muted:#93A89A; --line:#1E3A29;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Manrope',sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+  .canvas{position:relative;width:1080px;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(1200px 800px at 85% -10%,#17422A 0%,transparent 60%),
+               radial-gradient(900px 700px at -15% 108%,#123422 0%,transparent 55%),var(--ink)}
+  /* story: strefy bezpieczne Meta — gora ~250px i dol ~350px wolne od tresci */
+  body.story  .canvas{height:1920px;padding:256px 76px 352px}
+  body.feed   .canvas{height:1350px;padding:56px 64px 138px}
+  body.square .canvas{height:1080px;padding:52px 60px 60px}
+  .glow{position:absolute;width:760px;height:760px;border-radius:50%;pointer-events:none;filter:blur(130px);opacity:.22;
+    background:radial-gradient(circle,var(--green) 0%,transparent 62%);top:-300px;right:-260px}
+  .dots{position:absolute;inset:0;pointer-events:none;opacity:.35;
+    background-image:radial-gradient(rgba(255,255,255,.14) 1.5px,transparent 1.5px);background-size:44px 44px;
+    -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 55%)}
+
+  .top{display:flex;align-items:center;justify-content:space-between;position:relative}
+  .brand{display:flex;align-items:center;gap:16px}
+  .sygnet{flex:none;width:64px;height:64px;border-radius:18px;background:var(--green);display:flex;align-items:center;justify-content:center}
+  .sygnet svg{width:38px;height:38px}
+  .wordmark{font-weight:800;font-size:52px;letter-spacing:-.02em;color:#fff}
+  .wordmark b{font-weight:800;color:var(--green)}
+  .eyebrow{display:inline-flex;align-items:center;gap:12px;border:1.5px solid var(--line);background:rgba(255,255,255,.04);
+    border-radius:999px;padding:12px 24px;font-size:22px;font-weight:700;letter-spacing:.16em;color:var(--green)}
+  .eyebrow i{width:11px;height:11px;border-radius:50%;background:var(--green);box-shadow:0 0 14px var(--green)}
+
+  .offer{position:relative}
+  body.story  .offer{margin-top:64px}
+  body.feed   .offer{margin-top:40px}
+  body.square .offer{margin-top:28px}
+  .offer h1{font-weight:800;letter-spacing:-.02em;line-height:1.08}
+  body.story  .offer h1{font-size:84px}
+  body.feed   .offer h1{font-size:62px}
+  body.square .offer h1{font-size:50px}
+  .offer h1 em{font-style:normal;color:var(--green)}
+  .price{display:flex;align-items:baseline;gap:20px;position:relative}
+  body.story  .price{margin:30px 0 0}
+  body.feed   .price{margin:22px 0 0}
+  body.square .price{margin:16px 0 0}
+  .price .od{font-weight:500;font-size:46px;color:var(--muted)}
+  .price .val{font-weight:800;font-size:196px;line-height:.95;letter-spacing:-.04em;color:var(--green);
+    text-shadow:0 0 80px rgba(59,212,108,.35)}
+  body.feed   .price .val{font-size:150px}
+  body.square .price .val{font-size:118px}
+  body.square .price .od{font-size:36px}
+  .price .cur{font-weight:800;font-size:76px;color:var(--green)}
+  body.square .price .cur{font-size:58px}
+  .price .net{font-size:28px;color:var(--muted);font-weight:500;margin-left:4px}
+
+  .list{position:relative;display:flex;flex-direction:column}
+  body.story  .list{gap:24px;margin-top:60px}
+  body.feed   .list{gap:14px;margin-top:34px}
+  body.square .list{gap:11px;margin-top:24px}
+  .item{display:flex;align-items:center;gap:22px;background:rgba(255,255,255,.045);border:1.5px solid var(--line);
+    border-radius:22px;padding:26px 30px}
+  body.feed   .item{padding:17px 24px;border-radius:18px}
+  body.square .item{padding:13px 20px;border-radius:16px;gap:16px}
+  .item .chk{flex:none;width:50px;height:50px;border-radius:14px;background:var(--green);color:var(--ink);
+    display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:800}
+  body.feed   .item .chk{width:44px;height:44px;font-size:24px}
+  body.square .item .chk{width:38px;height:38px;font-size:21px;border-radius:11px}
+  .item p{font-size:30px;font-weight:700;letter-spacing:-.01em;line-height:1.22}
+  body.feed   .item p{font-size:26px}
+  body.square .item p{font-size:22px}
+  .item .free{margin-left:auto;flex:none;font-weight:800;font-size:23px;color:var(--green);
+    border:1.5px solid rgba(59,212,108,.45);border-radius:999px;padding:7px 18px;letter-spacing:.05em}
+  body.feed   .item .free{font-size:20px;padding:6px 15px}
+  body.square .item .free{font-size:17px;padding:5px 13px}
+
+  .note{position:relative;display:flex;align-items:center;gap:13px;color:#DCEADF;font-size:26px;font-weight:600}
+  body.story  .note{margin-top:48px;font-size:29px}
+  body.feed   .note{margin-top:26px;font-size:23px}
+  body.square .note{margin-top:20px;font-size:20px}
+  .note i{width:13px;height:13px;border-radius:50%;background:var(--green);flex:none;box-shadow:0 0 12px var(--green)}
+
+  .bottom{position:relative;margin-top:auto;display:flex;align-items:center;gap:30px}
+  .cta{flex:1;display:flex;align-items:center;justify-content:center;gap:16px;background:var(--green);color:var(--ink);
+    border-radius:999px;padding:28px 40px;font-size:33px;font-weight:800;letter-spacing:-.01em;
+    box-shadow:0 24px 60px -16px rgba(59,212,108,.45)}
+  body.feed   .cta{padding:22px 36px;font-size:29px}
+  body.square .cta{padding:18px 30px;font-size:25px}
+  .cta i{font-style:normal;font-weight:800}
+  body.square .wordmark{font-size:42px}
+  body.square .sygnet{width:52px;height:52px;border-radius:15px}
+  body.square .sygnet svg{width:30px;height:30px}
+  body.square .eyebrow{padding:9px 18px;font-size:18px}
+</style>
+<body class="story">
+<div class="canvas">
+  <div class="glow"></div><div class="dots"></div>
+
+  <div class="top">
+    <div class="brand">
+      <span class="sygnet"><svg viewBox="0 0 48 48" fill="none"><path d="M27 6 L13 27 h9 L20 42 L35 20 h-10 Z" fill="#0A1510"/></svg></span>
+      <span class="wordmark">el<b>green</b></span>
+    </div>
+    <div class="eyebrow"><i></i>KONSULTACJA 0 ZŁ</div>
+  </div>
+
+  <div class="offer">
+    <h1>Energetyka, OZE i&nbsp;e-mobility <em>pod klucz</em></h1>
+    <div class="price">
+      <span class="od">odpowiedź w</span><span class="val">48</span><span class="cur">h</span><span class="net">bez zobowiązań</span>
+    </div>
+  </div>
+
+  <div class="list">
+    <div class="item"><span class="chk">✓</span><p>Koncepcja i&nbsp;warunki przyłączenia</p><span class="free">W PAKIECIE</span></div>
+    <div class="item"><span class="chk">✓</span><p>Projekt i formalności z operatorem</p><span class="free">W PAKIECIE</span></div>
+    <div class="item"><span class="chk">✓</span><p>Budowa, odbiory i serwis O&amp;M</p><span class="free">JEDEN WYKONAWCA</span></div>
+  </div>
+
+  <div class="note"><i></i>Od sieci SN po ładowarkę EV — projektujemy i budujemy my.</div>
+
+  <div class="bottom">
+    <span class="cta">Umów bezpłatną konsultację <i>→</i></span>
+  </div>
+</div>
+</body>
