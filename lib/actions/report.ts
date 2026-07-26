@@ -12,9 +12,13 @@ import {
   learningPlanWeek,
   medicationLogs,
   medications,
+  obligationPayments,
+  obligations,
   personalRecords,
   reportSubmissions,
   salesDaily,
+  savingsContributions,
+  savingsGoals,
   tasks,
   trainingLogs,
   trainingPlans,
@@ -69,6 +73,65 @@ export async function submitReport(_prev: ReportState, formData: FormData): Prom
     .insert(dailyLogs)
     .values({ userId: user.id, date, ...dailyValues })
     .onConflictDoUpdate({ target: [dailyLogs.userId, dailyLogs.date], set: dailyValues });
+
+  /* -------------------------------------------------------- oszczędności */
+
+  // Dzień jest zapisywany w całości, więc dopłaty z tej daty zastępujemy — kwota 0
+  // albo puste pole znaczy „nic tego dnia nie odłożyłem".
+  const ownedGoals = await db
+    .select({ id: savingsGoals.id })
+    .from(savingsGoals)
+    .where(eq(savingsGoals.userId, user.id));
+  const goalIds = new Set(ownedGoals.map((goal) => goal.id));
+
+  await db
+    .delete(savingsContributions)
+    .where(and(eq(savingsContributions.userId, user.id), eq(savingsContributions.date, date)));
+
+  const contributions = report.savings
+    .filter((row) => goalIds.has(row.goalId) && row.amountPln !== null && row.amountPln > 0)
+    .map((row) => ({ userId: user.id, goalId: row.goalId, date, amountPln: row.amountPln! }));
+
+  if (contributions.length > 0) await db.insert(savingsContributions).values(contributions);
+
+  /* ------------------------------------------------------------ rachunki */
+
+  const ownedObligations = await db
+    .select({ id: obligations.id })
+    .from(obligations)
+    .where(eq(obligations.userId, user.id));
+  const obligationIds = new Set(ownedObligations.map((row) => row.id));
+
+  for (const payment of report.payments) {
+    if (!obligationIds.has(payment.obligationId)) continue;
+
+    if (!payment.paid) {
+      await db
+        .delete(obligationPayments)
+        .where(
+          and(
+            eq(obligationPayments.userId, user.id),
+            eq(obligationPayments.obligationId, payment.obligationId),
+            eq(obligationPayments.dueDate, payment.dueDate),
+          ),
+        );
+      continue;
+    }
+
+    await db
+      .insert(obligationPayments)
+      .values({
+        userId: user.id,
+        obligationId: payment.obligationId,
+        dueDate: payment.dueDate,
+        paidOn: date,
+        amountPln: payment.amountPln,
+      })
+      .onConflictDoUpdate({
+        target: [obligationPayments.obligationId, obligationPayments.dueDate],
+        set: { paidOn: date, amountPln: payment.amountPln },
+      });
+  }
 
   /* ------------------------------------------------------------ sprzedaż */
 

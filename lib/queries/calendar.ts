@@ -11,17 +11,22 @@ import {
   learningPlanYear,
   medicationLogs,
   medications,
+  obligationPayments,
+  obligations,
   projectMilestones,
   projects,
   salesDaily,
+  savingsContributions,
+  savingsGoals,
   tasks,
   trainingLogs,
   trainingPlans,
   type Settings,
 } from "@/lib/db/schema";
-import { addDays, isoWeekday } from "@/lib/domain/dates";
+import { addDays, isoWeekday, todayInTz } from "@/lib/domain/dates";
 import { dayCashFlow, type CashFlowSource } from "@/lib/domain/finance";
 import { learningBlocksForDate } from "@/lib/domain/learning";
+import { paymentsInRange, type ObligationInput, type PaymentStatus } from "@/lib/domain/obligations";
 import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
 import { waterStatus, type WaterStatus } from "@/lib/domain/water";
 
@@ -39,6 +44,10 @@ export type CalendarDay = {
     changePln: number | null;
     changeSource: CashFlowSource | null;
   };
+  /** Terminy rachunków i rat wypadające tego dnia, ze statusem zapłaty. */
+  platnosci: Array<{ name: string; amountPln: number; status: PaymentStatus }>;
+  /** Ile i na co odłożone tego dnia. */
+  oszczednosci: Array<{ name: string; amountPln: number }>;
   sprzedaz: { calls: number; meetingsScheduled: number; meetingsHeld: number; contracts: number; valuePln: number };
   zdrowie: {
     dosesPlanned: number;
@@ -62,8 +71,13 @@ export function hasActivity(day: CalendarDay, category: keyof typeof CATEGORY_KE
   switch (category) {
     case "finanse":
       return (
-        day.finanse.cashBalancePln !== null || day.finanse.expensesPln !== null || day.finanse.incomePln !== null
+        day.finanse.cashBalancePln !== null ||
+        day.finanse.expensesPln !== null ||
+        day.finanse.incomePln !== null ||
+        day.oszczednosci.length > 0
       );
+    case "platnosci":
+      return day.platnosci.length > 0;
     case "sprzedaz":
       return day.sprzedaz.calls + day.sprzedaz.meetingsHeld + day.sprzedaz.contracts > 0;
     case "zdrowie":
@@ -86,6 +100,7 @@ export function hasActivity(day: CalendarDay, category: keyof typeof CATEGORY_KE
 
 export const CATEGORY_KEYS = {
   finanse: "Finanse",
+  platnosci: "Płatności",
   sprzedaz: "Sprzedaż",
   zdrowie: "Zdrowie",
   zadania: "Zadania",
@@ -126,6 +141,9 @@ export async function getCalendarRange(
     learningLogRows,
     projectRows,
     milestoneRows,
+    obligationRows,
+    paymentRows,
+    contributionRows,
   ] = await Promise.all([
     db
       .select()
@@ -162,6 +180,32 @@ export async function getCalendarRange(
       .where(and(eq(learningLogs.userId, userId), gte(learningLogs.date, from), lte(learningLogs.date, to))),
     db.select().from(projects).where(eq(projects.userId, userId)),
     db.select().from(projectMilestones).where(eq(projectMilestones.userId, userId)),
+    db.select().from(obligations).where(and(eq(obligations.userId, userId), eq(obligations.active, true))),
+    db
+      .select()
+      .from(obligationPayments)
+      .where(
+        and(
+          eq(obligationPayments.userId, userId),
+          gte(obligationPayments.dueDate, from),
+          lte(obligationPayments.dueDate, to),
+        ),
+      ),
+    db
+      .select({
+        date: savingsContributions.date,
+        amountPln: savingsContributions.amountPln,
+        name: savingsGoals.name,
+      })
+      .from(savingsContributions)
+      .innerJoin(savingsGoals, eq(savingsGoals.id, savingsContributions.goalId))
+      .where(
+        and(
+          eq(savingsContributions.userId, userId),
+          gte(savingsContributions.date, from),
+          lte(savingsContributions.date, to),
+        ),
+      ),
   ]);
 
   const logByDate = new Map(logs.map((row) => [row.date, row]));
@@ -174,6 +218,10 @@ export async function getCalendarRange(
   for (let i = 1; i < cashEntries.length; i += 1) {
     cashChangeByDate.set(cashEntries[i].date, cashEntries[i].cashBalancePln! - cashEntries[i - 1].cashBalancePln!);
   }
+
+  // Terminy nie są wierszami w bazie — generujemy je raz na cały zakres.
+  const today = todayInTz(settings.timezone);
+  const duePayments = paymentsInRange(obligationRows as ObligationInput[], paymentRows, from, to, today);
 
   return dates.map((date) => {
     const weekday = isoWeekday(date);
@@ -236,6 +284,12 @@ export async function getCalendarRange(
     return {
       date,
       weekday,
+      platnosci: duePayments
+        .filter((payment) => payment.dueDate === date)
+        .map((payment) => ({ name: payment.name, amountPln: payment.amountPln, status: payment.status })),
+      oszczednosci: contributionRows
+        .filter((row) => row.date === date)
+        .map((row) => ({ name: row.name, amountPln: row.amountPln })),
       finanse: {
         cashBalancePln: log?.cashBalancePln ?? null,
         expensesPln: flow.expensesPln,

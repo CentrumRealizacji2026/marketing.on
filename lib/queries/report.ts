@@ -19,6 +19,8 @@ import {
 import { isoWeekday } from "@/lib/domain/dates";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
+import { getPaymentsForReport } from "@/lib/queries/obligations";
+import { getContributionsForDate, getSavingsOverview } from "@/lib/queries/savings";
 
 /**
  * Formularz raportu jest budowany z konfiguracji użytkownika na wybrany dzień:
@@ -97,6 +99,14 @@ export async function getReportFormData(userId: string, date: string) {
   const doses = medicationScheduleForDate(date, medRows as MedicationRow[], medLogs);
   const blocks = learningBlocksForDate(date, weekPlans, yearPlans);
 
+  // Cele i rachunki pokazujemy w stanie na dzień raportu — z tym, co już wpisane.
+  const [savings, contributions, payments] = await Promise.all([
+    getSavingsOverview(userId, date),
+    getContributionsForDate(userId, date),
+    getPaymentsForReport(userId, date),
+  ]);
+  const contributedByGoal = new Map(contributions.map((row) => [row.goalId, row.amountPln]));
+
   return {
     date,
     daily: log[0] ?? null,
@@ -104,6 +114,17 @@ export async function getReportFormData(userId: string, date: string) {
     contracts: contractRows,
     doses,
     hasMedications: medRows.length > 0,
+    savings: savings.goals.map((goal) => ({
+      goalId: goal.id,
+      name: goal.name,
+      targetPln: goal.targetPln,
+      savedPln: goal.savedPln,
+      pct: goal.pct,
+      deadline: goal.deadline,
+      /** Ile na ten cel zapisano w raporcie z tego dnia. */
+      amountPln: contributedByGoal.get(goal.id) ?? null,
+    })),
+    payments,
     priorities: taskRows.filter((task) => task.kind === "priorytet"),
     side: taskRows.filter((task) => task.kind === "side"),
     training: planRows.map((plan) => ({

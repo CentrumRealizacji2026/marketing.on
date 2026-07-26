@@ -31,6 +31,13 @@ export type ProjectStatus = "aktywny" | "wstrzymany" | "zakonczony";
 export type MaterialType = "wideo" | "pdf" | "kurs" | "ksiazka" | "inne";
 export type RecommendationStatus = "nowa" | "przyjeta" | "zrobiona" | "odrzucona";
 export type MentorMode = "mentor" | "trener" | "pm";
+export type ObligationCadence =
+  | "jednorazowo"
+  | "tygodniowo"
+  | "miesiecznie"
+  | "kwartalnie"
+  | "polrocznie"
+  | "rocznie";
 
 /* ------------------------------------------------------------------ konto */
 
@@ -211,6 +218,108 @@ export const medicationLogs = pgTable(
   (t) => [
     uniqueIndex("medication_logs_unique").on(t.medicationId, t.date, t.slot),
     index("medication_logs_user_date_idx").on(t.userId, t.date),
+  ],
+);
+
+/* ------------------------------------------------------------ oszczędności */
+
+/**
+ * Cel oszczędnościowy: nazwa i kwota do uzbierania. Ile już jest, wynika z sumy
+ * dopłat z raportów dziennych — dzięki temu widać nie tylko stan, ale i tempo.
+ */
+export const savingsGoals = pgTable(
+  "savings_goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    targetPln: numeric("target_pln", { precision: 12, scale: 2, mode: "number" }).notNull(),
+    /** Ile było odłożone, zanim cel trafił do aplikacji — żeby nie zaczynać od zera. */
+    initialPln: numeric("initial_pln", { precision: 12, scale: 2, mode: "number" }).notNull().default(0),
+    deadline: date("deadline", { mode: "string" }),
+    note: text("note"),
+    active: boolean("active").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("savings_goals_user_idx").on(t.userId, t.active)],
+);
+
+/** Jedna dopłata na cel w danym dniu — raport dzienny zastępuje wpisy z tej daty. */
+export const savingsContributions = pgTable(
+  "savings_contributions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    goalId: uuid("goal_id")
+      .notNull()
+      .references(() => savingsGoals.id, { onDelete: "cascade" }),
+    date: date("date", { mode: "string" }).notNull(),
+    amountPln: numeric("amount_pln", { precision: 12, scale: 2, mode: "number" }).notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("savings_contributions_goal_date_key").on(t.goalId, t.date),
+    index("savings_contributions_user_date_idx").on(t.userId, t.date),
+  ],
+);
+
+/* --------------------------------------------------- płatności i rachunki */
+
+/**
+ * Zobowiązanie: kwota, termin pierwszej płatności i rytm powtarzania. Okres, na
+ * jaki jest zaciągnięte, wyznacza `firstDueDate` i `endDate` — dzięki temu rata
+ * kredytu na pięć lat sama znika z kalendarza po ostatniej płatności.
+ */
+export const obligations = pgTable(
+  "obligations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    amountPln: numeric("amount_pln", { precision: 12, scale: 2, mode: "number" }).notNull(),
+    category: text("category"),
+    cadence: text("cadence").$type<ObligationCadence>().notNull().default("miesiecznie"),
+    /** Termin pierwszej płatności — od niej odliczane są kolejne. */
+    firstDueDate: date("first_due_date", { mode: "string" }).notNull(),
+    /** Koniec zobowiązania. Puste = bezterminowo. */
+    endDate: date("end_date", { mode: "string" }),
+    note: text("note"),
+    active: boolean("active").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("obligations_user_idx").on(t.userId, t.active)],
+);
+
+/** Potwierdzenie zapłaty konkretnej raty — jeden wiersz na termin. */
+export const obligationPayments = pgTable(
+  "obligation_payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    obligationId: uuid("obligation_id")
+      .notNull()
+      .references(() => obligations.id, { onDelete: "cascade" }),
+    dueDate: date("due_date", { mode: "string" }).notNull(),
+    paidOn: date("paid_on", { mode: "string" }),
+    /** Kwota faktycznie zapłacona, jeśli różni się od planowanej. */
+    amountPln: numeric("amount_pln", { precision: 12, scale: 2, mode: "number" }),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("obligation_payments_due_key").on(t.obligationId, t.dueDate),
+    index("obligation_payments_user_due_idx").on(t.userId, t.dueDate),
   ],
 );
 
@@ -487,6 +596,14 @@ export const medicationsRelations = relations(medications, ({ many }) => ({
   logs: many(medicationLogs),
 }));
 
+export const savingsGoalsRelations = relations(savingsGoals, ({ many }) => ({
+  contributions: many(savingsContributions),
+}));
+
+export const obligationsRelations = relations(obligations, ({ many }) => ({
+  payments: many(obligationPayments),
+}));
+
 export const mentorRunsRelations = relations(mentorRuns, ({ many }) => ({
   recommendations: many(recommendations),
 }));
@@ -501,6 +618,10 @@ export type Contract = typeof contracts.$inferSelect;
 export type Medication = typeof medications.$inferSelect;
 export type MedicationLog = typeof medicationLogs.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
+export type SavingsGoal = typeof savingsGoals.$inferSelect;
+export type Obligation = typeof obligations.$inferSelect;
+export type ObligationPayment = typeof obligationPayments.$inferSelect;
+export type SavingsContribution = typeof savingsContributions.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type ProjectMilestone = typeof projectMilestones.$inferSelect;
 export type TrainingPlan = typeof trainingPlans.$inferSelect;

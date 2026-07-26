@@ -12,8 +12,16 @@ import {
   todayInTz,
 } from "./dates";
 import { dayCashFlow, sumExpenses, sumIncome } from "./finance";
+import { describeRank, formatTopPct, incomeRank } from "./income-rank";
 import { learningBlocksForDate } from "./learning";
 import { medicationScheduleForDate, slotSortKey } from "./medication";
+import {
+  dueLabel,
+  obligationOccurrences,
+  paymentsInRange,
+  summarizeObligations,
+} from "./obligations";
+import { savingsPace, savingsProgress, summarizeSavings } from "./savings";
 import { beatsRecord, currentRecords } from "./records";
 import { conversionRates, sumSales } from "./sales";
 import { averageOfReportedDays, waterStatus } from "./water";
@@ -253,6 +261,178 @@ describe("przepływy finansowe", () => {
     ];
     expect(sumExpenses(flows)).toEqual({ totalPln: 150, days: 2 });
     expect(sumIncome(flows)).toEqual({ totalPln: 200, days: 1 });
+  });
+});
+
+describe("cele oszczędnościowe", () => {
+  const goal = { id: "g1", name: "Wakacje", targetPln: 10000, initialPln: 2000, deadline: "2026-12-31" };
+
+  it("dolicza dopłaty do kwoty startowej", () => {
+    const progress = savingsProgress(goal, 3000, "2026-07-26");
+    expect(progress.savedPln).toBe(5000);
+    expect(progress.pct).toBe(50);
+    expect(progress.remainingPln).toBe(5000);
+    expect(progress.done).toBe(false);
+  });
+
+  it("nie przekracza 100% na pasku, ale pokazuje pełną odłożoną kwotę", () => {
+    const progress = savingsProgress(goal, 9000, "2026-07-26");
+    expect(progress.savedPln).toBe(11000);
+    expect(progress.pct).toBe(100);
+    expect(progress.remainingPln).toBe(0);
+    expect(progress.done).toBe(true);
+  });
+
+  it("liczy, ile trzeba odkładać tygodniowo do terminu", () => {
+    // 5000 zł brakuje, 70 dni do terminu = 10 tygodni.
+    const progress = savingsProgress({ ...goal, deadline: "2026-10-04" }, 3000, "2026-07-26");
+    expect(progress.daysLeft).toBe(70);
+    expect(progress.requiredPerWeekPln).toBe(500);
+  });
+
+  it("nie wylicza tempa bez terminu ani po jego upływie", () => {
+    expect(savingsProgress({ ...goal, deadline: null }, 3000, "2026-07-26").requiredPerWeekPln).toBeNull();
+    expect(savingsProgress({ ...goal, deadline: "2026-07-01" }, 3000, "2026-07-26").requiredPerWeekPln).toBeNull();
+  });
+
+  it("ocenia tempo względem wymaganego", () => {
+    const progress = savingsProgress({ ...goal, deadline: "2026-10-04" }, 3000, "2026-07-26");
+    expect(savingsPace(progress, 700)).toBe("przed");
+    expect(savingsPace(progress, 500)).toBe("zgodnie");
+    expect(savingsPace(progress, 200)).toBe("za wolno");
+    expect(savingsPace(progress, null)).toBeNull();
+  });
+
+  it("sumuje cele do jednego wskaźnika", () => {
+    const a = savingsProgress({ id: "a", name: "A", targetPln: 5000 }, 2500, "2026-07-26");
+    const b = savingsProgress({ id: "b", name: "B", targetPln: 5000 }, 500, "2026-07-26");
+    expect(summarizeSavings([a, b])).toEqual({ goals: 2, savedPln: 3000, targetPln: 10000, pct: 30, done: 0 });
+  });
+});
+
+describe("płatności cykliczne", () => {
+  const czynsz = {
+    id: "o1",
+    name: "Czynsz",
+    amountPln: 2400,
+    cadence: "miesiecznie" as const,
+    firstDueDate: "2026-01-10",
+    endDate: null,
+  };
+
+  it("generuje kolejne terminy miesięczne", () => {
+    expect(obligationOccurrences(czynsz, "2026-07-01", "2026-09-30")).toEqual([
+      "2026-07-10",
+      "2026-08-10",
+      "2026-09-10",
+    ]);
+  });
+
+  it("nie wychodzi poza koniec zobowiązania", () => {
+    const rata = { ...czynsz, name: "Rata", endDate: "2026-08-10" };
+    expect(obligationOccurrences(rata, "2026-07-01", "2026-12-31")).toEqual(["2026-07-10", "2026-08-10"]);
+  });
+
+  it("cofa termin do ostatniego dnia krótszego miesiąca", () => {
+    const plan = { ...czynsz, firstDueDate: "2026-01-31" };
+    expect(obligationOccurrences(plan, "2026-02-01", "2026-04-30")).toEqual([
+      "2026-02-28",
+      "2026-03-31",
+      "2026-04-30",
+    ]);
+  });
+
+  it("płatność jednorazowa wypada tylko raz", () => {
+    const jednorazowa = { ...czynsz, cadence: "jednorazowo" as const, firstDueDate: "2026-07-15" };
+    expect(obligationOccurrences(jednorazowa, "2026-07-01", "2026-12-31")).toEqual(["2026-07-15"]);
+  });
+
+  it("rozpoznaje zaległości i zapłacone raty", () => {
+    const payments = paymentsInRange(
+      [czynsz],
+      [{ obligationId: "o1", dueDate: "2026-06-10", paidOn: "2026-06-11", amountPln: 2400 }],
+      "2026-06-01",
+      "2026-08-31",
+      "2026-07-26",
+    );
+    expect(payments.map((p) => [p.dueDate, p.status])).toEqual([
+      ["2026-06-10", "zaplacone"],
+      ["2026-07-10", "zalegle"],
+      ["2026-08-10", "do-zaplaty"],
+    ]);
+  });
+
+  it("sprowadza koszty do miesiąca, pomijając jednorazowe", () => {
+    const summary = summarizeObligations([
+      czynsz,
+      { ...czynsz, id: "o2", name: "OC auta", amountPln: 1200, cadence: "rocznie" },
+      { ...czynsz, id: "o3", name: "Netflix", amountPln: 60, cadence: "miesiecznie", category: "subskrypcje" },
+      { ...czynsz, id: "o4", name: "Wycieczka", amountPln: 5000, cadence: "jednorazowo" },
+    ]);
+    expect(summary.monthlyPln).toBe(2560); // 2400 + 100 + 60
+    expect(summary.yearlyPln).toBe(30720);
+    expect(summary.oneOffPln).toBe(5000);
+    expect(summary.byCategory[0]).toEqual({ category: "bez kategorii", monthlyPln: 2500 });
+  });
+
+  it("pomija zobowiązania zakończone przed dzisiaj", () => {
+    const summary = summarizeObligations([{ ...czynsz, endDate: "2026-05-10" }], "2026-07-26");
+    expect(summary.monthlyPln).toBe(0);
+    expect(summary.count).toBe(0);
+  });
+
+  it("opisuje termin po ludzku", () => {
+    expect(dueLabel("2026-07-26", "2026-07-26")).toBe("dziś");
+    expect(dueLabel("2026-07-27", "2026-07-26")).toBe("jutro");
+    expect(dueLabel("2026-07-31", "2026-07-26")).toBe("za 5 dni");
+    expect(dueLabel("2026-07-20", "2026-07-26")).toBe("6 dni po terminie");
+  });
+});
+
+describe("pozycja zarobkowa", () => {
+  it("odtwarza opublikowane progi światowe", () => {
+    // Próg górnych 10% to 65 500 $ PPP rocznie = 10 917 zł miesięcznie przy 2,0 zł/$.
+    const top10 = incomeRank((65500 * 2) / 12);
+    expect(top10.world?.topPct).toBeCloseTo(10, 1);
+
+    // Próg górnego 1%: 250 300 $ PPP rocznie.
+    const top1 = incomeRank((250300 * 2) / 12);
+    expect(top1.world?.topPct).toBeCloseTo(1, 1);
+
+    // Mediana światowa: 6 000 $ PPP rocznie = 1 000 zł miesięcznie.
+    const median = incomeRank((6000 * 2) / 12);
+    expect(median.world?.percentile).toBeCloseTo(50, 1);
+  });
+
+  it("odtwarza progi krajowe z danych GUS", () => {
+    expect(incomeRank(7447.16).poland?.percentile).toBeCloseTo(50, 1);
+    expect(incomeRank(15500).poland?.topPct).toBeCloseTo(10, 1);
+  });
+
+  it("umieszcza 150 000 zł miesięcznie w górnych ułamkach procenta", () => {
+    const rank = incomeRank(150000);
+    expect(rank.annualPln).toBe(1_800_000);
+    expect(rank.world!.topPct).toBeLessThan(0.2);
+    expect(rank.world!.topPct).toBeGreaterThan(0.05);
+    expect(rank.poland!.topPct).toBeLessThan(0.2);
+  });
+
+  it("nie zgaduje pozycji poniżej najniższej kotwicy", () => {
+    expect(incomeRank(50).world).toBeNull();
+    expect(incomeRank(0).world).toBeNull();
+    expect(incomeRank(1000).poland).toBeNull(); // poniżej pierwszego decyla GUS
+  });
+
+  it("dobiera dokładność etykiety do wysokości pozycji", () => {
+    expect(formatTopPct(0.113)).toBe("górne 0,11%");
+    expect(formatTopPct(3.4)).toBe("górne 3,4%");
+    expect(formatTopPct(37.2)).toBe("górne 37%");
+    expect(formatTopPct(0.004)).toBe("górne 0,01%");
+  });
+
+  it("opisuje wynik zdaniem dopasowanym do rozkładu", () => {
+    expect(describeRank({ percentile: 99.89, topPct: 0.11 }, "swiat")).toContain("dorosłych na świecie");
+    expect(describeRank({ percentile: 82, topPct: 18 }, "polska")).toBe("Więcej niż 82% zatrudnionych w Polsce");
   });
 });
 

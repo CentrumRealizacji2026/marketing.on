@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Plus, Trash2 } from "lucide-react";
 
+import { Meter } from "@/components/charts/sparkline";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Checkbox, Field, FormError, Input, NumberInput, Select, Suggestions, Textarea } from "@/components/ui/field";
@@ -121,6 +122,27 @@ export function ReportForm({
 
   const [newRecords, setNewRecords] = useState<RecordRow[]>([]);
 
+  const [savings, setSavings] = useState(
+    data.savings.map((goal) => ({ ...goal, amount: numberValue(goal.amountPln) })),
+  );
+
+  const [payments, setPayments] = useState(
+    data.payments.map((payment) => ({
+      obligationId: payment.obligationId,
+      dueDate: payment.dueDate,
+      name: payment.name,
+      status: payment.status,
+      plannedPln: payment.amountPln,
+      paid: payment.status === "zaplacone",
+      amount: numberValue(payment.amountPln),
+    })),
+  );
+
+  const savedToday = savings.reduce((sum, goal) => sum + (Number(goal.amount.replace(",", ".")) || 0), 0);
+  const paidToday = payments
+    .filter((payment) => payment.paid)
+    .reduce((sum, payment) => sum + (Number(payment.amount.replace(",", ".")) || payment.plannedPln), 0);
+
   // Podgląd wyniku dnia liczony z tych samych reguł, co widoki — od razu widać, co się zapisze.
   const dayResult = dayCashFlow({
     expensesPln: expenses === "" ? null : Number(expenses.replace(",", ".")),
@@ -132,6 +154,13 @@ export function ReportForm({
     cashBalancePln: cash,
     expensesPln: expenses,
     incomePln: income,
+    savings: savings.map((goal) => ({ goalId: goal.goalId, amountPln: goal.amount })),
+    payments: payments.map((payment) => ({
+      obligationId: payment.obligationId,
+      dueDate: payment.dueDate,
+      paid: payment.paid,
+      amountPln: payment.amount,
+    })),
     sales: { calls, meetingsScheduled: scheduled, meetingsHeld: held },
     contracts: contractRows,
     doses: doses.map(({ medicationId, slot, taken }) => ({ medicationId, slot, taken })),
@@ -213,7 +242,128 @@ export function ReportForm({
             </span>
           </p>
         ) : null}
+
+        {/* Odkładanie i rachunki są osobnymi strumieniami — bez tej informacji łatwo
+            policzyć je dwa razy albo pominąć w wydatkach. */}
+        {savedToday > 0 || paidToday > 0 ? (
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+            {savedToday > 0 ? <span>Odłożone na cele: {formatMoney(savedToday, currency)}.</span> : null}
+            {paidToday > 0 ? (
+              <>
+                <span>Zaznaczone rachunki: {formatMoney(paidToday, currency)}.</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpenses(
+                      String(Math.round(((Number(expenses.replace(",", ".")) || 0) + paidToday) * 100) / 100),
+                    )
+                  }
+                  className="text-series-1 hover:underline"
+                >
+                  + dolicz do wydanych
+                </button>
+              </>
+            ) : null}
+          </p>
+        ) : null}
       </Card>
+
+      {/* --------------------------------------------------- oszczędności */}
+      {savings.length > 0 ? (
+        <Card>
+          <CardHeader
+            title="Oszczędności na cele"
+            subtitle="Ile z dzisiejszych środków odkładasz. Odłożona kwota nie jest wydatkiem — zmienia tylko przeznaczenie."
+          />
+          <ul className="flex flex-col gap-2">
+            {savings.map((goal, index) => {
+              // Podgląd na żywo: to, co już zapisane, minus dzisiejszy wpis, plus to, co właśnie wpisujesz.
+              const typed = Number(goal.amount.replace(",", ".")) || 0;
+              const preview = goal.savedPln - (goal.amountPln ?? 0) + typed;
+              const pct = goal.targetPln > 0 ? Math.min((preview / goal.targetPln) * 100, 100) : 0;
+
+              return (
+                <li key={goal.goalId} className="rounded-lg border border-edge p-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <span className="text-sm font-medium text-ink">{goal.name}</span>
+                    <span className="tabular text-xs text-muted">
+                      {formatMoney(preview, currency)} z {formatMoney(goal.targetPln, currency)} ·{" "}
+                      <span className="text-ink">{Math.round(pct)}%</span>
+                    </span>
+                  </div>
+                  <Meter
+                    value={preview}
+                    max={goal.targetPln}
+                    tone="var(--series-3)"
+                    className="mt-2"
+                    label={`${goal.name}: ${Math.round(pct)}% celu`}
+                  />
+                  <Field label={`Odłożone dziś (${currency})`} className="mt-2">
+                    <NumberInput
+                      step="0.01"
+                      min="0"
+                      value={goal.amount}
+                      onChange={(e) =>
+                        setSavings((prev) => prev.map((g, i) => (i === index ? { ...g, amount: e.target.value } : g)))
+                      }
+                    />
+                  </Field>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      ) : null}
+
+      {/* -------------------------------------------------------- rachunki */}
+      {payments.length > 0 ? (
+        <Card>
+          <CardHeader title="Płatności" subtitle="Rachunki z terminem na ten dzień oraz zaległe." />
+          <ul className="flex flex-col gap-2">
+            {payments.map((payment, index) => (
+              <li
+                key={`${payment.obligationId}-${payment.dueDate}`}
+                className="rounded-lg border border-edge p-3"
+              >
+                <label className="flex cursor-pointer flex-wrap items-center gap-x-2.5 gap-y-1">
+                  <Checkbox
+                    checked={payment.paid}
+                    onChange={(e) =>
+                      setPayments((prev) =>
+                        prev.map((p, i) => (i === index ? { ...p, paid: e.target.checked } : p)),
+                      )
+                    }
+                  />
+                  <span className="flex-1 text-sm font-medium text-ink">{payment.name}</span>
+                  {payment.status === "zalegle" && !payment.paid ? (
+                    <span className="rounded-full bg-critical/10 px-2 py-0.5 text-xs text-critical">
+                      zaległa · termin {payment.dueDate}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted">termin {payment.dueDate}</span>
+                  )}
+                  <span className="tabular text-sm text-ink">{formatMoney(payment.plannedPln, currency)}</span>
+                </label>
+
+                {payment.paid ? (
+                  <Field label={`Zapłacona kwota (${currency})`} className="mt-2" hint="Zostaw puste, jeśli zgadza się z planowaną.">
+                    <NumberInput
+                      step="0.01"
+                      min="0"
+                      value={payment.amount}
+                      onChange={(e) =>
+                        setPayments((prev) =>
+                          prev.map((p, i) => (i === index ? { ...p, amount: e.target.value } : p)),
+                        )
+                      }
+                    />
+                  </Field>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
 
       {/* -------------------------------------------------------- sprzedaż */}
       <Card>

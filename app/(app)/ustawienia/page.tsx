@@ -18,6 +18,18 @@ export default async function SettingsOverview() {
     { href: "/ustawienia/profil", title: "Profil", desc: "Imię, strefa czasowa, waluta, początek tygodnia.", count: null },
     { href: "/ustawienia/cele", title: "Cele i normy", desc: "Cele sprzedażowe, cel wody i progi, waga docelowa.", count: null },
     {
+      href: "/ustawienia/oszczednosci",
+      title: "Cele oszczędnościowe",
+      desc: "Na co odkładasz, ile chcesz uzbierać i do kiedy.",
+      count: status.savingsGoals,
+    },
+    {
+      href: "/ustawienia/platnosci",
+      title: "Płatności",
+      desc: "Rachunki i raty: kwota, termin, rytm i okres zobowiązania.",
+      count: status.obligations,
+    },
+    {
       href: "/ustawienia/leki",
       title: "Leki i suplementy",
       desc: "Nazwy, dawki, pory dnia i dni tygodnia.",

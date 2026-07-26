@@ -136,6 +136,46 @@ export const materialSchema = z.object({
   note: optionalText,
 });
 
+/* ---------------------------------------------------------- oszczędności */
+
+export const savingsGoalSchema = z.object({
+  id,
+  name: trimmed.min(1, "Podaj nazwę celu."),
+  targetPln: requiredNumber.refine((value) => value > 0, "Kwota celu musi być większa od zera."),
+  /** Kwota już odłożona — punkt startowy, nie dopłata. */
+  initialPln: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? 0 : Number(String(v).replace(",", "."))),
+    z.number().min(0, "Kwota startowa nie może być ujemna.").default(0),
+  ),
+  deadline: optionalDate,
+  note: optionalText,
+});
+
+/* ---------------------------------------------------------- zobowiązania */
+
+const requiredDate = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Podaj termin pierwszej płatności w formacie RRRR-MM-DD.");
+
+export const obligationSchema = z
+  .object({
+    id,
+    name: trimmed.min(1, "Podaj nazwę płatności."),
+    amountPln: requiredNumber.refine((value) => value > 0, "Kwota płatności musi być większa od zera."),
+    category: optionalText,
+    cadence: z
+      .enum(["jednorazowo", "tygodniowo", "miesiecznie", "kwartalnie", "polrocznie", "rocznie"])
+      .default("miesiecznie"),
+    firstDueDate: requiredDate,
+    endDate: optionalDate,
+    note: optionalText,
+  })
+  .refine((data) => !data.endDate || data.endDate >= data.firstDueDate, {
+    message: "Koniec zobowiązania nie może być wcześniejszy niż pierwsza płatność.",
+    path: ["endDate"],
+  });
+
 /* -------------------------------------------------------------- projekty */
 
 export const projectSchema = z.object({
@@ -196,3 +236,5 @@ export type LearningWeekInput = z.infer<typeof learningWeekSchema>;
 export type LearningYearInput = z.infer<typeof learningYearSchema>;
 export type MaterialInput = z.infer<typeof materialSchema>;
 export type ProjectInput = z.infer<typeof projectSchema>;
+export type SavingsGoalInput = z.infer<typeof savingsGoalSchema>;
+export type ObligationInput = z.infer<typeof obligationSchema>;

@@ -8,8 +8,10 @@ import {
   learningPlanYear,
   materials,
   medications,
+  obligations,
   personalRecords,
   projects,
+  savingsGoals,
   trainingPlans,
 } from "@/lib/db/schema";
 
@@ -63,9 +65,25 @@ export function getProjects(userId: string) {
   return db.select().from(projects).where(eq(projects.userId, userId)).orderBy(asc(projects.position));
 }
 
+export function getSavingsGoals(userId: string) {
+  return db
+    .select()
+    .from(savingsGoals)
+    .where(and(eq(savingsGoals.userId, userId), eq(savingsGoals.active, true)))
+    .orderBy(asc(savingsGoals.position));
+}
+
+export function getObligations(userId: string) {
+  return db
+    .select()
+    .from(obligations)
+    .where(and(eq(obligations.userId, userId), eq(obligations.active, true)))
+    .orderBy(asc(obligations.position));
+}
+
 /** Ile sekcji konfiguracji jest już wypełnionych — napędza podpowiedzi „skonfiguruj →". */
 export async function getConfigStatus(userId: string) {
-  const [meds, training, records, week, year, project, material] = await Promise.all([
+  const [meds, training, records, week, year, project, material, savings, bills] = await Promise.all([
     getMedications(userId),
     getTrainingPlans(userId),
     getPersonalRecords(userId),
@@ -73,6 +91,8 @@ export async function getConfigStatus(userId: string) {
     getLearningYear(userId),
     getProjects(userId),
     getMaterials(userId),
+    getSavingsGoals(userId),
+    getObligations(userId),
   ]);
 
   return {
@@ -83,5 +103,7 @@ export async function getConfigStatus(userId: string) {
     learningYear: year.length,
     projects: project.length,
     materials: material.length,
+    savingsGoals: savings.length,
+    obligations: bills.length,
   };
 }

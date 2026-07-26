@@ -3,11 +3,13 @@ import {
   DISCIPLINE_SUGGESTIONS,
   DOSE_UNIT_SUGGESTIONS,
   MATERIAL_TYPE_OPTIONS,
+  OBLIGATION_CATEGORY_SUGGESTIONS,
   PROJECT_STATUS_OPTIONS,
   RECORD_METRIC_SUGGESTIONS,
   SKILL_SUGGESTIONS,
 } from "@/lib/domain/suggestions";
 import { SLOT_SUGGESTIONS } from "@/lib/domain/medication";
+import { CADENCE_OPTIONS } from "@/lib/domain/obligations";
 
 /**
  * Opisy pól używane jednocześnie przez kreator profilu i panel zarządzania —
@@ -306,6 +308,106 @@ export function materialToRow(row: {
     type: row.type,
     url: row.url ?? "",
     progressPct: row.progressPct,
+    note: row.note ?? "",
+  };
+}
+
+/* ---------------------------------------------------------- oszczędności */
+
+export const savingsGoalFields: FieldSpec[] = [
+  { name: "name", label: "Nazwa celu", type: "text", span: 3, placeholder: "np. wkład własny na mieszkanie" },
+  { name: "targetPln", label: "Kwota celu", type: "number", span: 2, step: "0.01", placeholder: "60000" },
+  { name: "deadline", label: "Termin", type: "date", span: 1, hint: "Opcjonalny." },
+  {
+    name: "initialPln",
+    label: "Już odłożone",
+    type: "number",
+    span: 2,
+    step: "0.01",
+    hint: "Kwota uzbierana przed wpisaniem celu — dopłaty z raportów doliczają się do niej.",
+  },
+  { name: "note", label: "Notatka", type: "text", span: 4, placeholder: "np. konto oszczędnościowe w mBanku" },
+];
+
+export const savingsGoalDefault = { name: "", targetPln: "", initialPln: "", deadline: "", note: "" };
+
+export function savingsGoalToRow(row: {
+  id: string;
+  name: string;
+  targetPln: number;
+  initialPln: number;
+  deadline: string | null;
+  note: string | null;
+}) {
+  return {
+    id: row.id,
+    name: row.name,
+    targetPln: row.targetPln,
+    initialPln: row.initialPln || "",
+    deadline: row.deadline ?? "",
+    note: row.note ?? "",
+  };
+}
+
+/* ----------------------------------------------------- płatności stałe */
+
+export const obligationFields: FieldSpec[] = [
+  { name: "name", label: "Nazwa płatności", type: "text", span: 3, placeholder: "np. czynsz" },
+  { name: "amountPln", label: "Kwota", type: "number", span: 2, step: "0.01", placeholder: "1200" },
+  {
+    name: "category",
+    label: "Kategoria",
+    type: "text",
+    span: 1,
+    suggestions: OBLIGATION_CATEGORY_SUGGESTIONS,
+    placeholder: "mieszkanie",
+  },
+  { name: "cadence", label: "Jak często", type: "select", span: 2, options: CADENCE_OPTIONS },
+  {
+    name: "firstDueDate",
+    label: "Pierwsza płatność",
+    type: "date",
+    span: 2,
+    hint: "Od tej daty odliczane są kolejne terminy.",
+  },
+  {
+    name: "endDate",
+    label: "Koniec zobowiązania",
+    type: "date",
+    span: 2,
+    hint: "Puste = bezterminowo. Rata kredytu na 5 lat sama zniknie po ostatnim terminie.",
+  },
+  { name: "note", label: "Notatka", type: "text", span: 6, placeholder: "np. przelew automatyczny z konta firmowego" },
+];
+
+export const obligationDefault = {
+  name: "",
+  amountPln: "",
+  category: "",
+  cadence: "miesiecznie",
+  firstDueDate: "",
+  endDate: "",
+  note: "",
+};
+
+export function obligationToRow(row: {
+  id: string;
+  name: string;
+  amountPln: number;
+  category: string | null;
+  cadence: string;
+  firstDueDate: string;
+  endDate: string | null;
+  note: string | null;
+}) {
+  return {
+    id: row.id,
+    name: row.name,
+    amountPln: row.amountPln,
+    category: row.category ?? "",
+    cadence: row.cadence,
+    firstDueDate: row.firstDueDate,
+    endDate: row.endDate ?? "",
     note: row.note ?? "",
   };
 }

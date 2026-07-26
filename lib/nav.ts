@@ -46,6 +46,9 @@ export const NAV: NavCategory[] = [
     items: [
       { label: "Stan środków", href: "/finanse#stan" },
       { label: "Przepływy", href: "/finanse#przeplywy" },
+      { label: "Oszczędności", href: "/finanse#oszczednosci" },
+      { label: "Płatności", href: "/finanse#platnosci" },
+      { label: "Na tle świata", href: "/finanse#pozycja" },
       { label: "Kontrakty", href: "/finanse#kontrakty" },
       { label: "Prognoza", href: "/finanse#prognoza" },
     ],

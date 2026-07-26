@@ -4,6 +4,12 @@ import { Check } from "lucide-react";
 import { RowsEditor } from "@/components/forms/rows-editor";
 import { FinanceStartForm, GoalsForm, ProfileForm } from "@/components/forms/settings-forms";
 import {
+  obligationDefault,
+  obligationFields,
+  obligationToRow,
+  savingsGoalDefault,
+  savingsGoalFields,
+  savingsGoalToRow,
   learningWeekDefault,
   learningWeekFields,
   learningWeekToRow,
@@ -29,6 +35,8 @@ import {
   finishOnboarding,
   saveLearningWeek,
   saveLearningYear,
+  saveObligations,
+  saveSavingsGoals,
   saveMedications,
   savePersonalRecords,
   saveProjects,
@@ -42,6 +50,8 @@ import {
   getConfigStatus,
   getLearningWeek,
   getLearningYear,
+  getObligations,
+  getSavingsGoals,
   getMedications,
   getPersonalRecords,
   getProjects,
@@ -55,15 +65,17 @@ export const dynamic = "force-dynamic";
 const STEPS = [
   { n: 1, title: "Profil", desc: "Jak się do Ciebie zwracać i w jakiej strefie czasowej liczyć dzień." },
   { n: 2, title: "Finanse", desc: "Punkt startowy dla stanu środków." },
-  { n: 3, title: "Sprzedaż", desc: "Ile rozmów, spotkań i umów chcesz robić." },
-  { n: 4, title: "Leki i suplementy", desc: "Dodaj tyle pozycji, ile realnie przyjmujesz." },
-  { n: 5, title: "Nawodnienie i waga", desc: "Cel picia wody, własne progi oceny i waga." },
-  { n: 6, title: "Trening", desc: "Jednostki treningowe w tygodniu." },
-  { n: 7, title: "Rekordy", desc: "Twoje aktualne najlepsze wyniki." },
-  { n: 8, title: "Nauka — tydzień", desc: "Który dzień, jaka dziedzina, o której godzinie." },
-  { n: 9, title: "Nauka — rok", desc: "Okresy, które zawężają temat bloków." },
-  { n: 10, title: "Projekty", desc: "Co prowadzisz i jaki jest następny krok." },
-  { n: 11, title: "Gotowe", desc: "Podgląd konfiguracji." },
+  { n: 3, title: "Oszczędności na cele", desc: "Na co odkładasz i ile chcesz uzbierać." },
+  { n: 4, title: "Płatności", desc: "Rachunki i raty: kwota, termin i okres zobowiązania." },
+  { n: 5, title: "Sprzedaż", desc: "Ile rozmów, spotkań i umów chcesz robić." },
+  { n: 6, title: "Leki i suplementy", desc: "Dodaj tyle pozycji, ile realnie przyjmujesz." },
+  { n: 7, title: "Nawodnienie i waga", desc: "Cel picia wody, własne progi oceny i waga." },
+  { n: 8, title: "Trening", desc: "Jednostki treningowe w tygodniu." },
+  { n: 9, title: "Rekordy", desc: "Twoje aktualne najlepsze wyniki." },
+  { n: 10, title: "Nauka — tydzień", desc: "Który dzień, jaka dziedzina, o której godzinie." },
+  { n: 11, title: "Nauka — rok", desc: "Okresy, które zawężają temat bloków." },
+  { n: 12, title: "Projekty", desc: "Co prowadzisz i jaki jest następny krok." },
+  { n: 13, title: "Gotowe", desc: "Podgląd konfiguracji." },
 ];
 
 function next(step: number) {
@@ -194,7 +206,45 @@ async function StepContent({
       );
     }
 
-    case 3:
+    case 3: {
+      const rows = await getSavingsGoals(userId);
+      return (
+        <RowsEditor
+          fields={savingsGoalFields}
+          initial={rows.map(savingsGoalToRow)}
+          defaultRow={savingsGoalDefault}
+          action={saveSavingsGoals}
+          hiddenFields={hidden}
+          addLabel="Dodaj cel"
+          submitLabel="Zapisz i dalej"
+          emptyHint="Dodaj cele, na które odkładasz — nazwę i kwotę wpisujesz własnymi słowami. Postęp policzy się z dopłat w raportach."
+          titleFields={["name"]}
+          itemNoun="Cel"
+          footer={<SkipLink step={step} />}
+        />
+      );
+    }
+
+    case 4: {
+      const rows = await getObligations(userId);
+      return (
+        <RowsEditor
+          fields={obligationFields}
+          initial={rows.map(obligationToRow)}
+          defaultRow={obligationDefault}
+          action={saveObligations}
+          hiddenFields={hidden}
+          addLabel="Dodaj płatność"
+          submitLabel="Zapisz i dalej"
+          emptyHint="Czynsz, raty, abonamenty. Termin pierwszej płatności i rytm wystarczą, żeby kolejne wpadły do kalendarza."
+          titleFields={["name"]}
+          itemNoun="Płatność"
+          footer={<SkipLink step={step} />}
+        />
+      );
+    }
+
+    case 5:
       return (
         <GoalsForm
           initial={settings}
@@ -205,7 +255,7 @@ async function StepContent({
         />
       );
 
-    case 4: {
+    case 6: {
       const rows = await getMedications(userId);
       return (
         <RowsEditor
@@ -223,7 +273,7 @@ async function StepContent({
       );
     }
 
-    case 5:
+    case 7:
       return (
         <GoalsForm
           initial={settings}
@@ -235,7 +285,7 @@ async function StepContent({
         />
       );
 
-    case 6: {
+    case 8: {
       const rows = await getTrainingPlans(userId);
       return (
         <RowsEditor
@@ -254,7 +304,7 @@ async function StepContent({
       );
     }
 
-    case 7: {
+    case 9: {
       const rows = await getPersonalRecords(userId);
       return (
         <RowsEditor
@@ -272,7 +322,7 @@ async function StepContent({
       );
     }
 
-    case 8: {
+    case 10: {
       const rows = await getLearningWeek(userId);
       return (
         <RowsEditor
@@ -291,7 +341,7 @@ async function StepContent({
       );
     }
 
-    case 9: {
+    case 11: {
       const rows = await getLearningYear(userId);
       return (
         <RowsEditor
@@ -310,7 +360,7 @@ async function StepContent({
       );
     }
 
-    case 10: {
+    case 12: {
       const rows = await getProjects(userId);
       return (
         <RowsEditor
@@ -338,12 +388,14 @@ async function Summary({ userId }: { userId: string }) {
   const status = await getConfigStatus(userId);
 
   const items = [
-    { label: "Leki i suplementy", count: status.medications, href: "/start?krok=4" },
-    { label: "Jednostki treningowe", count: status.trainingPlans, href: "/start?krok=6" },
-    { label: "Rekordy", count: status.personalRecords, href: "/start?krok=7" },
-    { label: "Bloki nauki w tygodniu", count: status.learningWeek, href: "/start?krok=8" },
-    { label: "Okresy planu rocznego", count: status.learningYear, href: "/start?krok=9" },
-    { label: "Projekty", count: status.projects, href: "/start?krok=10" },
+    { label: "Cele oszczędnościowe", count: status.savingsGoals, href: "/start?krok=3" },
+    { label: "Płatności cykliczne", count: status.obligations, href: "/start?krok=4" },
+    { label: "Leki i suplementy", count: status.medications, href: "/start?krok=6" },
+    { label: "Jednostki treningowe", count: status.trainingPlans, href: "/start?krok=8" },
+    { label: "Rekordy", count: status.personalRecords, href: "/start?krok=9" },
+    { label: "Bloki nauki w tygodniu", count: status.learningWeek, href: "/start?krok=10" },
+    { label: "Okresy planu rocznego", count: status.learningYear, href: "/start?krok=11" },
+    { label: "Projekty", count: status.projects, href: "/start?krok=12" },
   ];
 
   return (

@@ -27,6 +27,8 @@ import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medi
 import { currentRecords } from "@/lib/domain/records";
 import { sumSales, type SalesTotals } from "@/lib/domain/sales";
 import { averageOfReportedDays } from "@/lib/domain/water";
+import { getObligationsOverview } from "@/lib/queries/obligations";
+import { getSavingsOverview } from "@/lib/queries/savings";
 
 const TREND_DAYS = 30;
 
@@ -124,6 +126,12 @@ export async function getDashboardData(userId: string, settings: Settings, today
       .limit(5),
   ]);
 
+  // Cele i rachunki mają własne zapytania — kafelki dostają gotowy stan, nie surowe wiersze.
+  const [savings, bills] = await Promise.all([
+    getSavingsOverview(userId, today),
+    getObligationsOverview(userId, today, 14),
+  ]);
+
   const byDate = new Map(logs.map((log) => [log.date, log]));
   const trendDates = lastNDays(today, TREND_DAYS);
   const weekDates = lastNDays(today, 7);
@@ -210,6 +218,9 @@ export async function getDashboardData(userId: string, settings: Settings, today
       weekSpentPln: weekSpent.days > 0 ? weekSpent.totalPln : null,
       weekEarnedPln: weekEarned.days > 0 ? weekEarned.totalPln : null,
     },
+
+    oszczednosci: savings,
+    platnosci: bills,
 
     sprzedaz: {
       today: salesToday,

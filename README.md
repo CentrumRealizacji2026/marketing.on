@@ -14,10 +14,10 @@ je później w panelu zarządzania.
 |---|---|
 | **Dashboard `/`** | Podsumowanie z każdej kategorii: stan środków, sprzedaż z konwersjami, leki i suplementy do odhaczenia, 3 priorytety i side questy, trening, blok nauki, nawodnienie z oceną, waga, rekordy, projekty, rekomendacje mentora. Do tego **plan na dziś** — jedna oś czasu złożona ze wszystkich kategorii — i **pasek tygodnia** z kategoriami w wierszach i dniami w kolumnach |
 | **Kalendarz `/kalendarz`** | Siatka miesiąca z kropkami kategorii przy każdym dniu, tydzień wybranego dnia w układzie kategorie × dni i szczegóły dnia z podziałem na kategorie. Dni w przód pokazują plan, dni wstecz — plan i realizację |
-| **Kreator `/start`** | 11 kroków konfiguracji. Leki, trening, rekordy, nauka i projekty to listy dynamiczne — „+ dodaj” dokłada wiersz, a nazwy dyscyplin i dziedzin wpisujesz własnymi słowami |
+| **Kreator `/start`** | 13 kroków konfiguracji. Leki, trening, rekordy, nauka i projekty to listy dynamiczne — „+ dodaj” dokłada wiersz, a nazwy dyscyplin i dziedzin wpisujesz własnymi słowami |
 | **Panel `/ustawienia`** | Te same formularze bezterminowo. Wyłączenie pozycji zachowuje historię zamiast ją kasować |
-| **Raport `/raport`** | Jeden formularz na cały dzień: finanse (stan środków, wydane, wpłynęło), sprzedaż i umowy, leki, waga i woda, zadania, trening z możliwością zgłoszenia rekordu, nauka oraz zdrowie psychiczne (samopoczucie, energia, stres, myśli, co dobrego się wydarzyło) |
-| **Kategorie** | `/finanse`, `/sprzedaz`, `/zdrowie`, `/zadania`, `/trening`, `/nauka`, `/projekty` — szczegóły i historia |
+| **Raport `/raport`** | Jeden formularz na cały dzień: finanse (stan środków, wydane, wpłynęło), dopłaty na cele oszczędnościowe, rachunki do odhaczenia, sprzedaż i umowy, leki, waga i woda, zadania, trening z możliwością zgłoszenia rekordu, nauka oraz zdrowie psychiczne (samopoczucie, energia, stres, myśli, co dobrego się wydarzyło) |
+| **Kategorie** | `/finanse` (stan środków, przepływy, oszczędności, płatności, pozycja na tle świata), `/sprzedaz`, `/zdrowie`, `/zadania`, `/trening`, `/nauka`, `/projekty` |
 | **Mentor `/mentor`** | Trzy tryby (mentor / trener / kierownik projektów). Analizuje agregaty z 7 i 30 dni i zwraca rekomendacje „obserwacja → działanie” ze statusami |
 | **PWA** | Instalowalna na telefonie, ze skrótami do raportu, zadań i mentora |
 
@@ -29,7 +29,7 @@ jako panel z prawej strony.
 ```bash
 npm install
 cp .env.example .env          # uzupełnij DATABASE_URL
-npm run db:migrate            # zakłada 21 tabel
+npm run db:migrate            # zakłada 25 tabel
 npm run dev                   # http://localhost:3000
 ```
 
@@ -62,7 +62,7 @@ npm run icons       # regeneracja ikon PWA
 
 - **Next.js 15** (App Router, React 19, server actions) + **TypeScript**
 - **Tailwind CSS v4** — tokeny kolorów w `app/globals.css`, motyw ciemny domyślnie, jasny zgodnie z ustawieniem systemu
-- **Postgres + Drizzle ORM** — schemat w `lib/db/schema.ts`, migracje w `drizzle/`
+- **Postgres + Drizzle ORM** — schemat w `lib/db/schema.ts` (25 tabel), migracje w `drizzle/`
 - **Własne sesje** — nieprzezroczysty token w bazie (przechowywany jako skrót), ciasteczko `httpOnly`; middleware odsiewa żądania bez ciasteczka, a `requireUser()` weryfikuje token po stronie serwera
 - **Claude API** (`claude-opus-5`) ze structured outputs — mentor zwraca zwalidowany JSON, nie tekst do parsowania
 - **Wykresy** pisane ręcznie w SVG — brak zależności, renderują się po stronie serwera
@@ -103,6 +103,51 @@ kolejnymi wpisami stanu środków — to gorsze źródło i tak jest opisane w p
 kwoty zawsze mają pierwszeństwo. Sumy i średnie liczą się wyłącznie z dni z wpisem: brak raportu
 to brak danych, a nie zero wydatków. Mentor dostaje te same liczby wraz z informacją, z ilu dni
 pochodzą.
+
+## Cele oszczędnościowe
+
+Cel to nazwa, kwota i opcjonalny termin — dodajesz ich dowolnie wiele. Każdy raport dzienny pyta,
+ile na który cel odłożyłeś; postęp to suma dopłat plus kwota, którą miałeś odłożoną przed wpisaniem
+celu. Pasek i procent aktualizują się od razu w formularzu, jeszcze przed zapisem.
+
+Odłożona kwota **nie jest wydatkiem** — pieniądze nie znikają, tylko zmieniają przeznaczenie, więc
+nie wchodzą do „wydane". W pasku tygodnia widać je osobno, ze strzałką.
+
+Gdy cel ma termin, aplikacja liczy, ile trzeba odkładać tygodniowo, i porównuje to z tym, ile
+faktycznie odkładasz (średnia z 28 dni). Stąd bierze się ocena „tempo zgodne z planem" albo
+„odkładasz wolniej, niż wymaga termin".
+
+## Płatności i koszty stałe
+
+Zobowiązanie opisujesz raz: nazwa, kwota, kategoria, rytm (od jednorazowo do raz na rok), termin
+pierwszej płatności i koniec okresu. Terminy nie są zapisywane w bazie — powstają z pierwszej daty
+i rytmu, więc zmiana kwoty nie wymaga poprawiania przyszłych rat, a rata kredytu na pięć lat sama
+znika z kalendarza po ostatniej płatności. Termin 31. dnia miesiąca cofa się do ostatniego dnia
+w krótszych miesiącach.
+
+Płatności są osobną kategorią w kalendarzu: w siatce miesiąca mają własną kropkę, w pasku tygodnia
+własny wiersz, a w szczegółach dnia listę z kwotami. Termin miniony bez potwierdzenia zapłaty staje
+się zaległością i jest oznaczany na czerwono — w kafelku, w kalendarzu i w raporcie, gdzie można go
+odhaczyć wstecz.
+
+Suma kosztów stałych jest sprowadzana do miesiąca (rata roczna dzielona przez 12, kwartalna przez 3),
+z podziałem na kategorie. Płatności jednorazowe liczone są osobno, bo doliczenie ich zawyżałoby
+stałe obciążenie.
+
+## Zarobki na tle świata
+
+Karta „Zarobki na tle świata" na stronie finansów pokazuje, w którym miejscu światowego rozkładu
+dochodów stawia Cię to, co wpłynęło w ostatnich 30 dniach. To szacunek, nie pomiar: model opiera się
+na opublikowanych progach i przybliża rozkład między nimi funkcją potęgową.
+
+| Rozkład | Kotwice | Źródło |
+|---|---|---|
+| Świat | mediana 6 000 $/rok, próg górnych 10% — 65 500 $/rok, próg górnego 1% — 250 300 $/rok (dochód brutto na dorosłego, PPP) | World Inequality Report 2026, WID.world |
+| Polska | decyl 1 — 4 806 zł, mediana — 7 447,16 zł, decyl 9 — 15 500 zł (miesięcznie brutto) | GUS, struktura wynagrodzeń, styczeń 2026 |
+
+Przelicznik: 2,0 zł za dolara międzynarodowego (PPP). Rozkład GUS obejmuje zatrudnionych w firmach
+powyżej 9 osób — nie ma w nim przedsiębiorców, więc dla właściciela firmy to punkt odniesienia,
+a nie ranking. Poniżej najniższej kotwicy aplikacja nie zgaduje pozycji, tylko mówi „poniżej mediany".
 
 ## Plan wagowy
 

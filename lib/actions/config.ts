@@ -12,8 +12,10 @@ import {
   learningPlanYear,
   materials,
   medications,
+  obligations,
   personalRecords,
   projects,
+  savingsGoals,
   settings,
   trainingPlans,
   users,
@@ -27,10 +29,12 @@ import {
   learningYearSchema,
   materialSchema,
   medicationSchema,
+  obligationSchema,
   personalRecordSchema,
   profileSchema,
   projectSchema,
   rowsPayload,
+  savingsGoalSchema,
   trainingPlanSchema,
 } from "@/lib/validation/config";
 
@@ -359,6 +363,98 @@ export async function saveProjects(_prev: FormState, formData: FormData): Promis
         .where(and(eq(projects.id, row.id), eq(projects.userId, user.id)));
     } else {
       await db.insert(projects).values({ ...values, userId: user.id });
+    }
+  }
+
+  return afterSave(user.id, formData);
+}
+
+/* ---------------------------------------------------------- oszczędności */
+
+export async function saveSavingsGoals(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = rowsPayload(savingsGoalSchema).safeParse(formData.get("rows"));
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const rows = parsed.data;
+  const keepIds = rows.map((row) => row.id).filter((value): value is string => Boolean(value));
+
+  // Cel usunięty z formularza jest wyłączany, nie kasowany — dopłaty z raportów zostają.
+  await db
+    .update(savingsGoals)
+    .set({ active: false })
+    .where(
+      and(
+        eq(savingsGoals.userId, user.id),
+        keepIds.length > 0 ? notInArray(savingsGoals.id, keepIds) : undefined,
+      ),
+    );
+
+  for (const [index, row] of rows.entries()) {
+    const values = {
+      name: row.name,
+      targetPln: row.targetPln,
+      initialPln: row.initialPln,
+      deadline: row.deadline,
+      note: row.note,
+      position: index,
+      active: true,
+    };
+
+    if (row.id) {
+      await db
+        .update(savingsGoals)
+        .set(values)
+        .where(and(eq(savingsGoals.id, row.id), eq(savingsGoals.userId, user.id)));
+    } else {
+      await db.insert(savingsGoals).values({ ...values, userId: user.id });
+    }
+  }
+
+  return afterSave(user.id, formData);
+}
+
+/* ---------------------------------------------------------- zobowiązania */
+
+export async function saveObligations(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = rowsPayload(obligationSchema).safeParse(formData.get("rows"));
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const rows = parsed.data;
+  const keepIds = rows.map((row) => row.id).filter((value): value is string => Boolean(value));
+
+  // Usunięta płatność jest wyłączana — potwierdzenia zapłaty z przeszłości zostają.
+  await db
+    .update(obligations)
+    .set({ active: false })
+    .where(
+      and(
+        eq(obligations.userId, user.id),
+        keepIds.length > 0 ? notInArray(obligations.id, keepIds) : undefined,
+      ),
+    );
+
+  for (const [index, row] of rows.entries()) {
+    const values = {
+      name: row.name,
+      amountPln: row.amountPln,
+      category: row.category,
+      cadence: row.cadence,
+      firstDueDate: row.firstDueDate,
+      endDate: row.endDate,
+      note: row.note,
+      position: index,
+      active: true,
+    };
+
+    if (row.id) {
+      await db
+        .update(obligations)
+        .set(values)
+        .where(and(eq(obligations.id, row.id), eq(obligations.userId, user.id)));
+    } else {
+      await db.insert(obligations).values({ ...values, userId: user.id });
     }
   }
 

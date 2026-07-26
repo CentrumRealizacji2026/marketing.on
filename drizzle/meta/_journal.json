@@ -22,6 +22,20 @@
       "when": 1785098665971,
       "tag": "0002_wydatki_i_wplywy",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785101142290,
+      "tag": "0003_cele_oszczednosciowe",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785101419671,
+      "tag": "0004_platnosci_cykliczne",
+      "breakpoints": true
     }
   ]
 }

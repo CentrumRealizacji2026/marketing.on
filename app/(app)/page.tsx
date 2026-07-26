@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   Brain,
+  CalendarClock,
   CalendarDays,
   CheckCircle2,
   Droplets,
@@ -11,6 +12,7 @@ import {
   HeartPulse,
   ListChecks,
   ListTodo,
+  PiggyBank,
   Scale,
   Smile,
   Trophy,
@@ -24,10 +26,11 @@ import { Meter, Sparkline } from "@/components/charts/sparkline";
 import { Card, CardHeader, EmptyState, StatTile, StatusPill } from "@/components/ui/card";
 import { addWater, toggleDose, toggleLearning, toggleTask, toggleTraining } from "@/lib/actions/quick";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
-import { cn, formatTime, formatMoney, formatNumber } from "@/lib/utils";
+import { cn, formatTime, formatMoney, formatNumber, pluralPl } from "@/lib/utils";
 import { AGENDA_CATEGORY_LABEL, CATEGORY_COLOR, buildAgenda } from "@/lib/domain/agenda";
 import { addDays, diffDays, startOfWeek, todayInTz } from "@/lib/domain/dates";
 import { formatDose, groupDosesBySlot } from "@/lib/domain/medication";
+import { dueLabel } from "@/lib/domain/obligations";
 import { formatRecordValue } from "@/lib/domain/records";
 import { conversionRates, formatPercent, goalProgress } from "@/lib/domain/sales";
 import { WATER_STATUS_LABEL, waterPercent, waterStatus } from "@/lib/domain/water";
@@ -64,6 +67,8 @@ export default async function DashboardPage({
       ) : null}
       <Finanse data={data} currency={settings.currency} />
       <Sprzedaz data={data} settings={settings} currency={settings.currency} />
+      <Oszczednosci data={data} currency={settings.currency} />
+      <Platnosci data={data} today={today} currency={settings.currency} />
       <PlanDnia data={data} />
       <Leki data={data} today={today} />
       <Priorytety data={data} />
@@ -171,6 +176,154 @@ function Finanse({ data, currency }: { data: Data; currency: string }) {
         </>
       ) : (
         <EmptyState message="Brak wpisu o stanie środków." href="/raport" cta="Wypełnij raport" />
+      )}
+    </Card>
+  );
+}
+
+/* ---------------------------------------------------------- oszczędności */
+
+function Oszczednosci({ data, currency }: { data: Data; currency: string }) {
+  const { goals, total } = data.oszczednosci;
+
+  return (
+    <Card className="xl:col-span-3">
+      <CardHeader
+        title="Oszczędności na cele"
+        subtitle={
+          goals.length > 0
+            ? `${formatMoney(total.savedPln, currency)} z ${formatMoney(total.targetPln, currency)}`
+            : undefined
+        }
+        icon={PiggyBank}
+        action={
+          <Link href="/finanse#oszczednosci" className="text-muted hover:text-ink">
+            Szczegóły
+          </Link>
+        }
+      />
+      {goals.length === 0 ? (
+        <EmptyState
+          message="Nie masz jeszcze celów oszczędnościowych."
+          href="/ustawienia/oszczednosci"
+          cta="Skonfiguruj"
+        />
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {goals.slice(0, 4).map((goal) => (
+            <li key={goal.id}>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <span className="truncate text-sm text-ink">{goal.name}</span>
+                <span className="tabular text-xs text-muted">
+                  <span className="text-ink">{formatMoney(goal.savedPln, currency)}</span> z{" "}
+                  {formatMoney(goal.targetPln, currency)}
+                </span>
+              </div>
+              <div className="mt-1.5 flex items-center gap-2">
+                <Meter
+                  value={goal.savedPln}
+                  max={goal.targetPln}
+                  tone={goal.done ? "var(--good)" : "var(--series-3)"}
+                  label={`${goal.name}: ${Math.round(goal.pct)}% celu`}
+                />
+                <span className="tabular w-10 shrink-0 text-right text-xs font-medium text-ink">
+                  {Math.round(goal.pct)}%
+                </span>
+              </div>
+              {goal.done ? (
+                <p className="mt-0.5 text-xs text-good">✓ Cel osiągnięty</p>
+              ) : goal.pace === "za wolno" ? (
+                <p className="mt-0.5 text-xs text-warning">
+                  Potrzeba {formatMoney(goal.requiredPerWeekPln ?? 0, currency)}/tydz., żeby zdążyć
+                </p>
+              ) : (
+                <p className="mt-0.5 text-xs text-muted">
+                  Brakuje {formatMoney(goal.remainingPln, currency)}
+                  {goal.deadline ? ` · do ${goal.deadline}` : ""}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+/* --------------------------------------------------------- płatności */
+
+function Platnosci({ data, today, currency }: { data: Data; today: string; currency: string }) {
+  const { summary, upcoming, overdue, obligations } = data.platnosci;
+  const next = [...overdue, ...upcoming].slice(0, 5);
+
+  return (
+    <Card className="xl:col-span-3">
+      <CardHeader
+        title="Płatności"
+        subtitle={
+          obligations.length > 0 ? `Koszty stałe: ${formatMoney(summary.monthlyPln, currency)} / mies.` : undefined
+        }
+        icon={CalendarClock}
+        action={
+          <Link href="/finanse#platnosci" className="text-muted hover:text-ink">
+            Szczegóły
+          </Link>
+        }
+      />
+      {obligations.length === 0 ? (
+        <EmptyState
+          message="Nie masz wpisanych rachunków ani rat."
+          href="/ustawienia/platnosci"
+          cta="Skonfiguruj"
+        />
+      ) : (
+        <>
+          {overdue.length > 0 ? (
+            <p className="mb-2 flex items-center gap-1.5 rounded-lg bg-critical/10 px-2.5 py-1.5 text-xs text-critical">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              {formatNumber(overdue.length)}{" "}
+              {pluralPl(overdue.length, "zaległa płatność", "zaległe płatności", "zaległych płatności")} na{" "}
+              {formatMoney(
+                overdue.reduce((sum, payment) => sum + payment.amountPln, 0),
+                currency,
+              )}
+            </p>
+          ) : null}
+
+          {next.length === 0 ? (
+            <p className="text-xs text-muted">Brak terminów w najbliższych 14 dniach.</p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {next.map((payment) => (
+                <li
+                  key={`${payment.obligationId}-${payment.dueDate}`}
+                  className="flex items-center justify-between gap-3 border-b border-line py-1.5 last:border-0"
+                >
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm text-ink">{payment.name}</span>
+                    <span
+                      className={cn(
+                        "text-xs",
+                        payment.status === "zalegle" ? "text-critical" : "text-muted",
+                      )}
+                    >
+                      {dueLabel(payment.dueDate, today)} · {payment.dueDate}
+                    </span>
+                  </span>
+                  <span className="tabular text-sm font-medium text-ink">
+                    {formatMoney(payment.amountPln, currency)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <p className="mt-2 text-xs text-muted">
+            Rocznie: {formatMoney(summary.yearlyPln, currency)} ·{" "}
+            {formatNumber(summary.count)}{" "}
+            {pluralPl(summary.count, "zobowiązanie", "zobowiązania", "zobowiązań")}
+          </p>
+        </>
       )}
     </Card>
   );

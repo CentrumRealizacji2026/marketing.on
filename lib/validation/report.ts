@@ -34,6 +34,24 @@ export const reportSchema = z.object({
   /** Ile dziś wpłynęło. */
   incomePln: nullableAmount,
 
+  /** Ile z dzisiejszych środków poszło na konkretne cele oszczędnościowe. */
+  savings: z.array(
+    z.object({
+      goalId: z.string().uuid(),
+      amountPln: nullableAmount,
+    }),
+  ),
+
+  /** Odhaczone rachunki: termin identyfikuje ratę, bo terminy nie są wierszami w bazie. */
+  payments: z.array(
+    z.object({
+      obligationId: z.string().uuid(),
+      dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      paid: z.boolean(),
+      amountPln: nullableAmount,
+    }),
+  ),
+
   sales: z.object({
     calls: countValue,
     meetingsScheduled: countValue,

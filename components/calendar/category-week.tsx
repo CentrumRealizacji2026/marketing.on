@@ -6,7 +6,7 @@ import { WEEKDAYS } from "@/lib/domain/dates";
 import { DOSE_DONE_THRESHOLD } from "@/lib/domain/medication";
 import { cn, formatMoney, formatNumber } from "@/lib/utils";
 
-type Tone = "good" | "warning" | "critical";
+type Tone = "good" | "warning" | "critical" | "saving";
 type CellPart = { text: string; tone?: Tone };
 type Cell = { parts: CellPart[]; muted?: boolean; title?: string };
 
@@ -20,10 +20,18 @@ function cellFor(category: CategoryKey, day: CalendarDay, currency: string): Cel
   switch (category) {
     case "finanse": {
       const { cashBalancePln, changePln, changeSource, expensesPln, incomePln } = day.finanse;
-      if (cashBalancePln === null && expensesPln === null && incomePln === null) return EMPTY;
+      const savedPln = day.oszczednosci.reduce((sum, entry) => sum + entry.amountPln, 0);
+      const savedPart: CellPart[] =
+        savedPln > 0 ? [{ text: `→ ${formatMoney(savedPln, currency)}`, tone: "saving" }] : [];
+      if (cashBalancePln === null && expensesPln === null && incomePln === null) {
+        return savedPln > 0
+          ? { parts: savedPart, title: `Odłożone na cele: ${formatMoney(savedPln, currency)}` }
+          : EMPTY;
+      }
 
       const title = [
         incomePln !== null ? `Wpłynęło: ${formatMoney(incomePln, currency)}` : null,
+        savedPln > 0 ? `Odłożone na cele: ${formatMoney(savedPln, currency)}` : null,
         expensesPln !== null ? `Wydane: ${formatMoney(expensesPln, currency)}` : null,
         cashBalancePln !== null ? `Stan środków: ${formatMoney(cashBalancePln, currency)}` : null,
         changeSource === "saldo" ? "Zmiana wyliczona z różnicy sald" : null,
@@ -41,14 +49,14 @@ function cellFor(category: CategoryKey, day: CalendarDay, currency: string): Cel
         if (expensesPln !== null && expensesPln > 0) {
           parts.push({ text: `−${formatMoney(expensesPln, currency)}`, tone: "critical" });
         }
-        if (parts.length === 0) parts.push({ text: formatMoney(0, currency) });
-        return { parts, title };
+        if (parts.length === 0 && savedPart.length === 0) parts.push({ text: formatMoney(0, currency) });
+        return { parts: [...parts, ...savedPart], title };
       }
 
       // Bez wpisanych kwot zostaje sam wynik dnia z różnicy sald.
       if (changePln === null) {
         return {
-          parts: [{ text: formatMoney(cashBalancePln!, currency) }],
+          parts: [{ text: formatMoney(cashBalancePln!, currency) }, ...savedPart],
           title: "Stan środków — pierwszy wpis, brak porównania",
         };
       }
@@ -59,8 +67,37 @@ function cellFor(category: CategoryKey, day: CalendarDay, currency: string): Cel
             text: `${sign}${formatMoney(Math.abs(changePln), currency)}`,
             tone: changePln > 0 ? "good" : changePln < 0 ? "critical" : undefined,
           },
+          ...savedPart,
         ],
         title,
+      };
+    }
+
+    case "platnosci": {
+      const due = day.platnosci;
+      if (due.length === 0) return EMPTY;
+
+      const total = due.reduce((sum, payment) => sum + payment.amountPln, 0);
+      const overdue = due.some((payment) => payment.status === "zalegle");
+      const allPaid = due.every((payment) => payment.status === "zaplacone");
+
+      return {
+        parts: [
+          {
+            // Zaległość jest ostrzeżeniem, zapłacone — domknięciem, reszta to zwykły termin.
+            text: `${allPaid ? "✓ " : ""}${formatMoney(total, currency)}`,
+            tone: overdue ? "critical" : allPaid ? "good" : "warning",
+          },
+          ...(due.length === 1 ? [{ text: due[0].name }] : [{ text: `${due.length} płatności` }]),
+        ],
+        title: due
+          .map(
+            (payment) =>
+              `${payment.name}: ${formatMoney(payment.amountPln, currency)}${
+                payment.status === "zaplacone" ? " (zapłacone)" : payment.status === "zalegle" ? " (zaległa)" : ""
+              }`,
+          )
+          .join(" · "),
       };
     }
 
@@ -137,6 +174,7 @@ const TONE_CLASS = {
   good: "text-[var(--delta-up)]",
   warning: "text-warning",
   critical: "text-critical",
+  saving: "text-[var(--series-3)]",
 } as const;
 
 /**
@@ -232,6 +270,8 @@ export function WeekTotals({ days, currency }: { days: CalendarDay[]; currency: 
       cashChange: acc.cashChange + (day.finanse.changePln ?? 0),
       spent: acc.spent + (day.finanse.expensesPln ?? 0),
       earned: acc.earned + (day.finanse.incomePln ?? 0),
+      saved: acc.saved + day.oszczednosci.reduce((sum, entry) => sum + entry.amountPln, 0),
+      bills: acc.bills + day.platnosci.reduce((sum, payment) => sum + payment.amountPln, 0),
       calls: acc.calls + day.sprzedaz.calls,
       meetings: acc.meetings + day.sprzedaz.meetingsHeld,
       contractsValue: acc.contractsValue + day.sprzedaz.valuePln,
@@ -246,6 +286,8 @@ export function WeekTotals({ days, currency }: { days: CalendarDay[]; currency: 
       cashChange: 0,
       spent: 0,
       earned: 0,
+      saved: 0,
+      bills: 0,
       calls: 0,
       meetings: 0,
       contractsValue: 0,
@@ -274,6 +316,11 @@ export function WeekTotals({ days, currency }: { days: CalendarDay[]; currency: 
     ...(totals.spent > 0
       ? [{ label: "Wydane", value: `−${formatMoney(totals.spent, currency)}`, tone: "critical" as Tone }]
       : []),
+    ...(totals.saved > 0
+      ? [{ label: "Odłożone na cele", value: `→ ${formatMoney(totals.saved, currency)}`, tone: "saving" as Tone }]
+      : []),
+    // Suma terminów tygodnia bez oceny — status pojedynczych rat widać w wierszu wyżej.
+    ...(totals.bills > 0 ? [{ label: "Płatności", value: formatMoney(totals.bills, currency) }] : []),
     { label: "Rozmowy", value: formatNumber(totals.calls) },
     { label: "Spotkania odbyte", value: formatNumber(totals.meetings) },
     { label: "Wartość umów", value: formatMoney(totals.contractsValue, currency) },

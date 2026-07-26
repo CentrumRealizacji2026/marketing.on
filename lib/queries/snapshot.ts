@@ -27,6 +27,8 @@ import { currentRecords } from "@/lib/domain/records";
 import { conversionRates, sumSales } from "@/lib/domain/sales";
 import { averageOfReportedDays, waterStatus } from "@/lib/domain/water";
 import { weightPlanProgress } from "@/lib/domain/weight";
+import { getObligationsOverview } from "@/lib/queries/obligations";
+import { getSavingsOverview } from "@/lib/queries/savings";
 
 function round(value: number | null, digits = 1): number | null {
   if (value === null || Number.isNaN(value)) return null;
@@ -85,6 +87,12 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
       db.select().from(personalRecords).where(eq(personalRecords.userId, userId)),
       db.select().from(projects).where(and(eq(projects.userId, userId), eq(projects.status, "aktywny"))),
     ]);
+
+  // Cele i rachunki mają własne zapytania — mentor dostaje wyliczony stan, nie surowe wiersze.
+  const [savings, bills] = await Promise.all([
+    getSavingsOverview(userId, today),
+    getObligationsOverview(userId, today, 30),
+  ]);
 
   const days30 = lastNDays(today, 30);
   const days7 = lastNDays(today, 7);
@@ -189,6 +197,38 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
       wplyneloMiesiac: earned30.days > 0 ? round(earned30.totalPln, 2) : null,
       sredniDzienneWydatki: spent30.days > 0 ? round(spent30.totalPln / spent30.days, 2) : null,
       dniZWpisemPrzeplywow: spent30.days,
+    },
+
+    oszczednosci: {
+      cele: savings.goals.map((goal) => ({
+        nazwa: goal.name,
+        cel: goal.targetPln,
+        odlozone: goal.savedPln,
+        procent: Math.round(goal.pct),
+        brakuje: goal.remainingPln,
+        termin: goal.deadline,
+        potrzebneTygodniowo: goal.requiredPerWeekPln,
+        odkladaneTygodniowo: goal.actualPerWeekPln,
+        tempo: goal.pace,
+      })),
+      lacznieOdlozone: savings.total.savedPln,
+      lacznieCel: savings.total.targetPln,
+    },
+
+    platnosci: {
+      kosztyStaleMiesiecznie: bills.summary.monthlyPln,
+      kosztyStaleRocznie: bills.summary.yearlyPln,
+      wgKategorii: bills.summary.byCategory,
+      zalegle: bills.overdue.map((payment) => ({
+        nazwa: payment.name,
+        kwota: payment.amountPln,
+        termin: payment.dueDate,
+      })),
+      najblizsze: bills.upcoming.slice(0, 8).map((payment) => ({
+        nazwa: payment.name,
+        kwota: payment.amountPln,
+        termin: payment.dueDate,
+      })),
     },
 
     sprzedaz: {

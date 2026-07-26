@@ -144,6 +144,7 @@ export const AGENDA_CATEGORY_LABEL: Record<AgendaCategory, string> = {
 /** Kolory kategorii — wspólne dla agendy i kalendarza. */
 export const CATEGORY_COLOR: Record<string, string> = {
   finanse: "var(--series-1)",
+  platnosci: "var(--warning)",
   sprzedaz: "var(--series-2)",
   zdrowie: "var(--good)",
   zadania: "var(--series-1)",

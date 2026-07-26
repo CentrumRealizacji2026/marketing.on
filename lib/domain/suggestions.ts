@@ -53,3 +53,16 @@ export const PROJECT_STATUS_OPTIONS = [
   { value: "wstrzymany", label: "Wstrzymany" },
   { value: "zakonczony", label: "Zakończony" },
 ] as const;
+
+/** Kategorie kosztów stałych — podpowiedzi, nie zamknięta lista. */
+export const OBLIGATION_CATEGORY_SUGGESTIONS = [
+  "mieszkanie",
+  "media",
+  "auto",
+  "kredyty i raty",
+  "ubezpieczenia",
+  "subskrypcje",
+  "dzieci",
+  "zdrowie",
+  "firma",
+];

@@ -224,6 +224,59 @@ function DayDetail({
     });
   }
 
+  if (day.oszczednosci.length > 0) {
+    const total = day.oszczednosci.reduce((sum, entry) => sum + entry.amountPln, 0);
+    filled.push({
+      key: "finanse",
+      content: (
+        <ul className="flex flex-col gap-0.5 text-sm">
+          {day.oszczednosci.map((entry) => (
+            <li key={entry.name} className="flex items-center justify-between gap-3">
+              <span className="truncate text-ink-2">→ {entry.name}</span>
+              <span className="tabular text-[var(--series-3)]">{formatMoney(entry.amountPln, currency)}</span>
+            </li>
+          ))}
+          {day.oszczednosci.length > 1 ? (
+            <li className="mt-0.5 text-xs text-muted">
+              Odłożone tego dnia: {formatMoney(total, currency)}
+            </li>
+          ) : null}
+        </ul>
+      ),
+    });
+  }
+
+  if (day.platnosci.length > 0) {
+    filled.push({
+      key: "platnosci",
+      content: (
+        <ul className="flex flex-col gap-0.5 text-sm">
+          {day.platnosci.map((payment) => (
+            <li key={payment.name} className="flex items-center justify-between gap-3">
+              <span className="truncate text-ink-2">
+                {payment.status === "zaplacone" ? "✓ " : ""}
+                {payment.name}
+              </span>
+              <span
+                className={cn(
+                  "tabular",
+                  payment.status === "zalegle"
+                    ? "text-critical"
+                    : payment.status === "zaplacone"
+                      ? "text-[var(--delta-up)]"
+                      : "text-ink",
+                )}
+              >
+                {formatMoney(payment.amountPln, currency)}
+                {payment.status === "zalegle" ? " · zaległa" : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
+    });
+  }
+
   if (day.sprzedaz.calls + day.sprzedaz.meetingsScheduled + day.sprzedaz.meetingsHeld + day.sprzedaz.contracts > 0) {
     filled.push({
       key: "sprzedaz",
