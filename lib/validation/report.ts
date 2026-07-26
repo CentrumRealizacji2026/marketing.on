@@ -7,6 +7,13 @@ const nullableNumber = z.preprocess((value) => {
   return Number.isFinite(parsed) ? parsed : null;
 }, z.number().nullable());
 
+/** Kwoty przepływów wpisuje się bez znaku — minus dokłada widok, nie użytkownik. */
+const nullableAmount = z.preprocess((value) => {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = typeof value === "number" ? value : Number(String(value).replace(",", "."));
+  return Number.isFinite(parsed) ? Math.abs(parsed) : null;
+}, z.number().nullable());
+
 const nullableText = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? null : value),
   z.string().trim().nullable().optional().transform((v) => v ?? null),
@@ -22,6 +29,10 @@ export const reportSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Nieprawidłowa data."),
 
   cashBalancePln: nullableNumber,
+  /** Ile dziś wyszło — źródło danych o wydatkach, niezależne od stanu środków. */
+  expensesPln: nullableAmount,
+  /** Ile dziś wpłynęło. */
+  incomePln: nullableAmount,
 
   sales: z.object({
     calls: countValue,

@@ -20,6 +20,7 @@ import {
   type Settings,
 } from "@/lib/db/schema";
 import { addDays, isoWeekday } from "@/lib/domain/dates";
+import { dayCashFlow, type CashFlowSource } from "@/lib/domain/finance";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
 import { waterStatus, type WaterStatus } from "@/lib/domain/water";
@@ -31,8 +32,12 @@ export type CalendarDay = {
   weekday: number;
   finanse: {
     cashBalancePln: number | null;
-    /** Zmiana względem poprzedniego wpisu — czy tego dnia wyszło na plus, czy na minus. */
+    /** Wydane i wpłynęło z raportu — null, gdy w danym dniu nie podano kwot. */
+    expensesPln: number | null;
+    incomePln: number | null;
+    /** Wynik dnia: z wpisanych kwot, a w ich braku z różnicy sald. */
     changePln: number | null;
+    changeSource: CashFlowSource | null;
   };
   sprzedaz: { calls: number; meetingsScheduled: number; meetingsHeld: number; contracts: number; valuePln: number };
   zdrowie: {
@@ -56,7 +61,9 @@ export type CalendarDay = {
 export function hasActivity(day: CalendarDay, category: keyof typeof CATEGORY_KEYS): boolean {
   switch (category) {
     case "finanse":
-      return day.finanse.cashBalancePln !== null;
+      return (
+        day.finanse.cashBalancePln !== null || day.finanse.expensesPln !== null || day.finanse.incomePln !== null
+      );
     case "sprzedaz":
       return day.sprzedaz.calls + day.sprzedaz.meetingsHeld + day.sprzedaz.contracts > 0;
     case "zdrowie":
@@ -180,6 +187,12 @@ export async function getCalendarRange(
       medLogRows.filter((entry) => entry.date === date),
     );
 
+    const flow = dayCashFlow({
+      expensesPln: log?.expensesPln,
+      incomePln: log?.incomePln,
+      balanceChangePln: cashChangeByDate.get(date) ?? null,
+    });
+
     const dayTasks = taskRows.filter((task) => task.date === date);
 
     const dayTraining: CalendarEntry[] = trainingPlanRows
@@ -225,7 +238,10 @@ export async function getCalendarRange(
       weekday,
       finanse: {
         cashBalancePln: log?.cashBalancePln ?? null,
-        changePln: cashChangeByDate.get(date) ?? null,
+        expensesPln: flow.expensesPln,
+        incomePln: flow.incomePln,
+        changePln: flow.netPln,
+        changeSource: flow.source,
       },
       sprzedaz: {
         calls: sales?.calls ?? 0,

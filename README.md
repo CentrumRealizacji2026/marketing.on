@@ -16,7 +16,7 @@ je później w panelu zarządzania.
 | **Kalendarz `/kalendarz`** | Siatka miesiąca z kropkami kategorii przy każdym dniu, tydzień wybranego dnia w układzie kategorie × dni i szczegóły dnia z podziałem na kategorie. Dni w przód pokazują plan, dni wstecz — plan i realizację |
 | **Kreator `/start`** | 11 kroków konfiguracji. Leki, trening, rekordy, nauka i projekty to listy dynamiczne — „+ dodaj” dokłada wiersz, a nazwy dyscyplin i dziedzin wpisujesz własnymi słowami |
 | **Panel `/ustawienia`** | Te same formularze bezterminowo. Wyłączenie pozycji zachowuje historię zamiast ją kasować |
-| **Raport `/raport`** | Jeden formularz na cały dzień: finanse, sprzedaż i umowy, leki, waga i woda, zadania, trening z możliwością zgłoszenia rekordu, nauka oraz zdrowie psychiczne (samopoczucie, energia, stres, myśli, co dobrego się wydarzyło) |
+| **Raport `/raport`** | Jeden formularz na cały dzień: finanse (stan środków, wydane, wpłynęło), sprzedaż i umowy, leki, waga i woda, zadania, trening z możliwością zgłoszenia rekordu, nauka oraz zdrowie psychiczne (samopoczucie, energia, stres, myśli, co dobrego się wydarzyło) |
 | **Kategorie** | `/finanse`, `/sprzedaz`, `/zdrowie`, `/zadania`, `/trening`, `/nauka`, `/projekty` — szczegóły i historia |
 | **Mentor `/mentor`** | Trzy tryby (mentor / trener / kierownik projektów). Analizuje agregaty z 7 i 30 dni i zwraca rekomendacje „obserwacja → działanie” ze statusami |
 | **PWA** | Instalowalna na telefonie, ze skrótami do raportu, zadań i mentora |
@@ -90,6 +90,19 @@ dnia i siatka miesiąca to czyste funkcje w `lib/domain/`, przetestowane w `lib/
 3. Uzupełnij pozostałe zmienne środowiskowe.
 4. Uruchom migracje względem bazy produkcyjnej: `DATABASE_URL="..." npm run db:migrate`.
 5. `vercel.json` konfiguruje crona mentora na 05:00 UTC (07:00 w Warszawie).
+
+## Wydatki i wpływy
+
+Sam stan środków mówi tylko, ile zostało. Żeby było widać, ile wychodzi, raport pyta osobno o
+**wydane** i **to, co wpłynęło** — kwoty wpisujesz bez znaku, minus dokłada widok. Dzięki temu
+dzień, w którym wydałeś 300 zł i tyle samo wpłynęło, nie wygląda na dzień bez wydatków, choć
+saldo się nie zmieniło.
+
+Gdy kwot nie podasz, aplikacja nadal pokazuje wynik dnia, ale wylicza go z różnicy między
+kolejnymi wpisami stanu środków — to gorsze źródło i tak jest opisane w podpowiedziach. Wpisane
+kwoty zawsze mają pierwszeństwo. Sumy i średnie liczą się wyłącznie z dni z wpisem: brak raportu
+to brak danych, a nie zero wydatków. Mentor dostaje te same liczby wraz z informacją, z ilu dni
+pochodzą.
 
 ## Plan wagowy
 

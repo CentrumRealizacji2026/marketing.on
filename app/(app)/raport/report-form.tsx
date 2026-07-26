@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Checkbox, Field, FormError, Input, NumberInput, Select, Suggestions, Textarea } from "@/components/ui/field";
 import { submitReport, type ReportState } from "@/lib/actions/report";
+import { dayCashFlow } from "@/lib/domain/finance";
 import { formatDose } from "@/lib/domain/medication";
 import { CONTRACT_STATUS_OPTIONS, DISCIPLINE_SUGGESTIONS, RECORD_METRIC_SUGGESTIONS } from "@/lib/domain/suggestions";
 import type { ReportFormData } from "@/lib/queries/report";
-import { formatTime } from "@/lib/utils";
+import { formatMoney, formatTime } from "@/lib/utils";
 
 type ContractRow = { clientName: string; valuePln: string; status: string; note: string };
 type RecordRow = { discipline: string; metric: string; unit: string; value: string; higherIsBetter: boolean };
@@ -46,6 +47,8 @@ export function ReportForm({
   const [state, formAction] = useActionState<ReportState, FormData>(submitReport, undefined);
 
   const [cash, setCash] = useState(numberValue(data.daily?.cashBalancePln));
+  const [expenses, setExpenses] = useState(numberValue(data.daily?.expensesPln));
+  const [income, setIncome] = useState(numberValue(data.daily?.incomePln));
   const [calls, setCalls] = useState(numberValue(data.sales?.calls ?? 0));
   const [scheduled, setScheduled] = useState(numberValue(data.sales?.meetingsScheduled ?? 0));
   const [held, setHeld] = useState(numberValue(data.sales?.meetingsHeld ?? 0));
@@ -118,9 +121,17 @@ export function ReportForm({
 
   const [newRecords, setNewRecords] = useState<RecordRow[]>([]);
 
+  // Podgląd wyniku dnia liczony z tych samych reguł, co widoki — od razu widać, co się zapisze.
+  const dayResult = dayCashFlow({
+    expensesPln: expenses === "" ? null : Number(expenses.replace(",", ".")),
+    incomePln: income === "" ? null : Number(income.replace(",", ".")),
+  }).netPln;
+
   const payload = JSON.stringify({
     date: data.date,
     cashBalancePln: cash,
+    expensesPln: expenses,
+    incomePln: income,
     sales: { calls, meetingsScheduled: scheduled, meetingsHeld: held },
     contracts: contractRows,
     doses: doses.map(({ medicationId, slot, taken }) => ({ medicationId, slot, taken })),
@@ -171,10 +182,37 @@ export function ReportForm({
 
       {/* --------------------------------------------------------- finanse */}
       <Card>
-        <CardHeader title="Finanse" />
-        <Field label={`Stan środków na dziś (${currency})`} htmlFor="cash">
-          <NumberInput id="cash" step="0.01" value={cash} onChange={(e) => setCash(e.target.value)} />
-        </Field>
+        <CardHeader title="Finanse" subtitle="Kwoty wpisujesz bez minusa — kierunek wynika z pola." />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field label={`Stan środków na dziś (${currency})`} htmlFor="cash">
+            <NumberInput id="cash" step="0.01" value={cash} onChange={(e) => setCash(e.target.value)} />
+          </Field>
+          <Field label={`Wydane dziś (${currency})`} htmlFor="expenses" hint="Ile środków wyszło.">
+            <NumberInput
+              id="expenses"
+              step="0.01"
+              min="0"
+              value={expenses}
+              onChange={(e) => setExpenses(e.target.value)}
+            />
+          </Field>
+          <Field label={`Wpłynęło dziś (${currency})`} htmlFor="income" hint="Wpłaty, przelewy, gotówka.">
+            <NumberInput id="income" step="0.01" min="0" value={income} onChange={(e) => setIncome(e.target.value)} />
+          </Field>
+        </div>
+        {dayResult !== null ? (
+          <p className="mt-3 text-xs text-muted">
+            Wynik dnia:{" "}
+            <span
+              className={
+                dayResult > 0 ? "text-[var(--delta-up)]" : dayResult < 0 ? "text-critical" : "text-ink"
+              }
+            >
+              {dayResult > 0 ? "+" : dayResult < 0 ? "−" : ""}
+              {formatMoney(Math.abs(dayResult), currency)}
+            </span>
+          </p>
+        ) : null}
       </Card>
 
       {/* -------------------------------------------------------- sprzedaż */}

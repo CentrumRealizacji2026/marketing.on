@@ -109,6 +109,10 @@ export const dailyLogs = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     date: date("date", { mode: "string" }).notNull(),
     cashBalancePln: numeric("cash_balance_pln", { precision: 12, scale: 2, mode: "number" }),
+    /** Ile tego dnia wyszło — zawsze liczba dodatnia, znak dokłada widok. */
+    expensesPln: numeric("expenses_pln", { precision: 12, scale: 2, mode: "number" }),
+    /** Ile tego dnia wpłynęło — zawsze liczba dodatnia. */
+    incomePln: numeric("income_pln", { precision: 12, scale: 2, mode: "number" }),
     weightKg: numeric("weight_kg", { precision: 5, scale: 2, mode: "number" }),
     waterMl: integer("water_ml"),
     sleepH: numeric("sleep_h", { precision: 3, scale: 1, mode: "number" }),

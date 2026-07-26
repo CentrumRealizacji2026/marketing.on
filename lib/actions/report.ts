@@ -51,6 +51,8 @@ export async function submitReport(_prev: ReportState, formData: FormData): Prom
 
   const dailyValues = {
     cashBalancePln: report.cashBalancePln,
+    expensesPln: report.expensesPln,
+    incomePln: report.incomePln,
     weightKg: report.weightKg,
     waterMl: report.waterMl === null ? null : Math.round(report.waterMl),
     sleepH: report.sleepH,

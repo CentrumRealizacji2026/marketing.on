@@ -19,13 +19,36 @@ const EMPTY: Cell = { parts: [{ text: "—" }], muted: true };
 function cellFor(category: CategoryKey, day: CalendarDay, currency: string): Cell {
   switch (category) {
     case "finanse": {
-      const { cashBalancePln, changePln } = day.finanse;
-      if (cashBalancePln === null) return EMPTY;
+      const { cashBalancePln, changePln, changeSource, expensesPln, incomePln } = day.finanse;
+      if (cashBalancePln === null && expensesPln === null && incomePln === null) return EMPTY;
 
-      // Interesuje nas przede wszystkim, czy tego dnia wyszło na plus, czy na minus.
+      const title = [
+        incomePln !== null ? `Wpłynęło: ${formatMoney(incomePln, currency)}` : null,
+        expensesPln !== null ? `Wydane: ${formatMoney(expensesPln, currency)}` : null,
+        cashBalancePln !== null ? `Stan środków: ${formatMoney(cashBalancePln, currency)}` : null,
+        changeSource === "saldo" ? "Zmiana wyliczona z różnicy sald" : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+
+      // Wpisane kwoty pokazujemy osobno: wydatek zostaje widoczny nawet wtedy,
+      // gdy tego samego dnia wpłynęło tyle samo i wynik netto wychodzi na zero.
+      if (changeSource === "raport") {
+        const parts: CellPart[] = [];
+        if (incomePln !== null && incomePln > 0) {
+          parts.push({ text: `+${formatMoney(incomePln, currency)}`, tone: "good" });
+        }
+        if (expensesPln !== null && expensesPln > 0) {
+          parts.push({ text: `−${formatMoney(expensesPln, currency)}`, tone: "critical" });
+        }
+        if (parts.length === 0) parts.push({ text: formatMoney(0, currency) });
+        return { parts, title };
+      }
+
+      // Bez wpisanych kwot zostaje sam wynik dnia z różnicy sald.
       if (changePln === null) {
         return {
-          parts: [{ text: formatMoney(cashBalancePln, currency) }],
+          parts: [{ text: formatMoney(cashBalancePln!, currency) }],
           title: "Stan środków — pierwszy wpis, brak porównania",
         };
       }
@@ -37,7 +60,7 @@ function cellFor(category: CategoryKey, day: CalendarDay, currency: string): Cel
             tone: changePln > 0 ? "good" : changePln < 0 ? "critical" : undefined,
           },
         ],
-        title: `Stan środków: ${formatMoney(cashBalancePln, currency)}`,
+        title,
       };
     }
 
@@ -207,6 +230,8 @@ export function WeekTotals({ days, currency }: { days: CalendarDay[]; currency: 
   const totals = days.reduce(
     (acc, day) => ({
       cashChange: acc.cashChange + (day.finanse.changePln ?? 0),
+      spent: acc.spent + (day.finanse.expensesPln ?? 0),
+      earned: acc.earned + (day.finanse.incomePln ?? 0),
       calls: acc.calls + day.sprzedaz.calls,
       meetings: acc.meetings + day.sprzedaz.meetingsHeld,
       contractsValue: acc.contractsValue + day.sprzedaz.valuePln,
@@ -219,6 +244,8 @@ export function WeekTotals({ days, currency }: { days: CalendarDay[]; currency: 
     }),
     {
       cashChange: 0,
+      spent: 0,
+      earned: 0,
       calls: 0,
       meetings: 0,
       contractsValue: 0,
@@ -240,6 +267,13 @@ export function WeekTotals({ days, currency }: { days: CalendarDay[]; currency: 
       )}`,
       tone: totals.cashChange > 0 ? "good" : totals.cashChange < 0 ? "critical" : undefined,
     },
+    // Wydane pokazujemy osobno tylko wtedy, gdy jest z czego — kolumna z zerem nic nie wnosi.
+    ...(totals.earned > 0
+      ? [{ label: "Wpłynęło", value: `+${formatMoney(totals.earned, currency)}`, tone: "good" as Tone }]
+      : []),
+    ...(totals.spent > 0
+      ? [{ label: "Wydane", value: `−${formatMoney(totals.spent, currency)}`, tone: "critical" as Tone }]
+      : []),
     { label: "Rozmowy", value: formatNumber(totals.calls) },
     { label: "Spotkania odbyte", value: formatNumber(totals.meetings) },
     { label: "Wartość umów", value: formatMoney(totals.contractsValue, currency) },
@@ -249,7 +283,8 @@ export function WeekTotals({ days, currency }: { days: CalendarDay[]; currency: 
   ];
 
   return (
-    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-line pt-3 sm:grid-cols-4 lg:grid-cols-7">
+    // Liczba pozycji zmienia się z danymi, więc kolumny dobierają się same.
+    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-line pt-3 sm:grid-cols-4 lg:[grid-template-columns:repeat(auto-fit,minmax(7rem,1fr))]">
       {items.map((item) => (
         <div key={item.label}>
           <dt className="text-xs text-muted">{item.label}</dt>

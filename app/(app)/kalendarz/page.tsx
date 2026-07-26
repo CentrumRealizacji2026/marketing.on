@@ -175,17 +175,46 @@ function DayDetail({
   // Sekcję dokładamy dopiero, gdy naprawdę ma treść — inaczej zostawałby sam nagłówek kategorii.
   const filled: Array<{ key: CategoryKey; content: React.ReactNode }> = [];
 
-  if (day.finanse.cashBalancePln !== null) {
-    const change = day.finanse.changePln;
+  const { cashBalancePln, changePln, changeSource, expensesPln, incomePln } = day.finanse;
+  if (cashBalancePln !== null || expensesPln !== null || incomePln !== null) {
     filled.push({
       key: "finanse",
       content: (
         <div className="text-sm">
-          <p className="text-ink">{formatMoney(day.finanse.cashBalancePln, currency)}</p>
-          {change !== null ? (
-            <p className={cn("mt-0.5 text-xs", change > 0 ? "text-[var(--delta-up)]" : change < 0 ? "text-critical" : "text-muted")}>
-              {change > 0 ? "Zarobione" : change < 0 ? "Wydane" : "Bez zmiany"}{" "}
-              {change !== 0 ? formatMoney(Math.abs(change), currency) : ""} od poprzedniego wpisu
+          {cashBalancePln !== null ? <p className="text-ink">{formatMoney(cashBalancePln, currency)}</p> : null}
+
+          {/* Wpisane kwoty są konkretem: mówią, ile wyszło, a nie tylko jak zmieniło się saldo. */}
+          {changeSource === "raport" ? (
+            <ul className="mt-0.5 flex flex-col gap-0.5 text-xs">
+              {incomePln !== null ? (
+                <li className="text-[var(--delta-up)]">Wpłynęło +{formatMoney(incomePln, currency)}</li>
+              ) : null}
+              {expensesPln !== null ? (
+                <li className="text-critical">Wydane −{formatMoney(expensesPln, currency)}</li>
+              ) : null}
+              {changePln !== null ? (
+                <li className="text-muted">
+                  Wynik dnia{" "}
+                  <span
+                    className={cn(
+                      changePln > 0 ? "text-[var(--delta-up)]" : changePln < 0 ? "text-critical" : "text-ink-2",
+                    )}
+                  >
+                    {changePln > 0 ? "+" : changePln < 0 ? "−" : ""}
+                    {formatMoney(Math.abs(changePln), currency)}
+                  </span>
+                </li>
+              ) : null}
+            </ul>
+          ) : changePln !== null ? (
+            <p
+              className={cn(
+                "mt-0.5 text-xs",
+                changePln > 0 ? "text-[var(--delta-up)]" : changePln < 0 ? "text-critical" : "text-muted",
+              )}
+            >
+              {changePln > 0 ? "Zarobione" : changePln < 0 ? "Wydane" : "Bez zmiany"}{" "}
+              {changePln !== 0 ? formatMoney(Math.abs(changePln), currency) : ""} od poprzedniego wpisu
             </p>
           ) : (
             <p className="mt-0.5 text-xs text-muted">Pierwszy wpis — brak porównania</p>

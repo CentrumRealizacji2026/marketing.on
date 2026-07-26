@@ -20,6 +20,7 @@ import {
   type Settings,
 } from "@/lib/db/schema";
 import { addDays, isoWeekday, lastNDays } from "@/lib/domain/dates";
+import { dayCashFlow, sumExpenses, sumIncome } from "@/lib/domain/finance";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
 import { currentRecords } from "@/lib/domain/records";
@@ -93,6 +94,13 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
 
   const cashReported = logs.filter((log) => log.cashBalancePln !== null);
   const cash7 = cashReported.filter((log) => log.date >= start7);
+
+  const flows30 = logs.map((log) => dayCashFlow(log));
+  const flows7 = logs.filter((log) => log.date >= start7).map((log) => dayCashFlow(log));
+  const spent7 = sumExpenses(flows7);
+  const spent30 = sumExpenses(flows30);
+  const earned7 = sumIncome(flows7);
+  const earned30 = sumIncome(flows30);
 
   /* ------------------------------------------------------------ sprzedaż */
 
@@ -173,6 +181,14 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
       stanTydzienTemu: cash7[0]?.cashBalancePln ?? null,
       stanMiesiacTemu: cashReported[0]?.cashBalancePln ?? null,
       liczbaWpisow: cashReported.length,
+      // Wydatki i wpływy są liczone tylko z dni, w których użytkownik je podał —
+      // dzień bez wpisu nie jest dniem bez wydatków.
+      wydaneTydzien: spent7.days > 0 ? round(spent7.totalPln, 2) : null,
+      wydaneMiesiac: spent30.days > 0 ? round(spent30.totalPln, 2) : null,
+      wplyneloTydzien: earned7.days > 0 ? round(earned7.totalPln, 2) : null,
+      wplyneloMiesiac: earned30.days > 0 ? round(earned30.totalPln, 2) : null,
+      sredniDzienneWydatki: spent30.days > 0 ? round(spent30.totalPln / spent30.days, 2) : null,
+      dniZWpisemPrzeplywow: spent30.days,
     },
 
     sprzedaz: {

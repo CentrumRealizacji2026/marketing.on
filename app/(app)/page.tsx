@@ -86,8 +86,41 @@ type Ustawienia = Awaited<ReturnType<typeof getUserSettings>>;
 /* --------------------------------------------------------------- finanse */
 
 function Finanse({ data, currency }: { data: Data; currency: string }) {
-  const { current, previous, series } = data.finanse;
+  const { current, previous, series, todayFlow, weekSpentPln, weekEarnedPln } = data.finanse;
   const delta = current && previous ? current.cashBalancePln! - previous.cashBalancePln! : null;
+  const hasBalance = current?.cashBalancePln !== undefined && current?.cashBalancePln !== null;
+  const hasFlow = todayFlow.expensesPln !== null || todayFlow.incomePln !== null;
+
+  // Przepływy dnia i tygodnia: wydatki zawsze z minusem, wpływy z plusem.
+  const flowLines: Array<{ label: string; value: string; className: string }> = [];
+  if (todayFlow.incomePln !== null) {
+    flowLines.push({
+      label: "Dziś wpłynęło",
+      value: `+${formatMoney(todayFlow.incomePln, currency)}`,
+      className: "text-[var(--delta-up)]",
+    });
+  }
+  if (todayFlow.expensesPln !== null) {
+    flowLines.push({
+      label: "Dziś wydane",
+      value: `−${formatMoney(todayFlow.expensesPln, currency)}`,
+      className: "text-critical",
+    });
+  }
+  if (weekEarnedPln !== null) {
+    flowLines.push({
+      label: "Wpłynęło w tym tygodniu",
+      value: `+${formatMoney(weekEarnedPln, currency)}`,
+      className: "text-[var(--delta-up)]",
+    });
+  }
+  if (weekSpentPln !== null) {
+    flowLines.push({
+      label: "Wydane w tym tygodniu",
+      value: `−${formatMoney(weekSpentPln, currency)}`,
+      className: "text-critical",
+    });
+  }
 
   return (
     <Card className="xl:col-span-2">
@@ -101,22 +134,40 @@ function Finanse({ data, currency }: { data: Data; currency: string }) {
           </Link>
         }
       />
-      {current?.cashBalancePln !== undefined && current?.cashBalancePln !== null ? (
+      {hasBalance || hasFlow ? (
         <>
           {/* Jedna liczba wiodąca na całym widoku. */}
-          <p className="text-[2.75rem] leading-none font-semibold text-ink">
-            {formatMoney(current.cashBalancePln, currency)}
-          </p>
+          {hasBalance ? (
+            <p className="text-[2.75rem] leading-none font-semibold text-ink">
+              {formatMoney(current!.cashBalancePln!, currency)}
+            </p>
+          ) : (
+            <p className="text-sm text-muted">Brak wpisu o stanie środków — poniżej same przepływy.</p>
+          )}
           {delta !== null ? (
             <p className={`mt-1.5 text-xs ${delta >= 0 ? "text-[var(--delta-up)]" : "text-critical"}`}>
               {delta >= 0 ? "▲" : "▼"} {formatMoney(Math.abs(delta), currency)}
               <span className="text-muted"> od poprzedniego wpisu</span>
             </p>
           ) : null}
-          <div className="mt-3">
-            <Sparkline values={series} label="Stan środków w ostatnich 30 dniach" />
-            <p className="mt-1 text-xs text-muted">Ostatnie 30 dni</p>
-          </div>
+
+          {flowLines.length > 0 ? (
+            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-line pt-3">
+              {flowLines.map((line) => (
+                <div key={line.label}>
+                  <dt className="text-xs text-muted">{line.label}</dt>
+                  <dd className={`tabular mt-0.5 text-sm font-medium ${line.className}`}>{line.value}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+
+          {hasBalance ? (
+            <div className="mt-3">
+              <Sparkline values={series} label="Stan środków w ostatnich 30 dniach" />
+              <p className="mt-1 text-xs text-muted">Ostatnie 30 dni</p>
+            </div>
+          ) : null}
         </>
       ) : (
         <EmptyState message="Brak wpisu o stanie środków." href="/raport" cta="Wypełnij raport" />

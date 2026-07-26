@@ -21,6 +21,7 @@ import {
   type Settings,
 } from "@/lib/db/schema";
 import { addDays, isoWeekday, lastNDays, startOfMonth, startOfWeek } from "@/lib/domain/dates";
+import { dayCashFlow, sumExpenses, sumIncome } from "@/lib/domain/finance";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
 import { currentRecords } from "@/lib/domain/records";
@@ -134,6 +135,15 @@ export async function getDashboardData(userId: string, settings: Settings, today
   const currentCash = cashReported.at(-1) ?? null;
   const previousCash = cashReported.at(-2) ?? null;
 
+  const todayFlow = dayCashFlow({
+    expensesPln: byDate.get(today)?.expensesPln,
+    incomePln: byDate.get(today)?.incomePln,
+  });
+  // Wydatki tygodnia liczymy tylko z dni, w których je zapisano — brak wpisu to nie zero.
+  const weekFlows = logs.filter((log) => log.date >= weekStart).map((log) => dayCashFlow(log));
+  const weekSpent = sumExpenses(weekFlows);
+  const weekEarned = sumIncome(weekFlows);
+
   /* ------------------------------------------------------------ sprzedaż */
 
   const salesToday = salesRows.find((row) => row.date === today) ?? null;
@@ -196,6 +206,9 @@ export async function getDashboardData(userId: string, settings: Settings, today
       previous: previousCash,
       series: cashSeries,
       dates: trendDates,
+      todayFlow,
+      weekSpentPln: weekSpent.days > 0 ? weekSpent.totalPln : null,
+      weekEarnedPln: weekEarned.days > 0 ? weekEarned.totalPln : null,
     },
 
     sprzedaz: {

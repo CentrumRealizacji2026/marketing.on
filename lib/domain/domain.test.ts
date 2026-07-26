@@ -11,6 +11,7 @@ import {
   startOfWeek,
   todayInTz,
 } from "./dates";
+import { dayCashFlow, sumExpenses, sumIncome } from "./finance";
 import { learningBlocksForDate } from "./learning";
 import { medicationScheduleForDate, slotSortKey } from "./medication";
 import { beatsRecord, currentRecords } from "./records";
@@ -196,6 +197,62 @@ describe("plan wagowy", () => {
     const progress = weightPlanProgress({ ...plan, currentKg: 84, currentDate: "2026-06-01" });
     expect(progress?.expectedKg).toBeCloseTo(84, 1);
     expect(progress?.daysLeft).toBeLessThan(0);
+  });
+});
+
+describe("przepływy finansowe", () => {
+  it("liczy wynik dnia z wpisanych kwot", () => {
+    const flow = dayCashFlow({ expensesPln: 250, incomePln: 1000 });
+    expect(flow.netPln).toBe(750);
+    expect(flow.expensesPln).toBe(250);
+    expect(flow.incomePln).toBe(1000);
+    expect(flow.source).toBe("raport");
+  });
+
+  it("zachowuje wydatek, gdy wynik dnia wychodzi na zero", () => {
+    const flow = dayCashFlow({ expensesPln: 300, incomePln: 300 });
+    expect(flow.netPln).toBe(0);
+    expect(flow.expensesPln).toBe(300);
+  });
+
+  it("traktuje sam wydatek jako minus", () => {
+    expect(dayCashFlow({ expensesPln: 120 }).netPln).toBe(-120);
+    expect(dayCashFlow({ incomePln: 120 }).netPln).toBe(120);
+  });
+
+  it("przyjmuje kwoty bez znaku, nawet gdy ktoś wpisze minus", () => {
+    const flow = dayCashFlow({ expensesPln: -80 });
+    expect(flow.expensesPln).toBe(80);
+    expect(flow.netPln).toBe(-80);
+  });
+
+  it("wpisane kwoty mają pierwszeństwo przed różnicą sald", () => {
+    const flow = dayCashFlow({ expensesPln: 50, balanceChangePln: 900 });
+    expect(flow.netPln).toBe(-50);
+    expect(flow.source).toBe("raport");
+  });
+
+  it("bez kwot spada na różnicę sald", () => {
+    const flow = dayCashFlow({ balanceChangePln: -420 });
+    expect(flow.netPln).toBe(-420);
+    expect(flow.expensesPln).toBeNull();
+    expect(flow.source).toBe("saldo");
+  });
+
+  it("bez żadnych danych nie zgaduje", () => {
+    const flow = dayCashFlow({ expensesPln: null, incomePln: null, balanceChangePln: null });
+    expect(flow.netPln).toBeNull();
+    expect(flow.source).toBeNull();
+  });
+
+  it("sumuje tylko dni z wpisem — brak danych to nie zero", () => {
+    const flows = [
+      dayCashFlow({ expensesPln: 100 }),
+      dayCashFlow({ balanceChangePln: -500 }),
+      dayCashFlow({ expensesPln: 50, incomePln: 200 }),
+    ];
+    expect(sumExpenses(flows)).toEqual({ totalPln: 150, days: 2 });
+    expect(sumIncome(flows)).toEqual({ totalPln: 200, days: 1 });
   });
 });
 

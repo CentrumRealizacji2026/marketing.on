@@ -8,7 +8,8 @@ import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { contracts, dailyLogs } from "@/lib/db/schema";
 import { addDays, formatDatePl, lastNDays, startOfMonth, todayInTz } from "@/lib/domain/dates";
-import { formatMoney, formatNumber } from "@/lib/utils";
+import { dayCashFlow, sumExpenses, sumIncome } from "@/lib/domain/finance";
+import { formatDays, formatMoney, formatNumber } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Finanse" };
 export const dynamic = "force-dynamic";
@@ -45,16 +46,28 @@ export default async function FinancePage() {
   const first = reported[0]?.cashBalancePln ?? null;
   const change = current !== null && first !== null ? current - first : null;
 
-  // Zmiany między kolejnymi wpisami — prosty obraz przepływów.
-  const flows = reported
-    .map((log, index) =>
-      index === 0
-        ? null
-        : { date: log.date, delta: log.cashBalancePln! - reported[index - 1].cashBalancePln! },
-    )
-    .filter((entry): entry is { date: string; delta: number } => entry !== null)
+  // Zmiana salda między kolejnymi wpisami — używana tam, gdzie nie ma wpisanych kwot.
+  const balanceChange = new Map<string, number>();
+  for (let i = 1; i < reported.length; i += 1) {
+    balanceChange.set(reported[i].date, reported[i].cashBalancePln! - reported[i - 1].cashBalancePln!);
+  }
+
+  const flows = logs
+    .map((log) => ({
+      date: log.date,
+      flow: dayCashFlow({
+        expensesPln: log.expensesPln,
+        incomePln: log.incomePln,
+        balanceChangePln: balanceChange.get(log.date) ?? null,
+      }),
+    }))
+    .filter((entry) => entry.flow.netPln !== null)
     .slice(-14)
     .reverse();
+
+  const periodFlows = logs.map((log) => dayCashFlow(log));
+  const spent = sumExpenses(periodFlows);
+  const earned = sumIncome(periodFlows);
 
   const avgDaily =
     change !== null && reported.length > 1
@@ -88,21 +101,70 @@ export default async function FinancePage() {
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Card id="przeplywy">
-          <CardHeader title="Przepływy" subtitle="Zmiana między kolejnymi wpisami" />
+          <CardHeader title="Przepływy" subtitle="Wpłynęło i wydane z raportów dziennych" />
           {flows.length === 0 ? (
-            <EmptyState message="Za mało wpisów, żeby pokazać zmiany. Uzupełnij raport przez kilka dni." href="/raport" cta="Wypełnij raport" />
+            <EmptyState message="Brak danych o przepływach. Uzupełnij w raporcie, ile wydałeś i ile wpłynęło." href="/raport" cta="Wypełnij raport" />
           ) : (
-            <ul className="flex flex-col gap-1">
-              {flows.map((flow) => (
-                <li key={flow.date} className="flex items-center justify-between gap-3 border-b border-line py-1.5 text-sm last:border-0">
-                  <span className="text-muted">{formatDatePl(flow.date)}</span>
-                  <span className={`tabular font-medium ${flow.delta >= 0 ? "text-[var(--delta-up)]" : "text-critical"}`}>
-                    {flow.delta >= 0 ? "+" : "−"}
-                    {formatMoney(Math.abs(flow.delta), settings.currency)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <>
+              {spent.days > 0 || earned.days > 0 ? (
+                <div className="mb-3 grid grid-cols-2 gap-4 border-b border-line pb-3">
+                  {earned.days > 0 ? (
+                    <div>
+                      <p className="text-xs text-muted">Wpłynęło ({formatDays(earned.days)})</p>
+                      <p className="tabular mt-0.5 text-lg font-semibold text-[var(--delta-up)]">
+                        +{formatMoney(earned.totalPln, settings.currency)}
+                      </p>
+                    </div>
+                  ) : null}
+                  {spent.days > 0 ? (
+                    <div>
+                      <p className="text-xs text-muted">Wydane ({formatDays(spent.days)})</p>
+                      <p className="tabular mt-0.5 text-lg font-semibold text-critical">
+                        −{formatMoney(spent.totalPln, settings.currency)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted">
+                        Średnio {formatMoney(spent.totalPln / spent.days, settings.currency)} dziennie
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <ul className="flex flex-col gap-1">
+                {flows.map((entry) => (
+                  <li key={entry.date} className="flex items-center justify-between gap-3 border-b border-line py-1.5 text-sm last:border-0">
+                    <span className="text-muted">{formatDatePl(entry.date)}</span>
+                    <span className="flex items-center gap-2">
+                      {/* Kwoty z raportu pokazujemy rozbite — samo netto ukrywa wydatki pokryte wpływem. */}
+                      {entry.flow.incomePln !== null ? (
+                        <span className="tabular text-[var(--delta-up)]">
+                          +{formatMoney(entry.flow.incomePln, settings.currency)}
+                        </span>
+                      ) : null}
+                      {entry.flow.expensesPln !== null ? (
+                        <span className="tabular text-critical">
+                          −{formatMoney(entry.flow.expensesPln, settings.currency)}
+                        </span>
+                      ) : null}
+                      {entry.flow.source === "saldo" ? (
+                        <span
+                          title="Wyliczone z różnicy stanu środków"
+                          className={`tabular font-medium ${entry.flow.netPln! >= 0 ? "text-[var(--delta-up)]" : "text-critical"}`}
+                        >
+                          {entry.flow.netPln! >= 0 ? "+" : "−"}
+                          {formatMoney(Math.abs(entry.flow.netPln!), settings.currency)}
+                        </span>
+                      ) : (
+                        <span className="tabular font-medium text-ink">
+                          = {entry.flow.netPln! > 0 ? "+" : entry.flow.netPln! < 0 ? "−" : ""}
+                          {formatMoney(Math.abs(entry.flow.netPln!), settings.currency)}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </Card>
 

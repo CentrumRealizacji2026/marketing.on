@@ -7,6 +7,11 @@ export function cn(...inputs: ClassValue[]) {
 
 const plNumber = new Intl.NumberFormat("pl-PL");
 
+/** „1 dzień”, ale „2 dni” i „7 dni” — polska liczba mnoga w miejscach z licznikiem dni. */
+export function formatDays(count: number) {
+  return `${plNumber.format(count)} ${count === 1 ? "dzień" : "dni"}`;
+}
+
 export function formatNumber(value: number | null | undefined, fractionDigits = 0) {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
   return new Intl.NumberFormat("pl-PL", {
