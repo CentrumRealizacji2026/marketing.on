@@ -12,6 +12,7 @@ import {
   ListChecks,
   ListTodo,
   Scale,
+  Smile,
   Trophy,
   TrendingUp,
   Wallet,
@@ -30,6 +31,7 @@ import { formatDose, groupDosesBySlot } from "@/lib/domain/medication";
 import { formatRecordValue } from "@/lib/domain/records";
 import { conversionRates, formatPercent, goalProgress } from "@/lib/domain/sales";
 import { WATER_STATUS_LABEL, waterPercent, waterStatus } from "@/lib/domain/water";
+import { WEIGHT_STATUS_LABEL, describeWeightProgress, weightPlanProgress } from "@/lib/domain/weight";
 import { getCalendarRange } from "@/lib/queries/calendar";
 import { getDashboardData } from "@/lib/queries/dashboard";
 
@@ -68,7 +70,8 @@ export default async function DashboardPage({
       <Trening data={data} today={today} />
       <Nauka data={data} today={today} />
       <Nawodnienie data={data} settings={settings} today={today} />
-      <Waga data={data} settings={settings} />
+      <Waga data={data} settings={settings} today={today} />
+      <Psychika data={data} />
       <Rekordy data={data} />
       <Projekty data={data} today={today} />
       <Tydzien days={weekDays} today={today} currency={settings.currency} />
@@ -640,11 +643,22 @@ function Nawodnienie({ data, settings, today }: { data: Data; settings: Ustawien
 
 /* ------------------------------------------------------------------ waga */
 
-function Waga({ data, settings }: { data: Data; settings: Ustawienia }) {
+const WEIGHT_PILL = { przed: "good", zgodnie: "good", za: "warning" } as const;
+
+function Waga({ data, settings, today }: { data: Data; settings: Ustawienia; today: string }) {
   const { weight } = data.zdrowie;
   const current = weight.current?.weightKg ?? null;
   const previous = weight.previous?.weightKg ?? null;
   const delta = current !== null && previous !== null ? current - previous : null;
+
+  const plan = weightPlanProgress({
+    startKg: settings.weightStartKg,
+    startDate: settings.weightStartDate,
+    targetKg: settings.weightTargetKg,
+    targetDate: settings.weightTargetDate,
+    currentKg: current,
+    currentDate: weight.current?.date ?? today,
+  });
 
   return (
     <Card className="xl:col-span-2">
@@ -652,40 +666,166 @@ function Waga({ data, settings }: { data: Data; settings: Ustawienia }) {
       {current === null ? (
         <EmptyState message="Brak wpisu o wadze." href="/raport" cta="Wypełnij raport" />
       ) : (
-        <StatTile
-          label={weight.current ? `Ostatni pomiar: ${weight.current.date}` : "Ostatni pomiar"}
-          value={formatNumber(current, 1)}
-          unit="kg"
-          delta={
-            delta !== null && Math.abs(delta) > 0.001
-              ? {
-                  value: `${formatNumber(Math.abs(delta), 1)} kg`,
-                  direction: delta > 0 ? "up" : "down",
-                  goodDirection:
-                    settings.weightTargetKg === null || settings.weightTargetKg === undefined
-                      ? undefined
-                      : settings.weightTargetKg < current
-                        ? "down"
-                        : "up",
-                  period: "od poprzedniego pomiaru",
-                }
-              : undefined
-          }
-          footer={
-            settings.weightTargetKg
-              ? `Cel: ${formatNumber(settings.weightTargetKg, 1)} kg · różnica ${formatNumber(
-                  Math.abs(current - settings.weightTargetKg),
-                  1,
-                )} kg`
-              : undefined
-          }
-        >
-          <div className="mt-2">
-            <Sparkline values={weight.series} label="Waga w ostatnich 30 dniach" />
-            <p className="mt-1 text-xs text-muted">Ostatnie 30 dni</p>
+        <>
+          <StatTile
+            label={weight.current ? `Ostatni pomiar: ${weight.current.date}` : "Ostatni pomiar"}
+            value={formatNumber(current, 1)}
+            unit="kg"
+            delta={
+              delta !== null && Math.abs(delta) > 0.001
+                ? {
+                    value: `${formatNumber(Math.abs(delta), 1)} kg`,
+                    direction: delta > 0 ? "up" : "down",
+                    goodDirection:
+                      settings.weightTargetKg === null || settings.weightTargetKg === undefined
+                        ? undefined
+                        : settings.weightTargetKg < current
+                          ? "down"
+                          : "up",
+                    period: "od poprzedniego pomiaru",
+                  }
+                : undefined
+            }
+          >
+            <div className="mt-2">
+              <Sparkline values={weight.series} label="Waga w ostatnich 30 dniach" />
+              <p className="mt-1 text-xs text-muted">Ostatnie 30 dni</p>
+            </div>
+          </StatTile>
+
+          <div className="mt-3 border-t border-line pt-3">
+            {settings.weightTargetKg === null ? (
+              <EmptyState message="Nie masz ustawionej wagi docelowej." href="/ustawienia/cele" />
+            ) : (
+              <>
+                <div className="flex items-baseline justify-between gap-2">
+                  <div>
+                    <p className="text-xs text-muted">Waga docelowa</p>
+                    <p className="tabular mt-0.5 text-lg font-semibold text-ink">
+                      {formatNumber(settings.weightTargetKg, 1)} kg
+                    </p>
+                  </div>
+                  {plan ? (
+                    <StatusPill tone={WEIGHT_PILL[plan.status]} icon={plan.status === "za" ? AlertTriangle : CheckCircle2}>
+                      {WEIGHT_STATUS_LABEL[plan.status]}
+                    </StatusPill>
+                  ) : null}
+                </div>
+
+                {plan ? (
+                  <>
+                    <div className="mt-2">
+                      <Meter
+                        value={Math.min(Math.max(plan.progressPct, 0), 100)}
+                        max={100}
+                        tone={plan.status === "za" ? "var(--warning)" : "var(--good)"}
+                        label="Postęp planu wagowego"
+                      />
+                      <p className="mt-1 flex justify-between text-xs text-muted">
+                        <span>
+                          {formatNumber(Math.max(plan.progressPct, 0), 0)}% celu · {formatNumber(plan.elapsedPct, 0)}%
+                          czasu
+                        </span>
+                        <span>{plan.daysLeft >= 0 ? `${plan.daysLeft} dni do terminu` : "po terminie"}</span>
+                      </p>
+                    </div>
+                    <p className="mt-2 text-xs text-ink-2">{describeWeightProgress(plan)}</p>
+                    <p className="mt-1 text-xs text-muted">
+                      Tempo: {formatNumber(plan.actualPacePerWeek ?? 0, 2)} kg/tydz. przy planowanych{" "}
+                      {formatNumber(plan.plannedPacePerWeek, 2)} kg/tydz.
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1.5 text-xs text-muted">
+                    Do celu {formatNumber(Math.abs(current - settings.weightTargetKg), 1)} kg.{" "}
+                    <Link href="/ustawienia/cele" className="text-series-1 hover:underline">
+                      Dodaj termin
+                    </Link>
+                    , żeby zobaczyć, czy idziesz zgodnie z planem.
+                  </p>
+                )}
+              </>
+            )}
           </div>
-        </StatTile>
+        </>
       )}
+    </Card>
+  );
+}
+
+/* --------------------------------------------------- zdrowie psychiczne */
+
+function Psychika({ data }: { data: Data }) {
+  const { dzis, srednieTygodnia, ostatnieDobre } = data.psychika;
+  const hasToday =
+    dzis.mood !== null || dzis.energy !== null || dzis.stress !== null || dzis.thoughts || dzis.goodThings;
+
+  const scores = [
+    { label: "Samopoczucie", value: dzis.mood, avg: srednieTygodnia.mood, goodHigh: true },
+    { label: "Energia", value: dzis.energy, avg: srednieTygodnia.energy, goodHigh: true },
+    { label: "Stres", value: dzis.stress, avg: srednieTygodnia.stress, goodHigh: false },
+  ];
+
+  return (
+    <Card className="xl:col-span-2">
+      <CardHeader
+        title="Zdrowie psychiczne"
+        subtitle={dzis.sleepH !== null ? `Sen: ${formatNumber(dzis.sleepH, 1)} h` : undefined}
+        icon={Smile}
+        action={
+          <Link href="/zdrowie#psychika" className="text-muted hover:text-ink">
+            Szczegóły
+          </Link>
+        }
+      />
+
+      {!hasToday ? (
+        <EmptyState message="Dziś nie wypełniłeś jeszcze tej części raportu." href="/raport" cta="Wypełnij raport" />
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            {scores.map((score) => (
+              <div key={score.label}>
+                <p className="text-xs text-muted">{score.label}</p>
+                <p className="tabular mt-0.5 text-xl font-semibold text-ink">
+                  {score.value === null ? "—" : score.value}
+                  {score.value === null ? "" : <span className="text-sm font-normal text-muted"> / 5</span>}
+                </p>
+                <p className="text-xs text-muted">
+                  {score.avg === null ? "—" : `śr. ${formatNumber(score.avg, 1)}`}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {dzis.goodThings ? (
+            <div className="mt-3 rounded-lg border border-good/40 bg-good/10 px-3 py-2">
+              <p className="text-xs font-medium tracking-wide text-muted uppercase">Co dobrego</p>
+              <p className="mt-0.5 text-sm text-ink">{dzis.goodThings}</p>
+            </div>
+          ) : null}
+
+          {dzis.thoughts ? (
+            <div className="mt-2 rounded-lg border border-edge px-3 py-2">
+              <p className="text-xs font-medium tracking-wide text-muted uppercase">Myśli</p>
+              <p className="mt-0.5 text-sm text-ink-2">{dzis.thoughts}</p>
+            </div>
+          ) : null}
+        </>
+      )}
+
+      {ostatnieDobre.length > 0 && !dzis.goodThings ? (
+        <div className="mt-3 border-t border-line pt-3">
+          <p className="mb-1 text-xs font-medium tracking-wide text-muted uppercase">Ostatnio dobrego</p>
+          <ul className="flex flex-col gap-1">
+            {ostatnieDobre.map((entry) => (
+              <li key={entry.date} className="text-xs text-ink-2">
+                <span className="text-muted">{entry.date}</span> · {entry.text}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -791,7 +931,7 @@ function Tydzien({
   currency: string;
 }) {
   return (
-    <Card className="md:col-span-2 xl:col-span-6">
+    <Card id="tydzien" className="md:col-span-2 xl:col-span-6">
       <CardHeader
         title="Ten tydzień"
         subtitle="Wszystkie kategorie naraz — plan w przód, realizacja wstecz."

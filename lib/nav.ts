@@ -71,9 +71,9 @@ export const NAV: NavCategory[] = [
     items: [
       { label: "Leki", href: "/zdrowie#leki" },
       { label: "Suplementy", href: "/zdrowie#suplementy" },
-      { label: "Waga", href: "/zdrowie#waga" },
+      { label: "Waga i plan", href: "/zdrowie#waga" },
       { label: "Nawodnienie", href: "/zdrowie#nawodnienie" },
-      { label: "Sen i energia", href: "/zdrowie#sen" },
+      { label: "Zdrowie psychiczne", href: "/zdrowie#psychika" },
     ],
   },
   {

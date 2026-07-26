@@ -56,6 +56,9 @@ export async function submitReport(_prev: ReportState, formData: FormData): Prom
     sleepH: report.sleepH,
     mood: report.mood === null ? null : Math.round(report.mood),
     energy: report.energy === null ? null : Math.round(report.energy),
+    stress: report.stress === null ? null : Math.round(report.stress),
+    thoughts: report.thoughts,
+    goodThings: report.goodThings,
     notes: report.notes,
     updatedAt: new Date(),
   };

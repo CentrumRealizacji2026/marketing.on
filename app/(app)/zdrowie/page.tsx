@@ -1,6 +1,7 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
-import { AlertTriangle, CheckCircle2, Droplets, HeartPulse, Moon, Scale, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Droplets, HeartPulse, Scale, Smile, XCircle } from "lucide-react";
 
 import { Meter, Sparkline } from "@/components/charts/sparkline";
 import { Card, CardHeader, EmptyState, StatTile, StatusPill } from "@/components/ui/card";
@@ -8,7 +9,8 @@ import { toggleDose } from "@/lib/actions/quick";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { dailyLogs, medicationLogs, medications } from "@/lib/db/schema";
-import { addDays, formatDateShortPl, lastNDays, todayInTz } from "@/lib/domain/dates";
+import { addDays, formatDatePl, formatDateShortPl, lastNDays, todayInTz } from "@/lib/domain/dates";
+import { WEIGHT_STATUS_LABEL, describeWeightProgress, weightPlanProgress } from "@/lib/domain/weight";
 import { formatDose, medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
 import { WATER_STATUS_LABEL, averageOfReportedDays, waterStatus } from "@/lib/domain/water";
 import { formatNumber } from "@/lib/utils";
@@ -80,6 +82,22 @@ export default async function HealthPage() {
   const sleepAvg = averageOfReportedDays(days7.map((d) => byDate.get(d)?.sleepH ?? null));
   const energyAvg = averageOfReportedDays(days7.map((d) => byDate.get(d)?.energy ?? null));
   const moodAvg = averageOfReportedDays(days7.map((d) => byDate.get(d)?.mood ?? null));
+  const stressAvg = averageOfReportedDays(days7.map((d) => byDate.get(d)?.stress ?? null));
+
+  const weightPlan = weightPlanProgress({
+    startKg: settings.weightStartKg,
+    startDate: settings.weightStartDate,
+    targetKg: settings.weightTargetKg,
+    targetDate: settings.weightTargetDate,
+    currentKg: currentWeight,
+    currentDate: weightReported.at(-1)?.date ?? today,
+  });
+
+  // Wpisy o myślach i dobrych rzeczach — od najnowszego.
+  const mentalEntries = logs
+    .filter((log) => log.thoughts || log.goodThings)
+    .slice(-10)
+    .reverse();
 
   const maxWater = Math.max(...waterValues.map((v) => v ?? 0), settings.waterGoalMl ?? 0, 1);
 
@@ -195,35 +213,121 @@ export default async function HealthPage() {
           {currentWeight === null ? (
             <EmptyState message="Brak pomiarów wagi." href="/raport" cta="Wypełnij raport" />
           ) : (
-            <StatTile
-              label="Ostatni pomiar"
-              value={formatNumber(currentWeight, 1)}
-              unit="kg"
-              footer={
-                settings.weightTargetKg
-                  ? `Cel: ${formatNumber(settings.weightTargetKg, 1)} kg · różnica ${formatNumber(
-                      Math.abs(currentWeight - settings.weightTargetKg),
-                      1,
-                    )} kg`
-                  : "Nie masz ustawionej wagi docelowej."
-              }
-            >
-              <div className="mt-2">
-                <Sparkline values={weightSeries} height={56} label="Waga" />
-              </div>
-            </StatTile>
+            <>
+              <StatTile
+                label="Ostatni pomiar"
+                value={formatNumber(currentWeight, 1)}
+                unit="kg"
+                footer={
+                  settings.weightTargetKg
+                    ? `Cel: ${formatNumber(settings.weightTargetKg, 1)} kg · do celu ${formatNumber(
+                        Math.abs(currentWeight - settings.weightTargetKg),
+                        1,
+                      )} kg`
+                    : "Nie masz ustawionej wagi docelowej."
+                }
+              >
+                <div className="mt-2">
+                  <Sparkline values={weightSeries} height={56} label="Waga" />
+                </div>
+              </StatTile>
+
+              {weightPlan ? (
+                <div className="mt-3 border-t border-line pt-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-xs text-muted">Plan wagowy</p>
+                    <StatusPill
+                      tone={weightPlan.status === "za" ? "warning" : "good"}
+                      icon={weightPlan.status === "za" ? AlertTriangle : CheckCircle2}
+                    >
+                      {WEIGHT_STATUS_LABEL[weightPlan.status]}
+                    </StatusPill>
+                  </div>
+                  <div className="mt-2">
+                    <Meter
+                      value={Math.min(Math.max(weightPlan.progressPct, 0), 100)}
+                      max={100}
+                      tone={weightPlan.status === "za" ? "var(--warning)" : "var(--good)"}
+                      label="Postęp planu wagowego"
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-ink-2">{describeWeightProgress(weightPlan)}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Z {formatNumber(weightPlan.startKg, 1)} kg do {formatNumber(weightPlan.targetKg, 1)} kg ·{" "}
+                    {weightPlan.daysLeft >= 0 ? `${weightPlan.daysLeft} dni do terminu` : "termin minął"} · tempo{" "}
+                    {formatNumber(weightPlan.actualPacePerWeek ?? 0, 2)} kg/tydz. przy planowanych{" "}
+                    {formatNumber(weightPlan.plannedPacePerWeek, 2)}
+                  </p>
+                </div>
+              ) : settings.weightTargetKg !== null ? (
+                <p className="mt-3 border-t border-line pt-3 text-xs text-muted">
+                  Dodaj termin celu w{" "}
+                  <Link href="/ustawienia/cele" className="text-series-1 hover:underline">
+                    celach i normach
+                  </Link>
+                  , żeby zobaczyć, czy tempo jest zgodne z planem.
+                </p>
+              ) : null}
+            </>
           )}
         </Card>
       </div>
 
-      <Card id="sen">
-        <CardHeader title="Sen i energia" subtitle="Średnie z ostatnich 7 dni" icon={Moon} />
-        <div className="grid grid-cols-3 gap-4">
-          <StatTile label="Sen" value={sleepAvg === null ? "—" : formatNumber(sleepAvg, 1)} unit={sleepAvg === null ? undefined : "h"} />
+      <Card id="psychika">
+        <CardHeader
+          title="Zdrowie psychiczne"
+          subtitle="Samopoczucie, energia i stres z ostatnich 7 dni oraz Twoje wpisy."
+          icon={Smile}
+        />
+
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StatTile label="Samopoczucie" value={moodAvg === null ? "—" : formatNumber(moodAvg, 1)} unit={moodAvg === null ? undefined : "/ 5"} />
           <StatTile label="Energia" value={energyAvg === null ? "—" : formatNumber(energyAvg, 1)} unit={energyAvg === null ? undefined : "/ 5"} />
-          <StatTile label="Nastrój" value={moodAvg === null ? "—" : formatNumber(moodAvg, 1)} unit={moodAvg === null ? undefined : "/ 5"} />
+          <StatTile label="Stres" value={stressAvg === null ? "—" : formatNumber(stressAvg, 1)} unit={stressAvg === null ? undefined : "/ 5"} />
+          <StatTile label="Sen" value={sleepAvg === null ? "—" : formatNumber(sleepAvg, 1)} unit={sleepAvg === null ? undefined : "h"} />
         </div>
+
+        {mentalEntries.length === 0 ? (
+          <div className="mt-4">
+            <EmptyState
+              message="Nie masz jeszcze wpisów o myślach ani o tym, co dobrego się wydarzyło."
+              href="/raport"
+              cta="Wypełnij raport"
+            />
+          </div>
+        ) : (
+          <ul className="mt-4 flex flex-col gap-3">
+            {mentalEntries.map((entry) => (
+              <li key={entry.date} className="rounded-lg border border-edge p-3">
+                <p className="text-xs font-medium tracking-wide text-muted uppercase">{formatDatePl(entry.date)}</p>
+                {entry.goodThings ? (
+                  <p className="mt-1.5 text-sm text-ink">
+                    <span className="text-good">Dobrego:</span> {entry.goodThings}
+                  </p>
+                ) : null}
+                {entry.thoughts ? <p className="mt-1 text-sm text-ink-2">{entry.thoughts}</p> : null}
+                <p className="mt-1.5 text-xs text-muted">
+                  {[
+                    entry.mood !== null ? `samopoczucie ${entry.mood}/5` : null,
+                    entry.energy !== null ? `energia ${entry.energy}/5` : null,
+                    entry.stress !== null ? `stres ${entry.stress}/5` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <p className="mt-4 rounded-lg border border-edge bg-surface-2 px-3 py-2 text-xs text-muted">
+          Kokpit nie zastępuje pomocy specjalisty. Darmowe całodobowe wsparcie:{" "}
+          <span className="text-ink">800 70 2222</span> (Centrum Wsparcia) lub{" "}
+          <span className="text-ink">116 123</span> (kryzysowy telefon zaufania). W sytuacji zagrożenia życia —{" "}
+          <span className="text-ink">112</span>.
+        </p>
       </Card>
+
     </div>
   );
 }

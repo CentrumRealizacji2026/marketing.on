@@ -214,6 +214,29 @@ export async function getDashboardData(userId: string, settings: Settings, today
       energy: byDate.get(today)?.energy ?? null,
     },
 
+    psychika: {
+      dzis: {
+        mood: byDate.get(today)?.mood ?? null,
+        energy: byDate.get(today)?.energy ?? null,
+        stress: byDate.get(today)?.stress ?? null,
+        sleepH: byDate.get(today)?.sleepH ?? null,
+        thoughts: byDate.get(today)?.thoughts ?? null,
+        goodThings: byDate.get(today)?.goodThings ?? null,
+      },
+      srednieTygodnia: {
+        mood: averageOfReportedDays(weekDates.map((d) => byDate.get(d)?.mood ?? null)),
+        energy: averageOfReportedDays(weekDates.map((d) => byDate.get(d)?.energy ?? null)),
+        stress: averageOfReportedDays(weekDates.map((d) => byDate.get(d)?.stress ?? null)),
+        sleepH: averageOfReportedDays(weekDates.map((d) => byDate.get(d)?.sleepH ?? null)),
+      },
+      // Ostatnie dobre rzeczy — po to, żeby dało się do nich wrócić.
+      ostatnieDobre: logs
+        .filter((log) => log.goodThings)
+        .slice(-3)
+        .reverse()
+        .map((log) => ({ date: log.date, text: log.goodThings! })),
+    },
+
     zadania: {
       priorytety: taskRows.filter((task) => task.kind === "priorytet"),
       side: taskRows.filter((task) => task.kind === "side"),

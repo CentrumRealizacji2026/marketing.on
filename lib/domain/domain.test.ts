@@ -16,6 +16,7 @@ import { medicationScheduleForDate, slotSortKey } from "./medication";
 import { beatsRecord, currentRecords } from "./records";
 import { conversionRates, sumSales } from "./sales";
 import { averageOfReportedDays, waterStatus } from "./water";
+import { weightPlanProgress } from "./weight";
 
 describe("daty", () => {
   it("liczy dzień tygodnia w standardzie ISO", () => {
@@ -138,6 +139,63 @@ describe("agenda dnia", () => {
     expect(agenda.find((i) => i.title === "Magnez")?.category).toBe("zdrowie");
     expect(agenda.find((i) => i.title === "bieg")?.category).toBe("trening");
     expect(agenda.every((item) => item.done)).toBe(true);
+  });
+});
+
+describe("plan wagowy", () => {
+  // Chudnięcie: 90 → 84 kg w 100 dni, czyli 3 kg po 50 dniach.
+  const plan = {
+    startKg: 90,
+    startDate: "2026-01-01",
+    targetKg: 84,
+    targetDate: "2026-04-11",
+  };
+
+  it("wylicza wagę oczekiwaną na dany dzień", () => {
+    const progress = weightPlanProgress({ ...plan, currentKg: 87, currentDate: "2026-02-20" });
+    expect(progress?.expectedKg).toBeCloseTo(87, 1);
+    expect(progress?.status).toBe("zgodnie");
+  });
+
+  it("rozpoznaje wyprzedzenie i opóźnienie względem planu", () => {
+    const przed = weightPlanProgress({ ...plan, currentKg: 85.5, currentDate: "2026-02-20" });
+    expect(przed?.status).toBe("przed");
+    expect(przed?.aheadKg).toBeGreaterThan(0);
+
+    const za = weightPlanProgress({ ...plan, currentKg: 88.5, currentDate: "2026-02-20" });
+    expect(za?.status).toBe("za");
+    expect(za?.aheadKg).toBeLessThan(0);
+  });
+
+  it("odwraca kierunek przy budowaniu masy", () => {
+    const masa = { startKg: 70, startDate: "2026-01-01", targetKg: 76, targetDate: "2026-04-11" };
+    // Powyżej linii planu przy tyciu to wyprzedzenie, nie opóźnienie.
+    const progress = weightPlanProgress({ ...masa, currentKg: 74.5, currentDate: "2026-02-20" });
+    expect(progress?.status).toBe("przed");
+  });
+
+  it("liczy tempo planowane i rzeczywiste w kg na tydzień", () => {
+    const progress = weightPlanProgress({ ...plan, currentKg: 87, currentDate: "2026-02-20" });
+    expect(progress?.plannedPacePerWeek).toBeCloseTo(-0.42, 1);
+    expect(progress?.actualPacePerWeek).toBeCloseTo(-0.42, 1);
+  });
+
+  it("nie ocenia planu bez kompletu danych ani bez zmiany wagi", () => {
+    expect(weightPlanProgress({ ...plan, targetDate: null, currentKg: 87, currentDate: "2026-02-20" })).toBeNull();
+    expect(weightPlanProgress({ ...plan, currentKg: null, currentDate: "2026-02-20" })).toBeNull();
+    expect(
+      weightPlanProgress({ ...plan, targetKg: 90, currentKg: 90, currentDate: "2026-02-20" }),
+    ).toBeNull();
+    // Termin przed startem to nie jest plan.
+    expect(
+      weightPlanProgress({ ...plan, targetDate: "2025-12-01", currentKg: 87, currentDate: "2026-02-20" }),
+    ).toBeNull();
+  });
+
+  it("po terminie porównuje z docelową wagą, nie ekstrapoluje dalej", () => {
+    const progress = weightPlanProgress({ ...plan, currentKg: 84, currentDate: "2026-06-01" });
+    expect(progress?.expectedKg).toBeCloseTo(84, 1);
+    expect(progress?.daysLeft).toBeLessThan(0);
   });
 });
 

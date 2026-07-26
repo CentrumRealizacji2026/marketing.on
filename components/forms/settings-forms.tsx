@@ -159,6 +159,9 @@ export function GoalsForm({
     waterGoodPct: number;
     waterOkPct: number;
     weightTargetKg: number | null;
+    weightTargetDate: string | null;
+    weightStartKg: number | null;
+    weightStartDate: string | null;
     goalCallsPerDay: number | null;
     goalMeetingsScheduledPerDay: number | null;
     goalMeetingsHeldPerDay: number | null;
@@ -202,6 +205,9 @@ export function GoalsForm({
           <input type="hidden" name="waterGoodPct" value={String(initial.waterGoodPct)} />
           <input type="hidden" name="waterOkPct" value={String(initial.waterOkPct)} />
           <input type="hidden" name="weightTargetKg" value={value(initial.weightTargetKg)} />
+          <input type="hidden" name="weightTargetDate" value={initial.weightTargetDate ?? ""} />
+          <input type="hidden" name="weightStartKg" value={value(initial.weightStartKg)} />
+          <input type="hidden" name="weightStartDate" value={initial.weightStartDate ?? ""} />
         </>
       ) : null}
 
@@ -263,14 +269,6 @@ export function GoalsForm({
             <Field label="Próg „w normie” (% celu)" htmlFor="waterOkPct" hint="Poniżej tego progu: „źle”.">
               <NumberInput id="waterOkPct" name="waterOkPct" step="5" defaultValue={String(initial.waterOkPct)} />
             </Field>
-            <Field label="Waga docelowa (kg)" htmlFor="weightTargetKg">
-              <NumberInput
-                id="weightTargetKg"
-                name="weightTargetKg"
-                step="0.1"
-                defaultValue={value(initial.weightTargetKg)}
-              />
-            </Field>
             {showCurrentWeight ? (
               <Field
                 label="Aktualna waga (kg)"
@@ -280,6 +278,54 @@ export function GoalsForm({
                 <NumberInput id="currentWeightKg" name="currentWeightKg" step="0.1" />
               </Field>
             ) : null}
+          </div>
+        </fieldset>
+      ) : null}
+
+      {showHealth ? (
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">Plan wagowy</legend>
+          <p className="-mt-1 mb-1 text-xs text-muted">
+            Cel z terminem pozwala ocenić, czy zmiana idzie zgodnie z planem. Bez terminu widać tylko
+            samą różnicę do celu.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Waga docelowa (kg)" htmlFor="weightTargetKg">
+              <NumberInput
+                id="weightTargetKg"
+                name="weightTargetKg"
+                step="0.1"
+                defaultValue={value(initial.weightTargetKg)}
+              />
+            </Field>
+            <Field label="Termin celu" htmlFor="weightTargetDate" hint="Do kiedy chcesz osiągnąć tę wagę.">
+              <Input
+                id="weightTargetDate"
+                name="weightTargetDate"
+                type="date"
+                defaultValue={initial.weightTargetDate ?? ""}
+              />
+            </Field>
+            <Field
+              label="Waga startowa (kg)"
+              htmlFor="weightStartKg"
+              hint="Punkt odniesienia planu. Puste = waga wpisana teraz."
+            >
+              <NumberInput
+                id="weightStartKg"
+                name="weightStartKg"
+                step="0.1"
+                defaultValue={value(initial.weightStartKg)}
+              />
+            </Field>
+            <Field label="Data startu planu" htmlFor="weightStartDate" hint="Puste = dzisiaj.">
+              <Input
+                id="weightStartDate"
+                name="weightStartDate"
+                type="date"
+                defaultValue={initial.weightStartDate ?? ""}
+              />
+            </Field>
           </div>
         </fieldset>
       ) : null}

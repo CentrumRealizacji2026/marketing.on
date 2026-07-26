@@ -16,6 +16,7 @@ import {
   startOfWeek,
   todayInTz,
 } from "@/lib/domain/dates";
+import { DOSE_DONE_THRESHOLD } from "@/lib/domain/medication";
 import { CATEGORY_KEYS, getCalendarRange, hasActivity, type CategoryKey } from "@/lib/queries/calendar";
 import { cn, formatMoney, formatNumber } from "@/lib/utils";
 
@@ -175,9 +176,22 @@ function DayDetail({
   const filled: Array<{ key: CategoryKey; content: React.ReactNode }> = [];
 
   if (day.finanse.cashBalancePln !== null) {
+    const change = day.finanse.changePln;
     filled.push({
       key: "finanse",
-      content: <p className="text-sm text-ink">{formatMoney(day.finanse.cashBalancePln, currency)}</p>,
+      content: (
+        <div className="text-sm">
+          <p className="text-ink">{formatMoney(day.finanse.cashBalancePln, currency)}</p>
+          {change !== null ? (
+            <p className={cn("mt-0.5 text-xs", change > 0 ? "text-[var(--delta-up)]" : change < 0 ? "text-critical" : "text-muted")}>
+              {change > 0 ? "Zarobione" : change < 0 ? "Wydane" : "Bez zmiany"}{" "}
+              {change !== 0 ? formatMoney(Math.abs(change), currency) : ""} od poprzedniego wpisu
+            </p>
+          ) : (
+            <p className="mt-0.5 text-xs text-muted">Pierwszy wpis — brak porównania</p>
+          )}
+        </div>
+      ),
     });
   }
 
@@ -201,16 +215,26 @@ function DayDetail({
     });
   }
 
-  if (day.zdrowie.dosesPlanned > 0 || day.zdrowie.waterMl !== null || day.zdrowie.weightKg !== null) {
+  if (
+    day.zdrowie.dosesPlanned > 0 ||
+    day.zdrowie.waterMl !== null ||
+    day.zdrowie.weightKg !== null ||
+    day.zdrowie.mood !== null ||
+    day.zdrowie.goodThings ||
+    day.zdrowie.thoughts
+  ) {
+    const dosesDone =
+      day.zdrowie.dosesPlanned > 0 && day.zdrowie.dosesTaken / day.zdrowie.dosesPlanned >= DOSE_DONE_THRESHOLD;
+
     filled.push({
       key: "zdrowie",
       content: (
         <ul className="flex flex-col gap-0.5 text-sm text-ink-2">
           {day.zdrowie.dosesPlanned > 0 ? (
-            <li>
+            <li className={dosesDone ? "text-[var(--delta-up)]" : undefined}>
               {isFuture
                 ? `Zaplanowane dawki: ${day.zdrowie.dosesPlanned}`
-                : `Dawki: ${day.zdrowie.dosesTaken} z ${day.zdrowie.dosesPlanned}`}
+                : `${dosesDone ? "✓ " : ""}Dawki: ${day.zdrowie.dosesTaken} z ${day.zdrowie.dosesPlanned}`}
             </li>
           ) : null}
           {day.zdrowie.waterMl !== null ? (
@@ -236,6 +260,22 @@ function DayDetail({
             </li>
           ) : null}
           {day.zdrowie.weightKg !== null ? <li>Waga: {formatNumber(day.zdrowie.weightKg, 1)} kg</li> : null}
+          {day.zdrowie.mood !== null || day.zdrowie.stress !== null ? (
+            <li>
+              {[
+                day.zdrowie.mood !== null ? `samopoczucie ${day.zdrowie.mood}/5` : null,
+                day.zdrowie.stress !== null ? `stres ${day.zdrowie.stress}/5` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </li>
+          ) : null}
+          {day.zdrowie.goodThings ? (
+            <li className="text-ink">
+              <span className="text-good">Dobrego:</span> {day.zdrowie.goodThings}
+            </li>
+          ) : null}
+          {day.zdrowie.thoughts ? <li className="text-muted">{day.zdrowie.thoughts}</li> : null}
         </ul>
       ),
     });

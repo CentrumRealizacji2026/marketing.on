@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CATEGORY_KEYS, type CalendarDay, type CategoryKey } from "@/lib/queries/calendar";
 import { CATEGORY_COLOR } from "@/lib/domain/agenda";
 import { WEEKDAYS } from "@/lib/domain/dates";
+import { DOSE_DONE_THRESHOLD } from "@/lib/domain/medication";
 import { cn, formatMoney, formatNumber } from "@/lib/utils";
 
 type Tone = "good" | "warning" | "critical";
@@ -17,19 +18,43 @@ const EMPTY: Cell = { parts: [{ text: "—" }], muted: true };
  */
 function cellFor(category: CategoryKey, day: CalendarDay, currency: string): Cell {
   switch (category) {
-    case "finanse":
-      return day.finanse.cashBalancePln === null
-        ? EMPTY
-        : { parts: [{ text: formatMoney(day.finanse.cashBalancePln, currency) }], title: "Stan środków" };
+    case "finanse": {
+      const { cashBalancePln, changePln } = day.finanse;
+      if (cashBalancePln === null) return EMPTY;
+
+      // Interesuje nas przede wszystkim, czy tego dnia wyszło na plus, czy na minus.
+      if (changePln === null) {
+        return {
+          parts: [{ text: formatMoney(cashBalancePln, currency) }],
+          title: "Stan środków — pierwszy wpis, brak porównania",
+        };
+      }
+      const sign = changePln > 0 ? "+" : changePln < 0 ? "−" : "";
+      return {
+        parts: [
+          {
+            text: `${sign}${formatMoney(Math.abs(changePln), currency)}`,
+            tone: changePln > 0 ? "good" : changePln < 0 ? "critical" : undefined,
+          },
+        ],
+        title: `Stan środków: ${formatMoney(cashBalancePln, currency)}`,
+      };
+    }
 
     case "sprzedaz": {
-      const { calls, meetingsHeld, contracts, valuePln } = day.sprzedaz;
-      if (calls + meetingsHeld + contracts === 0) return EMPTY;
+      const { calls, meetingsScheduled, meetingsHeld, contracts, valuePln } = day.sprzedaz;
+      if (calls + meetingsScheduled + meetingsHeld + contracts === 0) return EMPTY;
+
       const parts: CellPart[] = [
         { text: [`${calls} rozm.`, meetingsHeld > 0 ? `${meetingsHeld} spot.` : null].filter(Boolean).join(" · ") },
       ];
-      if (contracts > 0) parts.push({ text: `${contracts} umowy`, tone: "good" });
-      return { parts, title: contracts > 0 ? `Umowy na ${formatMoney(valuePln, currency)}` : undefined };
+      if (contracts > 0) parts.push({ text: formatMoney(valuePln, currency), tone: "good" });
+      return {
+        parts,
+        title: `${calls} rozmów · ${meetingsScheduled} umówionych · ${meetingsHeld} odbytych${
+          contracts > 0 ? ` · ${contracts} umów` : ""
+        }`,
+      };
     }
 
     case "zdrowie": {
@@ -38,9 +63,11 @@ function cellFor(category: CategoryKey, day: CalendarDay, currency: string): Cel
 
       const parts: CellPart[] = [];
       if (dosesPlanned > 0) {
+        // Plan uznajemy za zrobiony od 80 % przyjętych dawek — codzienna dyscyplina, nie perfekcja.
+        const done = dosesTaken / dosesPlanned >= DOSE_DONE_THRESHOLD;
         parts.push({
-          text: `${dosesTaken}/${dosesPlanned} dawek`,
-          tone: dosesTaken === dosesPlanned ? "good" : undefined,
+          text: `${done ? "✓ " : ""}${dosesTaken}/${dosesPlanned} dawek`,
+          tone: done ? "good" : undefined,
         });
       }
       if (waterMl !== null) {
@@ -179,6 +206,7 @@ export function CategoryWeek({
 export function WeekTotals({ days, currency }: { days: CalendarDay[]; currency: string }) {
   const totals = days.reduce(
     (acc, day) => ({
+      cashChange: acc.cashChange + (day.finanse.changePln ?? 0),
       calls: acc.calls + day.sprzedaz.calls,
       meetings: acc.meetings + day.sprzedaz.meetingsHeld,
       contractsValue: acc.contractsValue + day.sprzedaz.valuePln,
@@ -190,6 +218,7 @@ export function WeekTotals({ days, currency }: { days: CalendarDay[]; currency: 
       learningTotal: acc.learningTotal + day.nauka.length,
     }),
     {
+      cashChange: 0,
       calls: 0,
       meetings: 0,
       contractsValue: 0,
@@ -202,7 +231,15 @@ export function WeekTotals({ days, currency }: { days: CalendarDay[]; currency: 
     },
   );
 
-  const items = [
+  const items: Array<{ label: string; value: string; tone?: Tone }> = [
+    {
+      label: "Zmiana środków",
+      value: `${totals.cashChange > 0 ? "+" : totals.cashChange < 0 ? "−" : ""}${formatMoney(
+        Math.abs(totals.cashChange),
+        currency,
+      )}`,
+      tone: totals.cashChange > 0 ? "good" : totals.cashChange < 0 ? "critical" : undefined,
+    },
     { label: "Rozmowy", value: formatNumber(totals.calls) },
     { label: "Spotkania odbyte", value: formatNumber(totals.meetings) },
     { label: "Wartość umów", value: formatMoney(totals.contractsValue, currency) },
@@ -212,11 +249,13 @@ export function WeekTotals({ days, currency }: { days: CalendarDay[]; currency: 
   ];
 
   return (
-    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-line pt-3 sm:grid-cols-3 lg:grid-cols-6">
+    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-line pt-3 sm:grid-cols-4 lg:grid-cols-7">
       {items.map((item) => (
         <div key={item.label}>
           <dt className="text-xs text-muted">{item.label}</dt>
-          <dd className="tabular mt-0.5 text-sm font-medium text-ink">{item.value}</dd>
+          <dd className={cn("tabular mt-0.5 text-sm font-medium", item.tone ? TONE_CLASS[item.tone] : "text-ink")}>
+            {item.value}
+          </dd>
         </div>
       ))}
     </dl>

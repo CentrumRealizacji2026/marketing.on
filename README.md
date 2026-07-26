@@ -16,7 +16,7 @@ je później w panelu zarządzania.
 | **Kalendarz `/kalendarz`** | Siatka miesiąca z kropkami kategorii przy każdym dniu, tydzień wybranego dnia w układzie kategorie × dni i szczegóły dnia z podziałem na kategorie. Dni w przód pokazują plan, dni wstecz — plan i realizację |
 | **Kreator `/start`** | 11 kroków konfiguracji. Leki, trening, rekordy, nauka i projekty to listy dynamiczne — „+ dodaj” dokłada wiersz, a nazwy dyscyplin i dziedzin wpisujesz własnymi słowami |
 | **Panel `/ustawienia`** | Te same formularze bezterminowo. Wyłączenie pozycji zachowuje historię zamiast ją kasować |
-| **Raport `/raport`** | Jeden formularz na cały dzień: finanse, sprzedaż i umowy, leki, waga i woda, zadania, trening z możliwością zgłoszenia rekordu, nauka, samopoczucie |
+| **Raport `/raport`** | Jeden formularz na cały dzień: finanse, sprzedaż i umowy, leki, waga i woda, zadania, trening z możliwością zgłoszenia rekordu, nauka oraz zdrowie psychiczne (samopoczucie, energia, stres, myśli, co dobrego się wydarzyło) |
 | **Kategorie** | `/finanse`, `/sprzedaz`, `/zdrowie`, `/zadania`, `/trening`, `/nauka`, `/projekty` — szczegóły i historia |
 | **Mentor `/mentor`** | Trzy tryby (mentor / trener / kierownik projektów). Analizuje agregaty z 7 i 30 dni i zwraca rekomendacje „obserwacja → działanie” ze statusami |
 | **PWA** | Instalowalna na telefonie, ze skrótami do raportu, zadań i mentora |
@@ -91,8 +91,24 @@ dnia i siatka miesiąca to czyste funkcje w `lib/domain/`, przetestowane w `lib/
 4. Uruchom migracje względem bazy produkcyjnej: `DATABASE_URL="..." npm run db:migrate`.
 5. `vercel.json` konfiguruje crona mentora na 05:00 UTC (07:00 w Warszawie).
 
+## Plan wagowy
+
+Sama waga docelowa mówi tylko, ile brakuje. Żeby aplikacja odpowiadała na pytanie „czy idę zgodnie
+z planem", potrzebuje czterech wartości: wagi startowej, daty startu, wagi docelowej i terminu.
+Ustawia się je w **Cele i normy**. Aplikacja prowadzi wtedy prostą linię od startu do celu, wylicza,
+ile waga powinna wynosić dzisiaj, i porównuje to z ostatnim pomiarem — z tolerancją 0,5 kg.
+Kierunek liczy się poprawnie w obie strony: przy chudnięciu lepiej być poniżej linii, przy budowaniu
+masy powyżej. Kafelek pokazuje też tempo rzeczywiste obok planowanego, w kg na tydzień.
+
 ## Uwaga
 
 Mentor nie udziela porad medycznych. Może zauważyć, że realizacja przyjmowania leków spadła, ale
 nigdy nie zaproponuje zmiany dawki ani nowego preparatu — dawki wpisujesz sam, a decyzje zdrowotne
 zostają między Tobą a lekarzem.
+
+To samo dotyczy zdrowia psychicznego: mentor dostaje wpisy o samopoczuciu, myślach i dobrych
+rzeczach, może zauważyć zależności (na przykład między snem, stresem a realizacją planu) i
+przypomnieć zapisane wygrane, ale nie stawia diagnoz. Jeśli wpisy wskazują na poważny kryzys,
+zamiast „działania na tydzień" kieruje do specjalisty i podaje kontakt. W samym raporcie i na
+stronie zdrowia widnieją numery: 800 70 2222 (całodobowe Centrum Wsparcia), 116 123 (kryzysowy
+telefon zaufania), 112 przy zagrożeniu życia.

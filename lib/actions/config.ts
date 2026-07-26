@@ -435,23 +435,37 @@ export async function saveGoals(_prev: FormState, formData: FormData): Promise<F
   const parsed = goalsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
-  if (parsed.data.currentWeightKg !== null && parsed.data.currentWeightKg !== undefined) {
-    const userSettings = await getUserSettings(user.id);
-    const today = todayInTz(userSettings.timezone);
+  const userSettings = await getUserSettings(user.id);
+  const today = todayInTz(userSettings.timezone);
+  const currentWeight = parsed.data.currentWeightKg ?? null;
+
+  if (currentWeight !== null) {
     await db
       .insert(dailyLogs)
-      .values({ userId: user.id, date: today, weightKg: parsed.data.currentWeightKg })
+      .values({ userId: user.id, date: today, weightKg: currentWeight })
       .onConflictDoUpdate({
         target: [dailyLogs.userId, dailyLogs.date],
-        set: { weightKg: parsed.data.currentWeightKg, updatedAt: new Date() },
+        set: { weightKg: currentWeight, updatedAt: new Date() },
       });
   }
+
+  /*
+   * Plan wagowy potrzebuje punktu startowego. Jeśli użytkownik go nie podał,
+   * bierzemy wagę wpisaną teraz (kreator) albo tę już zapisaną w ustawieniach,
+   * a jako datę startu — dzisiaj. Nie nadpisujemy istniejącego punktu startowego.
+   */
+  const startKg = parsed.data.weightStartKg ?? currentWeight ?? userSettings.weightStartKg ?? null;
+  const startDate =
+    parsed.data.weightStartDate ?? userSettings.weightStartDate ?? (startKg !== null ? today : null);
 
   const values = {
     waterGoalMl: parsed.data.waterGoalMl === null ? null : Math.round(parsed.data.waterGoalMl),
     waterGoodPct: parsed.data.waterGoodPct,
     waterOkPct: parsed.data.waterOkPct,
     weightTargetKg: parsed.data.weightTargetKg,
+    weightTargetDate: parsed.data.weightTargetDate,
+    weightStartKg: startKg,
+    weightStartDate: startDate,
     goalCallsPerDay: parsed.data.goalCallsPerDay === null ? null : Math.round(parsed.data.goalCallsPerDay),
     goalMeetingsScheduledPerDay:
       parsed.data.goalMeetingsScheduledPerDay === null ? null : Math.round(parsed.data.goalMeetingsScheduledPerDay),

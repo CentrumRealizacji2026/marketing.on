@@ -1,6 +1,12 @@
 import type { MedicationKind } from "@/lib/db/schema";
 import { isoWeekday, isWithin } from "./dates";
 
+/**
+ * Od jakiego udziału przyjętych dawek uznajemy dzień za zrobiony.
+ * Codzienna dyscyplina, nie perfekcja — jedna pominięta dawka na pięć nie psuje dnia.
+ */
+export const DOSE_DONE_THRESHOLD = 0.8;
+
 /** Podpowiedzi w formularzu — użytkownik może wpisać własną porę lub godzinę "07:30". */
 export const SLOT_SUGGESTIONS = ["rano", "południe", "popołudnie", "wieczór", "noc"] as const;
 

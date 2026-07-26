@@ -25,6 +25,7 @@ import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medi
 import { currentRecords } from "@/lib/domain/records";
 import { conversionRates, sumSales } from "@/lib/domain/sales";
 import { averageOfReportedDays, waterStatus } from "@/lib/domain/water";
+import { weightPlanProgress } from "@/lib/domain/weight";
 
 function round(value: number | null, digits = 1): number | null {
   if (value === null || Number.isNaN(value)) return null;
@@ -138,6 +139,15 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
 
   const doneBlocks = (from: string) => learningLogRows.filter((log) => log.date >= from && log.done).length;
 
+  const weightPlan = weightPlanProgress({
+    startKg: settings.weightStartKg,
+    startDate: settings.weightStartDate,
+    targetKg: settings.weightTargetKg,
+    targetDate: settings.weightTargetDate,
+    currentKg: weightReported.at(-1)?.weightKg ?? null,
+    currentDate: weightReported.at(-1)?.date ?? today,
+  });
+
   const minutesBySkill = new Map<string, number>();
   for (const log of learningLogRows) {
     if (!log.done) continue;
@@ -179,12 +189,42 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
       wodaOcenaTygodnia: waterStatus(water7, settings.waterGoalMl, settings.waterGoodPct, settings.waterOkPct),
       wagaObecnaKg: weightReported.at(-1)?.weightKg ?? null,
       wagaMiesiacTemuKg: weightReported[0]?.weightKg ?? null,
-      senSredniaGodzTydzien: round(averageOfReportedDays(days7.map((d) => byDate.get(d)?.sleepH ?? null)), 1),
-      energiaSredniaTydzien: round(averageOfReportedDays(days7.map((d) => byDate.get(d)?.energy ?? null)), 1),
-      nastrojSredniaTydzien: round(averageOfReportedDays(days7.map((d) => byDate.get(d)?.mood ?? null)), 1),
       dawkiZaplanowaneTydzien: dosesPlanned,
       dawkiPrzyjeteTydzien: dosesTaken,
       realizacjaLekowProcTydzien: ratio(dosesTaken, dosesPlanned),
+    },
+
+    planWagowy: weightPlan
+      ? {
+          startKg: weightPlan.startKg,
+          celKg: weightPlan.targetKg,
+          obecnaKg: weightPlan.currentKg,
+          oczekiwanaDzisKg: round(weightPlan.expectedKg, 1),
+          ocena: weightPlan.status,
+          odchylenieKg: round(weightPlan.aheadKg, 1),
+          tempoPlanowaneKgTydzien: round(weightPlan.plannedPacePerWeek, 2),
+          tempoRzeczywisteKgTydzien: round(weightPlan.actualPacePerWeek, 2),
+          dniDoTerminu: weightPlan.daysLeft,
+        }
+      : null,
+
+    zdrowiePsychiczne: {
+      samopoczucieSredniaTydzien: round(averageOfReportedDays(days7.map((d) => byDate.get(d)?.mood ?? null)), 1),
+      energiaSredniaTydzien: round(averageOfReportedDays(days7.map((d) => byDate.get(d)?.energy ?? null)), 1),
+      stresSredniaTydzien: round(averageOfReportedDays(days7.map((d) => byDate.get(d)?.stress ?? null)), 1),
+      senSredniaGodzTydzien: round(averageOfReportedDays(days7.map((d) => byDate.get(d)?.sleepH ?? null)), 1),
+      samopoczucieSredniaMiesiac: round(averageOfReportedDays(days30.map((d) => byDate.get(d)?.mood ?? null)), 1),
+      stresSredniaMiesiac: round(averageOfReportedDays(days30.map((d) => byDate.get(d)?.stress ?? null)), 1),
+      // Wpisy własne użytkownika z ostatniego tygodnia — surowe, bo to one niosą treść.
+      wpisyTygodnia: logs
+        .filter((log) => log.date >= start7 && (log.thoughts || log.goodThings))
+        .map((log) => ({
+          data: log.date,
+          samopoczucie: log.mood,
+          stres: log.stress,
+          mysli: log.thoughts,
+          coDobrego: log.goodThings,
+        })),
     },
 
     zadania: {

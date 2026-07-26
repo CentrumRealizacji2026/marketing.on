@@ -82,7 +82,11 @@ export const settings = pgTable("settings", {
   waterGoodPct: integer("water_good_pct").notNull().default(100),
   waterOkPct: integer("water_ok_pct").notNull().default(80),
 
+  // Plan wagowy: punkt startowy i cel z terminem pozwalają ocenić, czy tempo jest zgodne z planem.
   weightTargetKg: numeric("weight_target_kg", { precision: 5, scale: 2, mode: "number" }),
+  weightTargetDate: date("weight_target_date", { mode: "string" }),
+  weightStartKg: numeric("weight_start_kg", { precision: 5, scale: 2, mode: "number" }),
+  weightStartDate: date("weight_start_date", { mode: "string" }),
 
   // Cele sprzedażowe.
   goalCallsPerDay: integer("goal_calls_per_day"),
@@ -110,6 +114,12 @@ export const dailyLogs = pgTable(
     sleepH: numeric("sleep_h", { precision: 3, scale: 1, mode: "number" }),
     mood: integer("mood"),
     energy: integer("energy"),
+    /** Poziom stresu 1–5, gdzie 5 to najwyższy. */
+    stress: integer("stress"),
+    /** Co chodzi po głowie — swobodny wpis, wyłącznie dla użytkownika i mentora. */
+    thoughts: text("thoughts"),
+    /** Co dobrego się dziś wydarzyło. */
+    goodThings: text("good_things"),
     notes: text("notes"),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

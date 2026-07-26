@@ -8,6 +8,13 @@
       "when": 1785090410739,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785097012830,
+      "tag": "0001_plan_wagowy_i_zdrowie_psychiczne",
+      "breakpoints": true
     }
   ]
 }

@@ -164,6 +164,10 @@ export const financeStartSchema = z.object({
 export const goalsSchema = z.object({
   /** Wpisana w kreatorze waga trafia do dziennika jako dzisiejszy pomiar. */
   currentWeightKg: optionalNumber.optional(),
+  /** Plan wagowy: skąd, dokąd i do kiedy. */
+  weightStartKg: optionalNumber,
+  weightStartDate: optionalDate,
+  weightTargetDate: optionalDate,
   waterGoalMl: optionalNumber,
   waterGoodPct: z.coerce.number().int().min(1).max(200).default(100),
   waterOkPct: z.coerce.number().int().min(1).max(200).default(80),

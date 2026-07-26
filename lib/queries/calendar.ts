@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, asc, eq, gte, lte } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import {
@@ -19,7 +19,7 @@ import {
   trainingPlans,
   type Settings,
 } from "@/lib/db/schema";
-import { isoWeekday } from "@/lib/domain/dates";
+import { addDays, isoWeekday } from "@/lib/domain/dates";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
 import { waterStatus, type WaterStatus } from "@/lib/domain/water";
@@ -29,7 +29,11 @@ export type CalendarEntry = { label: string; detail?: string | null; done?: bool
 export type CalendarDay = {
   date: string;
   weekday: number;
-  finanse: { cashBalancePln: number | null };
+  finanse: {
+    cashBalancePln: number | null;
+    /** Zmiana względem poprzedniego wpisu — czy tego dnia wyszło na plus, czy na minus. */
+    changePln: number | null;
+  };
   sprzedaz: { calls: number; meetingsScheduled: number; meetingsHeld: number; contracts: number; valuePln: number };
   zdrowie: {
     dosesPlanned: number;
@@ -37,6 +41,10 @@ export type CalendarDay = {
     waterMl: number | null;
     waterStatus: WaterStatus | null;
     weightKg: number | null;
+    mood: number | null;
+    stress: number | null;
+    thoughts: string | null;
+    goodThings: string | null;
   };
   zadania: { total: number; done: number; entries: CalendarEntry[] };
   trening: CalendarEntry[];
@@ -52,7 +60,12 @@ export function hasActivity(day: CalendarDay, category: keyof typeof CATEGORY_KE
     case "sprzedaz":
       return day.sprzedaz.calls + day.sprzedaz.meetingsHeld + day.sprzedaz.contracts > 0;
     case "zdrowie":
-      return day.zdrowie.dosesPlanned > 0 || day.zdrowie.waterMl !== null || day.zdrowie.weightKg !== null;
+      return (
+        day.zdrowie.dosesPlanned > 0 ||
+        day.zdrowie.waterMl !== null ||
+        day.zdrowie.weightKg !== null ||
+        day.zdrowie.mood !== null
+      );
     case "zadania":
       return day.zadania.total > 0;
     case "trening":
@@ -89,6 +102,8 @@ export async function getCalendarRange(
   if (dates.length === 0) return [];
   const from = dates[0];
   const to = dates[dates.length - 1];
+  // Sięgamy wstecz poza zakres, żeby pierwszy dzień też miał z czym porównać stan środków.
+  const cashFrom = addDays(from, -60);
 
   const [
     logs,
@@ -108,7 +123,8 @@ export async function getCalendarRange(
     db
       .select()
       .from(dailyLogs)
-      .where(and(eq(dailyLogs.userId, userId), gte(dailyLogs.date, from), lte(dailyLogs.date, to))),
+      .where(and(eq(dailyLogs.userId, userId), gte(dailyLogs.date, cashFrom), lte(dailyLogs.date, to)))
+      .orderBy(asc(dailyLogs.date)),
     db
       .select()
       .from(salesDaily)
@@ -143,6 +159,14 @@ export async function getCalendarRange(
 
   const logByDate = new Map(logs.map((row) => [row.date, row]));
   const salesByDate = new Map(salesRows.map((row) => [row.date, row]));
+
+  // Zmiana stanu środków liczona względem poprzedniego wpisu, nie poprzedniego dnia —
+  // dzień bez raportu nie generuje fałszywego zera.
+  const cashEntries = logs.filter((row) => row.cashBalancePln !== null);
+  const cashChangeByDate = new Map<string, number>();
+  for (let i = 1; i < cashEntries.length; i += 1) {
+    cashChangeByDate.set(cashEntries[i].date, cashEntries[i].cashBalancePln! - cashEntries[i - 1].cashBalancePln!);
+  }
 
   return dates.map((date) => {
     const weekday = isoWeekday(date);
@@ -199,7 +223,10 @@ export async function getCalendarRange(
     return {
       date,
       weekday,
-      finanse: { cashBalancePln: log?.cashBalancePln ?? null },
+      finanse: {
+        cashBalancePln: log?.cashBalancePln ?? null,
+        changePln: cashChangeByDate.get(date) ?? null,
+      },
       sprzedaz: {
         calls: sales?.calls ?? 0,
         meetingsScheduled: sales?.meetingsScheduled ?? 0,
@@ -213,6 +240,10 @@ export async function getCalendarRange(
         waterMl: log?.waterMl ?? null,
         waterStatus: waterStatus(log?.waterMl ?? null, settings.waterGoalMl, settings.waterGoodPct, settings.waterOkPct),
         weightKg: log?.weightKg ?? null,
+        mood: log?.mood ?? null,
+        stress: log?.stress ?? null,
+        thoughts: log?.thoughts ?? null,
+        goodThings: log?.goodThings ?? null,
       },
       zadania: {
         total: dayTasks.length,

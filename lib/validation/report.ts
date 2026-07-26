@@ -52,8 +52,14 @@ export const reportSchema = z.object({
   weightKg: nullableNumber,
   waterMl: nullableNumber,
   sleepH: nullableNumber,
+
+  // Zdrowie psychiczne
   energy: nullableNumber,
   mood: nullableNumber,
+  stress: nullableNumber,
+  thoughts: nullableText,
+  goodThings: nullableText,
+
   notes: nullableText,
 
   priorities: z.array(z.object({ title: z.string().trim(), done: z.boolean() })),

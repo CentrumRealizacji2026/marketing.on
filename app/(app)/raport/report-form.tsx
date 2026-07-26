@@ -76,6 +76,9 @@ export function ReportForm({
   const [sleep, setSleep] = useState(numberValue(data.daily?.sleepH));
   const [energy, setEnergy] = useState(numberValue(data.daily?.energy));
   const [mood, setMood] = useState(numberValue(data.daily?.mood));
+  const [stress, setStress] = useState(numberValue(data.daily?.stress));
+  const [thoughts, setThoughts] = useState(data.daily?.thoughts ?? "");
+  const [goodThings, setGoodThings] = useState(data.daily?.goodThings ?? "");
   const [notes, setNotes] = useState(data.daily?.notes ?? "");
 
   const [priorities, setPriorities] = useState<TaskRow[]>(() => {
@@ -126,6 +129,9 @@ export function ReportForm({
     sleepH: sleep,
     energy,
     mood,
+    stress,
+    thoughts,
+    goodThings,
     notes,
     priorities,
     side,
@@ -593,23 +599,54 @@ export function ReportForm({
         )}
       </Card>
 
-      {/* ---------------------------------------------------- samopoczucie */}
+      {/* ----------------------------------------------- zdrowie psychiczne */}
       <Card>
-        <CardHeader title="Samopoczucie" subtitle="Mentor wykorzystuje to do szukania zależności." />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <CardHeader
+          title="Zdrowie psychiczne"
+          subtitle="Samopoczucie, myśli i to, co dobrego się wydarzyło. Wszystko jest opcjonalne."
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           <Field label="Sen (godziny)" htmlFor="sleep">
             <NumberInput id="sleep" step="0.5" value={sleep} onChange={(e) => setSleep(e.target.value)} />
           </Field>
-          <Field label="Energia (1–5)" htmlFor="energy">
-            <NumberInput id="energy" step="1" min="1" max="5" value={energy} onChange={(e) => setEnergy(e.target.value)} />
-          </Field>
-          <Field label="Nastrój (1–5)" htmlFor="mood">
+          <Field label="Samopoczucie (1–5)" htmlFor="mood" hint="5 = bardzo dobre">
             <NumberInput id="mood" step="1" min="1" max="5" value={mood} onChange={(e) => setMood(e.target.value)} />
           </Field>
+          <Field label="Energia (1–5)" htmlFor="energy" hint="5 = pełna">
+            <NumberInput id="energy" step="1" min="1" max="5" value={energy} onChange={(e) => setEnergy(e.target.value)} />
+          </Field>
+          <Field label="Stres (1–5)" htmlFor="stress" hint="5 = bardzo wysoki">
+            <NumberInput id="stress" step="1" min="1" max="5" value={stress} onChange={(e) => setStress(e.target.value)} />
+          </Field>
         </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field
+            label="Co dziś chodzi Ci po głowie"
+            htmlFor="thoughts"
+            hint="Myśli, obawy, to co wraca. Piszesz dla siebie."
+          >
+            <Textarea id="thoughts" value={thoughts} onChange={(e) => setThoughts(e.target.value)} />
+          </Field>
+          <Field
+            label="Co dobrego się dziś wydarzyło"
+            htmlFor="goodThings"
+            hint="Choćby drobiazg — to najczęściej pomijana część dnia."
+          >
+            <Textarea id="goodThings" value={goodThings} onChange={(e) => setGoodThings(e.target.value)} />
+          </Field>
+        </div>
+
         <Field label="Notatka dnia" htmlFor="notes" className="mt-4">
           <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </Field>
+
+        <p className="mt-4 rounded-lg border border-edge bg-surface-2 px-3 py-2 text-xs text-muted">
+          Kokpit nie zastępuje pomocy specjalisty. Jeśli jest Ci ciężko, darmowe całodobowe wsparcie:
+          <span className="text-ink"> 800 70 2222</span> (Centrum Wsparcia) lub
+          <span className="text-ink"> 116 123</span> (kryzysowy telefon zaufania). W sytuacji zagrożenia życia —
+          <span className="text-ink"> 112</span>.
+        </p>
       </Card>
 
       <div className="sticky bottom-4 flex justify-end">
