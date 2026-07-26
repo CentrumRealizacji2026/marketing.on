@@ -6,6 +6,9 @@ import { canRegister } from "@/lib/auth/actions";
 
 export const metadata: Metadata = { title: "Załóż konto" };
 
+// Dostępność rejestracji zależy od stanu bazy, więc strony nie wolno prerenderować.
+export const dynamic = "force-dynamic";
+
 export default async function RegisterPage() {
   const open = await canRegister();
 

@@ -15,12 +15,18 @@ export function formatNumber(value: number | null | undefined, fractionDigits = 
   }).format(value);
 }
 
+/**
+ * Kwoty z groszami pokazujemy z groszami — saldo to wartość wpisana przez użytkownika
+ * i zaokrąglanie jej wprowadzałoby w błąd. Okrągłe kwoty zostają bez końcówki „,00”.
+ */
 export function formatMoney(value: number | null | undefined, currency = "PLN") {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  const hasFraction = Math.abs(value % 1) > 0.004;
   return new Intl.NumberFormat("pl-PL", {
     style: "currency",
     currency,
-    maximumFractionDigits: Math.abs(value) >= 10_000 ? 0 : 2,
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: hasFraction ? 2 : 0,
   }).format(value);
 }
 

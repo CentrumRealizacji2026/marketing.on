@@ -6,6 +6,9 @@ import { canRegister } from "@/lib/auth/actions";
 
 export const metadata: Metadata = { title: "Logowanie" };
 
+// Link do rejestracji zależy od stanu bazy, więc strony nie wolno prerenderować.
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
   const registrationOpen = await canRegister();
 

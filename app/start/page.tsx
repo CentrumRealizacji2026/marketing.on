@@ -37,7 +37,7 @@ import {
 import { getUserSettings, requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { dailyLogs } from "@/lib/db/schema";
-import { todayInTz, weekdayLabel } from "@/lib/domain/dates";
+import { todayInTz } from "@/lib/domain/dates";
 import {
   getConfigStatus,
   getLearningWeek,
@@ -217,7 +217,7 @@ async function StepContent({
           addLabel="Dodaj lek lub suplement"
           submitLabel="Zapisz i dalej"
           emptyHint="Dodaj pierwszy lek albo suplement — nazwa, dawka i pory dnia."
-          rowTitle={(row, index) => (row.name ? String(row.name) : `Pozycja ${index + 1}`)}
+          titleFields={["name"]}
           footer={<SkipLink step={step} />}
         />
       );
@@ -247,9 +247,8 @@ async function StepContent({
           addLabel="Dodaj jednostkę treningową"
           submitLabel="Zapisz i dalej"
           emptyHint="Dodaj tyle jednostek, ile masz w tygodniu. Dni bez wpisu są wolne."
-          rowTitle={(row, index) =>
-            row.discipline ? `${weekdayLabel(Number(row.weekday))} · ${String(row.discipline)}` : `Pozycja ${index + 1}`
-          }
+          weekdayField="weekday"
+          titleFields={["discipline", "title"]}
           footer={<SkipLink step={step} />}
         />
       );
@@ -267,9 +266,7 @@ async function StepContent({
           addLabel="Dodaj rekord"
           submitLabel="Zapisz i dalej"
           emptyHint="Dodaj aktualne najlepsze wyniki — dyscyplinę i metrykę wpisujesz własnymi słowami."
-          rowTitle={(row, index) =>
-            row.discipline ? `${String(row.discipline)} · ${String(row.metric ?? "")}` : `Pozycja ${index + 1}`
-          }
+          titleFields={["discipline", "metric"]}
           footer={<SkipLink step={step} />}
         />
       );
@@ -287,9 +284,8 @@ async function StepContent({
           addLabel="Dodaj blok nauki"
           submitLabel="Zapisz i dalej"
           emptyHint="Dodawaj kolejne pola i wpisuj, jaka to dziedzina — np. poniedziałek: hiszpański, 18:00."
-          rowTitle={(row, index) =>
-            row.skill ? `${weekdayLabel(Number(row.weekday))} · ${String(row.skill)}` : `Pozycja ${index + 1}`
-          }
+          weekdayField="weekday"
+          titleFields={["skill"]}
           footer={<SkipLink step={step} />}
         />
       );
@@ -307,7 +303,8 @@ async function StepContent({
           addLabel="Dodaj okres"
           submitLabel="Zapisz i dalej"
           emptyHint="Plan roczny jest opcjonalny — bloki tygodniowe działają i bez niego."
-          rowTitle={(row, index) => (row.skill ? String(row.skill) : `Okres ${index + 1}`)}
+          titleFields={["skill", "focus"]}
+          itemNoun="Okres"
           footer={<SkipLink step={step} />}
         />
       );
@@ -325,7 +322,8 @@ async function StepContent({
           addLabel="Dodaj projekt"
           submitLabel="Zapisz i zakończ"
           emptyHint="Dodaj projekty, które prowadzisz. Mentor będzie pytał o ich następne kroki."
-          rowTitle={(row, index) => (row.name ? String(row.name) : `Projekt ${index + 1}`)}
+          titleFields={["name"]}
+          itemNoun="Projekt"
           footer={<SkipLink step={step} />}
         />
       );

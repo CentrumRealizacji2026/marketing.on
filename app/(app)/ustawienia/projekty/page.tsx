@@ -27,7 +27,8 @@ export default async function ProjectSettingsPage() {
         action={saveProjects}
         addLabel="Dodaj projekt"
         emptyHint="Nie masz jeszcze projektów."
-        rowTitle={(row, index) => (row.name ? String(row.name) : `Projekt ${index + 1}`)}
+        titleFields={["name"]}
+        itemNoun="Projekt"
       />
     </Card>
   );

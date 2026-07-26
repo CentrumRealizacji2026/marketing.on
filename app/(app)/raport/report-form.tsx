@@ -1,0 +1,620 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
+import { Plus, Trash2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader } from "@/components/ui/card";
+import { Checkbox, Field, FormError, Input, NumberInput, Select, Suggestions, Textarea } from "@/components/ui/field";
+import { submitReport, type ReportState } from "@/lib/actions/report";
+import { formatDose } from "@/lib/domain/medication";
+import { CONTRACT_STATUS_OPTIONS, DISCIPLINE_SUGGESTIONS, RECORD_METRIC_SUGGESTIONS } from "@/lib/domain/suggestions";
+import type { ReportFormData } from "@/lib/queries/report";
+import { formatTime } from "@/lib/utils";
+
+type ContractRow = { clientName: string; valuePln: string; status: string; note: string };
+type RecordRow = { discipline: string; metric: string; unit: string; value: string; higherIsBetter: boolean };
+type TaskRow = { title: string; done: boolean };
+
+function Submit() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" size="lg" disabled={pending}>
+      {pending ? "Zapisywanie…" : "Zapisz raport"}
+    </Button>
+  );
+}
+
+function numberValue(value: number | null | undefined) {
+  return value === null || value === undefined ? "" : String(value);
+}
+
+export function ReportForm({
+  data,
+  today,
+  currency,
+  waterGoalMl,
+}: {
+  data: ReportFormData;
+  today: string;
+  currency: string;
+  waterGoalMl: number | null;
+}) {
+  const router = useRouter();
+  const [state, formAction] = useActionState<ReportState, FormData>(submitReport, undefined);
+
+  const [cash, setCash] = useState(numberValue(data.daily?.cashBalancePln));
+  const [calls, setCalls] = useState(numberValue(data.sales?.calls ?? 0));
+  const [scheduled, setScheduled] = useState(numberValue(data.sales?.meetingsScheduled ?? 0));
+  const [held, setHeld] = useState(numberValue(data.sales?.meetingsHeld ?? 0));
+
+  const [contractRows, setContractRows] = useState<ContractRow[]>(
+    data.contracts.map((row) => ({
+      clientName: row.clientName,
+      valuePln: String(row.valuePln),
+      status: row.status,
+      note: row.note ?? "",
+    })),
+  );
+
+  const [doses, setDoses] = useState(
+    data.doses.map((dose) => ({
+      medicationId: dose.medicationId,
+      slot: dose.slot,
+      taken: dose.taken,
+      name: dose.name,
+      kind: dose.kind,
+      doseAmount: dose.doseAmount,
+      doseUnit: dose.doseUnit,
+    })),
+  );
+
+  const [weight, setWeight] = useState(numberValue(data.daily?.weightKg));
+  const [water, setWater] = useState(numberValue(data.daily?.waterMl));
+  const [sleep, setSleep] = useState(numberValue(data.daily?.sleepH));
+  const [energy, setEnergy] = useState(numberValue(data.daily?.energy));
+  const [mood, setMood] = useState(numberValue(data.daily?.mood));
+  const [notes, setNotes] = useState(data.daily?.notes ?? "");
+
+  const [priorities, setPriorities] = useState<TaskRow[]>(() => {
+    const base = data.priorities.map((task) => ({ title: task.title, done: task.done }));
+    while (base.length < 3) base.push({ title: "", done: false });
+    return base.slice(0, 3);
+  });
+
+  const [side, setSide] = useState<TaskRow[]>(data.side.map((task) => ({ title: task.title, done: task.done })));
+
+  const [training, setTraining] = useState(
+    data.training.map(({ plan, log }) => ({
+      planId: plan.id,
+      discipline: plan.discipline,
+      title: plan.title ?? "",
+      label: plan.title || plan.discipline,
+      startTime: plan.startTime,
+      done: Boolean(log?.done),
+      durationMin: numberValue(log?.durationMin ?? plan.durationMin),
+      distanceKm: numberValue(log?.distanceKm),
+      rpe: numberValue(log?.rpe),
+      note: log?.note ?? "",
+    })),
+  );
+
+  const [learning, setLearning] = useState(
+    data.learning.map(({ block, log }) => ({
+      planId: block.planId,
+      skill: block.skill,
+      startTime: block.startTime,
+      focus: block.focus,
+      done: Boolean(log?.done),
+      minutes: numberValue(log?.minutes ?? block.durationMin),
+      note: log?.note ?? "",
+    })),
+  );
+
+  const [newRecords, setNewRecords] = useState<RecordRow[]>([]);
+
+  const payload = JSON.stringify({
+    date: data.date,
+    cashBalancePln: cash,
+    sales: { calls, meetingsScheduled: scheduled, meetingsHeld: held },
+    contracts: contractRows,
+    doses: doses.map(({ medicationId, slot, taken }) => ({ medicationId, slot, taken })),
+    weightKg: weight,
+    waterMl: water,
+    sleepH: sleep,
+    energy,
+    mood,
+    notes,
+    priorities,
+    side,
+    training: training.map(({ planId, discipline, title, done, durationMin, distanceKm, rpe, note }) => ({
+      planId,
+      discipline,
+      title,
+      done,
+      durationMin,
+      distanceKm,
+      rpe,
+      note,
+    })),
+    learning: learning.map(({ planId, skill, done, minutes, note }) => ({ planId, skill, done, minutes, note })),
+    newRecords,
+  });
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="payload" value={payload} />
+      <FormError>{state?.error}</FormError>
+
+      {/* ------------------------------------------------------------ data */}
+      <Card>
+        <Field label="Dzień raportu" htmlFor="report-date" hint="Możesz uzupełnić raport wstecz.">
+          <Input
+            id="report-date"
+            type="date"
+            defaultValue={data.date}
+            max={today}
+            onChange={(event) => {
+              if (event.target.value) router.push(`/raport?data=${event.target.value}`);
+            }}
+          />
+        </Field>
+      </Card>
+
+      {/* --------------------------------------------------------- finanse */}
+      <Card>
+        <CardHeader title="Finanse" />
+        <Field label={`Stan środków na dziś (${currency})`} htmlFor="cash">
+          <NumberInput id="cash" step="0.01" value={cash} onChange={(e) => setCash(e.target.value)} />
+        </Field>
+      </Card>
+
+      {/* -------------------------------------------------------- sprzedaż */}
+      <Card>
+        <CardHeader title="Sprzedaż" subtitle="Liczby z dzisiejszego dnia." />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field label="Rozmowy z klientami" htmlFor="calls">
+            <NumberInput id="calls" step="1" min="0" value={calls} onChange={(e) => setCalls(e.target.value)} />
+          </Field>
+          <Field label="Spotkania umówione" htmlFor="scheduled">
+            <NumberInput id="scheduled" step="1" min="0" value={scheduled} onChange={(e) => setScheduled(e.target.value)} />
+          </Field>
+          <Field label="Spotkania odbyte" htmlFor="held">
+            <NumberInput id="held" step="1" min="0" value={held} onChange={(e) => setHeld(e.target.value)} />
+          </Field>
+        </div>
+
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">Umowy</p>
+          <div className="flex flex-col gap-2">
+            {contractRows.map((row, index) => (
+              <div key={index} className="grid grid-cols-1 gap-2 rounded-lg border border-edge p-2 sm:grid-cols-12">
+                <Input
+                  className="sm:col-span-4"
+                  placeholder="Klient"
+                  value={row.clientName}
+                  onChange={(e) =>
+                    setContractRows((prev) =>
+                      prev.map((r, i) => (i === index ? { ...r, clientName: e.target.value } : r)),
+                    )
+                  }
+                />
+                <NumberInput
+                  className="sm:col-span-3"
+                  step="0.01"
+                  placeholder={`Wartość (${currency})`}
+                  value={row.valuePln}
+                  onChange={(e) =>
+                    setContractRows((prev) => prev.map((r, i) => (i === index ? { ...r, valuePln: e.target.value } : r)))
+                  }
+                />
+                <Select
+                  className="sm:col-span-3"
+                  value={row.status}
+                  onChange={(e) =>
+                    setContractRows((prev) => prev.map((r, i) => (i === index ? { ...r, status: e.target.value } : r)))
+                  }
+                >
+                  {CONTRACT_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+                <div className="flex items-center justify-end sm:col-span-2">
+                  <button
+                    type="button"
+                    aria-label="Usuń umowę"
+                    onClick={() => setContractRows((prev) => prev.filter((_, i) => i !== index))}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-critical/10 hover:text-critical"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="mt-2"
+            onClick={() =>
+              setContractRows((prev) => [...prev, { clientName: "", valuePln: "", status: "podpisana", note: "" }])
+            }
+          >
+            <Plus className="h-4 w-4" />
+            Dodaj umowę
+          </Button>
+        </div>
+      </Card>
+
+      {/* --------------------------------------------------------- zdrowie */}
+      <Card>
+        <CardHeader title="Zdrowie" />
+
+        {doses.length > 0 ? (
+          <div className="mb-4">
+            <p className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">
+              Leki i suplementy na dziś
+            </p>
+            <ul className="flex flex-col gap-1">
+              {doses.map((dose, index) => (
+                <li key={`${dose.medicationId}-${dose.slot}`}>
+                  <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-surface-2">
+                    <Checkbox
+                      checked={dose.taken}
+                      onChange={(e) =>
+                        setDoses((prev) => prev.map((d, i) => (i === index ? { ...d, taken: e.target.checked } : d)))
+                      }
+                    />
+                    <span className="flex-1 text-sm text-ink">{dose.name}</span>
+                    <span className="text-xs text-muted">
+                      {dose.slot}
+                      {formatDose(dose) ? ` · ${formatDose(dose)}` : ""}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : data.hasMedications ? (
+          <p className="mb-4 text-xs text-muted">Na ten dzień nie zaplanowano żadnej dawki.</p>
+        ) : null}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Waga (kg)" htmlFor="weight">
+            <NumberInput id="weight" step="0.1" value={weight} onChange={(e) => setWeight(e.target.value)} />
+          </Field>
+          <Field
+            label="Wypite płyny (ml)"
+            htmlFor="water"
+            hint={waterGoalMl ? `Cel dzienny: ${waterGoalMl} ml.` : undefined}
+          >
+            <div className="flex gap-2">
+              <NumberInput id="water" step="50" value={water} onChange={(e) => setWater(e.target.value)} />
+              {[250, 500].map((amount) => (
+                <Button
+                  key={amount}
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setWater(String((Number(water) || 0) + amount))}
+                >
+                  +{amount}
+                </Button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      </Card>
+
+      {/* --------------------------------------------------------- zadania */}
+      <Card>
+        <CardHeader title="Zadania" subtitle="Trzy priorytety dnia i side questy." />
+
+        <div className="flex flex-col gap-2">
+          {priorities.map((task, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-edge text-sm font-semibold text-muted">
+                {index + 1}
+              </span>
+              <Input
+                placeholder={`Priorytet ${index + 1}`}
+                value={task.title}
+                onChange={(e) =>
+                  setPriorities((prev) => prev.map((t, i) => (i === index ? { ...t, title: e.target.value } : t)))
+                }
+              />
+              <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted">
+                <Checkbox
+                  checked={task.done}
+                  onChange={(e) =>
+                    setPriorities((prev) => prev.map((t, i) => (i === index ? { ...t, done: e.target.checked } : t)))
+                  }
+                />
+                zrobione
+              </label>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">Side questy</p>
+          <div className="flex flex-col gap-2">
+            {side.map((task, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <Input
+                  placeholder="Zadanie poboczne"
+                  value={task.title}
+                  onChange={(e) =>
+                    setSide((prev) => prev.map((t, i) => (i === index ? { ...t, title: e.target.value } : t)))
+                  }
+                />
+                <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted">
+                  <Checkbox
+                    checked={task.done}
+                    onChange={(e) =>
+                      setSide((prev) => prev.map((t, i) => (i === index ? { ...t, done: e.target.checked } : t)))
+                    }
+                  />
+                  zrobione
+                </label>
+                <button
+                  type="button"
+                  aria-label="Usuń zadanie"
+                  onClick={() => setSide((prev) => prev.filter((_, i) => i !== index))}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-critical/10 hover:text-critical"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="mt-2"
+            onClick={() => setSide((prev) => [...prev, { title: "", done: false }])}
+          >
+            <Plus className="h-4 w-4" />
+            Dodaj side quest
+          </Button>
+        </div>
+      </Card>
+
+      {/* --------------------------------------------------------- trening */}
+      <Card>
+        <CardHeader title="Trening" subtitle="Jednostki zaplanowane na ten dzień." />
+        {training.length === 0 ? (
+          <p className="text-xs text-muted">Na ten dzień nie masz zaplanowanego treningu.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {training.map((entry, index) => (
+              <li key={entry.planId} className="rounded-lg border border-edge p-3">
+                <label className="flex cursor-pointer items-center gap-2.5">
+                  <Checkbox
+                    checked={entry.done}
+                    onChange={(e) =>
+                      setTraining((prev) => prev.map((t, i) => (i === index ? { ...t, done: e.target.checked } : t)))
+                    }
+                  />
+                  <span className="flex-1 text-sm font-medium text-ink">{entry.label}</span>
+                  <span className="text-xs text-muted">
+                    {entry.discipline}
+                    {entry.startTime ? ` · ${formatTime(entry.startTime)}` : ""}
+                  </span>
+                </label>
+
+                {entry.done ? (
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <Field label="Czas (min)">
+                      <NumberInput
+                        step="1"
+                        value={entry.durationMin}
+                        onChange={(e) =>
+                          setTraining((prev) =>
+                            prev.map((t, i) => (i === index ? { ...t, durationMin: e.target.value } : t)),
+                          )
+                        }
+                      />
+                    </Field>
+                    <Field label="Dystans (km)">
+                      <NumberInput
+                        step="0.01"
+                        value={entry.distanceKm}
+                        onChange={(e) =>
+                          setTraining((prev) =>
+                            prev.map((t, i) => (i === index ? { ...t, distanceKm: e.target.value } : t)),
+                          )
+                        }
+                      />
+                    </Field>
+                    <Field label="Odczuwalny wysiłek (1–10)">
+                      <NumberInput
+                        step="1"
+                        min="1"
+                        max="10"
+                        value={entry.rpe}
+                        onChange={(e) =>
+                          setTraining((prev) => prev.map((t, i) => (i === index ? { ...t, rpe: e.target.value } : t)))
+                        }
+                      />
+                    </Field>
+                    <Field label="Notatka">
+                      <Input
+                        value={entry.note}
+                        onChange={(e) =>
+                          setTraining((prev) => prev.map((t, i) => (i === index ? { ...t, note: e.target.value } : t)))
+                        }
+                      />
+                    </Field>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">Nowy rekord</p>
+          <div className="flex flex-col gap-2">
+            {newRecords.map((row, index) => (
+              <div key={index} className="grid grid-cols-1 gap-2 rounded-lg border border-edge p-2 sm:grid-cols-12">
+                <Input
+                  className="sm:col-span-3"
+                  list="pr-disciplines"
+                  placeholder="Dyscyplina"
+                  value={row.discipline}
+                  onChange={(e) =>
+                    setNewRecords((prev) => prev.map((r, i) => (i === index ? { ...r, discipline: e.target.value } : r)))
+                  }
+                />
+                <Input
+                  className="sm:col-span-3"
+                  list="pr-metrics"
+                  placeholder="Metryka"
+                  value={row.metric}
+                  onChange={(e) =>
+                    setNewRecords((prev) => prev.map((r, i) => (i === index ? { ...r, metric: e.target.value } : r)))
+                  }
+                />
+                <NumberInput
+                  className="sm:col-span-2"
+                  step="0.001"
+                  placeholder="Wynik"
+                  value={row.value}
+                  onChange={(e) =>
+                    setNewRecords((prev) => prev.map((r, i) => (i === index ? { ...r, value: e.target.value } : r)))
+                  }
+                />
+                <Input
+                  className="sm:col-span-2"
+                  placeholder="Jednostka"
+                  value={row.unit}
+                  onChange={(e) =>
+                    setNewRecords((prev) => prev.map((r, i) => (i === index ? { ...r, unit: e.target.value } : r)))
+                  }
+                />
+                <div className="flex items-center justify-between gap-2 sm:col-span-2">
+                  <label className="flex items-center gap-1.5 text-xs text-muted">
+                    <Checkbox
+                      checked={row.higherIsBetter}
+                      onChange={(e) =>
+                        setNewRecords((prev) =>
+                          prev.map((r, i) => (i === index ? { ...r, higherIsBetter: e.target.checked } : r)),
+                        )
+                      }
+                    />
+                    więcej = lepiej
+                  </label>
+                  <button
+                    type="button"
+                    aria-label="Usuń rekord"
+                    onClick={() => setNewRecords((prev) => prev.filter((_, i) => i !== index))}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-critical/10 hover:text-critical"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Suggestions id="pr-disciplines" options={DISCIPLINE_SUGGESTIONS} />
+          <Suggestions id="pr-metrics" options={RECORD_METRIC_SUGGESTIONS.map((m) => m.metric)} />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="mt-2"
+            onClick={() =>
+              setNewRecords((prev) => [
+                ...prev,
+                { discipline: "", metric: "", unit: "", value: "", higherIsBetter: true },
+              ])
+            }
+          >
+            <Plus className="h-4 w-4" />
+            Zgłoś rekord
+          </Button>
+        </div>
+      </Card>
+
+      {/* ----------------------------------------------------------- nauka */}
+      <Card>
+        <CardHeader title="Nauka" subtitle="Bloki zaplanowane na ten dzień." />
+        {learning.length === 0 ? (
+          <p className="text-xs text-muted">Na ten dzień nie masz bloku nauki.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {learning.map((entry, index) => (
+              <li key={entry.planId} className="rounded-lg border border-edge p-3">
+                <label className="flex cursor-pointer items-center gap-2.5">
+                  <Checkbox
+                    checked={entry.done}
+                    onChange={(e) =>
+                      setLearning((prev) => prev.map((t, i) => (i === index ? { ...t, done: e.target.checked } : t)))
+                    }
+                  />
+                  <span className="flex-1 text-sm font-medium text-ink">{entry.skill}</span>
+                  {entry.startTime ? (
+                    <span className="tabular text-xs text-muted">{formatTime(entry.startTime)}</span>
+                  ) : null}
+                </label>
+                {entry.focus ? <p className="mt-1 ml-7 text-xs text-muted">Zakres: {entry.focus}</p> : null}
+
+                {entry.done ? (
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Field label="Minuty">
+                      <NumberInput
+                        step="5"
+                        value={entry.minutes}
+                        onChange={(e) =>
+                          setLearning((prev) => prev.map((t, i) => (i === index ? { ...t, minutes: e.target.value } : t)))
+                        }
+                      />
+                    </Field>
+                    <Field label="Notatka">
+                      <Input
+                        value={entry.note}
+                        onChange={(e) =>
+                          setLearning((prev) => prev.map((t, i) => (i === index ? { ...t, note: e.target.value } : t)))
+                        }
+                      />
+                    </Field>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      {/* ---------------------------------------------------- samopoczucie */}
+      <Card>
+        <CardHeader title="Samopoczucie" subtitle="Mentor wykorzystuje to do szukania zależności." />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field label="Sen (godziny)" htmlFor="sleep">
+            <NumberInput id="sleep" step="0.5" value={sleep} onChange={(e) => setSleep(e.target.value)} />
+          </Field>
+          <Field label="Energia (1–5)" htmlFor="energy">
+            <NumberInput id="energy" step="1" min="1" max="5" value={energy} onChange={(e) => setEnergy(e.target.value)} />
+          </Field>
+          <Field label="Nastrój (1–5)" htmlFor="mood">
+            <NumberInput id="mood" step="1" min="1" max="5" value={mood} onChange={(e) => setMood(e.target.value)} />
+          </Field>
+        </div>
+        <Field label="Notatka dnia" htmlFor="notes" className="mt-4">
+          <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </Field>
+      </Card>
+
+      <div className="sticky bottom-4 flex justify-end">
+        <Submit />
+      </div>
+    </form>
+  );
+}

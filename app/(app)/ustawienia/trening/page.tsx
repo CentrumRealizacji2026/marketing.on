@@ -5,7 +5,6 @@ import { trainingDefault, trainingFields, trainingToRow } from "@/components/for
 import { Card, CardHeader } from "@/components/ui/card";
 import { saveTrainingPlans } from "@/lib/actions/config";
 import { requireOnboardedUser } from "@/lib/auth/session";
-import { weekdayLabel } from "@/lib/domain/dates";
 import { getTrainingPlans } from "@/lib/queries/config";
 
 export const metadata: Metadata = { title: "Plan treningowy" };
@@ -28,11 +27,8 @@ export default async function TrainingSettingsPage() {
         action={saveTrainingPlans}
         addLabel="Dodaj jednostkę treningową"
         emptyHint="Nie masz jeszcze planu treningowego. Dodaj pierwszą jednostkę."
-        rowTitle={(row, index) =>
-          row.discipline
-            ? `${weekdayLabel(Number(row.weekday))} · ${String(row.discipline)}`
-            : `Pozycja ${index + 1}`
-        }
+        weekdayField="weekday"
+        titleFields={["discipline", "title"]}
       />
     </Card>
   );

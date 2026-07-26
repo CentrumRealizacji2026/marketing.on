@@ -35,6 +35,6 @@ export const config = {
      * Wszystko poza zasobami statycznymi, ikonami PWA i endpointem crona
      * (ten chroni własny sekret, bo wywołuje go Vercel, a nie przeglądarka).
      */
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|api/cron/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline.html|icons/|api/cron/).*)",
   ],
 };

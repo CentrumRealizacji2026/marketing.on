@@ -3,9 +3,20 @@ import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export function Card({ className, children }: { className?: string; children: ReactNode }) {
+export function Card({
+  className,
+  children,
+  id,
+}: {
+  className?: string;
+  children: ReactNode;
+  /** Kotwica dla podkategorii z prawego paska. */
+  id?: string;
+}) {
   return (
-    <section className={cn("rounded-xl border border-edge bg-surface p-4", className)}>{children}</section>
+    <section id={id} className={cn("scroll-mt-20 rounded-xl border border-edge bg-surface p-4", className)}>
+      {children}
+    </section>
   );
 }
 

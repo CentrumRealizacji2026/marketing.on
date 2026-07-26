@@ -27,9 +27,7 @@ export default async function RecordsSettingsPage() {
         action={savePersonalRecords}
         addLabel="Dodaj wynik"
         emptyHint="Nie masz jeszcze zapisanych wyników. Dodaj pierwszy rekord."
-        rowTitle={(row, index) =>
-          row.discipline ? `${String(row.discipline)} · ${String(row.metric ?? "")}` : `Pozycja ${index + 1}`
-        }
+        titleFields={["discipline", "metric"]}
       />
     </Card>
   );

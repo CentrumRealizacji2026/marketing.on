@@ -7,7 +7,7 @@ import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, FormError, Input, NumberInput, Select, Suggestions } from "@/components/ui/field";
 import type { FormState } from "@/lib/actions/config";
-import { WEEKDAYS } from "@/lib/domain/dates";
+import { WEEKDAYS, weekdayLabel } from "@/lib/domain/dates";
 import { cn } from "@/lib/utils";
 
 export type FieldSpec = {
@@ -90,7 +90,9 @@ export function RowsEditor({
   addLabel = "Dodaj pozycję",
   submitLabel = "Zapisz",
   emptyHint,
-  rowTitle,
+  titleFields,
+  weekdayField,
+  itemNoun = "Pozycja",
   hiddenFields,
   footer,
 }: {
@@ -101,7 +103,12 @@ export function RowsEditor({
   addLabel?: string;
   submitLabel?: string;
   emptyHint?: string;
-  rowTitle?: (row: Record<string, unknown>, index: number) => string;
+  /** Z których pól złożyć nagłówek wiersza (opisowo, bo funkcji nie da się przekazać z serwera). */
+  titleFields?: string[];
+  /** Pole z dniem tygodnia — trafia na początek nagłówka jako nazwa dnia. */
+  weekdayField?: string;
+  /** Rzeczownik w nagłówku, gdy wiersz jest jeszcze pusty: „Pozycja 2”, „Projekt 2”. */
+  itemNoun?: string;
   hiddenFields?: Record<string, string>;
   footer?: React.ReactNode;
 }) {
@@ -129,6 +136,19 @@ export function RowsEditor({
 
   const update = (key: string, name: string, value: unknown) =>
     setRows((prev) => prev.map((row) => (row._key === key ? { ...row, [name]: value } : row)));
+
+  const rowLabel = (row: Row, index: number) => {
+    const parts: string[] = [];
+    if (weekdayField) {
+      const day = Number(row[weekdayField]);
+      if (Number.isInteger(day)) parts.push(weekdayLabel(day));
+    }
+    for (const field of titleFields ?? []) {
+      const value = row[field];
+      if (typeof value === "string" && value.trim()) parts.push(value.trim());
+    }
+    return parts.length > 0 ? parts.join(" · ") : `${itemNoun} ${index + 1}`;
+  };
 
   const payload = JSON.stringify(
     rows.map(({ _key, ...rest }) => {
@@ -159,9 +179,7 @@ export function RowsEditor({
         {rows.map((row, index) => (
           <li key={row._key} className="rounded-xl border border-edge bg-surface p-3">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-muted">
-                {rowTitle ? rowTitle(row, index) : `Pozycja ${index + 1}`}
-              </span>
+              <span className="text-xs font-medium text-muted">{rowLabel(row, index)}</span>
               <div className="flex items-center gap-0.5">
                 <button
                   type="button"

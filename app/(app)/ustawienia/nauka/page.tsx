@@ -12,7 +12,6 @@ import {
 import { Card, CardHeader } from "@/components/ui/card";
 import { saveLearningWeek, saveLearningYear } from "@/lib/actions/config";
 import { requireOnboardedUser } from "@/lib/auth/session";
-import { weekdayLabel } from "@/lib/domain/dates";
 import { getLearningWeek, getLearningYear } from "@/lib/queries/config";
 
 export const metadata: Metadata = { title: "Plan nauki" };
@@ -36,9 +35,8 @@ export default async function LearningSettingsPage() {
           action={saveLearningWeek}
           addLabel="Dodaj blok nauki"
           emptyHint="Nie masz jeszcze bloków nauki. Dodaj pierwszy."
-          rowTitle={(row, index) =>
-            row.skill ? `${weekdayLabel(Number(row.weekday))} · ${String(row.skill)}` : `Pozycja ${index + 1}`
-          }
+          weekdayField="weekday"
+          titleFields={["skill"]}
         />
       </Card>
 
@@ -54,9 +52,8 @@ export default async function LearningSettingsPage() {
           action={saveLearningYear}
           addLabel="Dodaj okres"
           emptyHint="Nie masz jeszcze okresów w planie rocznym. Bloki tygodniowe będą działać bez nich."
-          rowTitle={(row, index) =>
-            row.skill ? `${String(row.skill)} · ${String(row.periodStart ?? "")}` : `Okres ${index + 1}`
-          }
+          titleFields={["skill", "focus"]}
+          itemNoun="Okres"
         />
       </Card>
     </div>

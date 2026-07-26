@@ -27,7 +27,8 @@ export default async function MaterialsSettingsPage() {
         action={saveMaterials}
         addLabel="Dodaj materiał"
         emptyHint="Nie masz jeszcze materiałów. Dodasz je w dowolnym momencie."
-        rowTitle={(row, index) => (row.title ? String(row.title) : `Materiał ${index + 1}`)}
+        titleFields={["title"]}
+        itemNoun="Materiał"
       />
     </Card>
   );

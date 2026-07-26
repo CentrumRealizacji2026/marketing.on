@@ -29,14 +29,23 @@ import { getDashboardData } from "@/lib/queries/dashboard";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ zapisano?: string }>;
+}) {
   const user = await requireOnboardedUser();
   const settings = await getUserSettings(user.id);
   const today = todayInTz(settings.timezone);
-  const data = await getDashboardData(user.id, settings, today);
+  const [data, params] = await Promise.all([getDashboardData(user.id, settings, today), searchParams]);
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
+      {params.zapisano ? (
+        <p className="rounded-lg border border-good/40 bg-good/10 px-3 py-2 text-sm text-ink md:col-span-2 xl:col-span-6">
+          Raport z dnia {params.zapisano} zapisany.
+        </p>
+      ) : null}
       <Finanse data={data} currency={settings.currency} />
       <Sprzedaz data={data} settings={settings} currency={settings.currency} />
       <Leki data={data} today={today} />

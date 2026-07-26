@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ClipboardList, LogOut } from "lucide-react";
 
 import { CategoryRail } from "@/components/layout/category-rail";
+import { PwaRegister } from "@/components/pwa-register";
 import { logout } from "@/lib/auth/actions";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { formatFullDatePl, todayInTz } from "@/lib/domain/dates";
@@ -46,6 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </div>
 
       <CategoryRail />
+      <PwaRegister />
     </div>
   );
 }

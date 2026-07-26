@@ -1,2 +1,97 @@
-# marketing.on
-marketing.on-github
+# Kokpit
+
+Dashboard do zarządzania życiem: finanse, sprzedaż, zdrowie, zadania, trening, nauka i projekty
+w jednym miejscu. Dane uzupełniasz jednym raportem dziennym, a warstwa AI działa jak mentor,
+trener i kierownik projektów.
+
+**Zasada przewodnia: w kodzie nie ma żadnych Twoich danych.** Leki, dyscypliny sportowe, dziedziny
+nauki, cele i normy powstają z tego, co wpiszesz w kreatorze przy pierwszym logowaniu, i zmieniasz
+je później w panelu zarządzania.
+
+## Co jest w środku
+
+| Obszar | Co robi |
+|---|---|
+| **Dashboard `/`** | Kafelki na dziś: stan środków, sprzedaż z konwersjami, leki i suplementy do odhaczenia, 3 priorytety i side questy, trening, blok nauki, nawodnienie z oceną, waga, rekordy, rekomendacje mentora |
+| **Kreator `/start`** | 11 kroków konfiguracji. Leki, trening, rekordy, nauka i projekty to listy dynamiczne — „+ dodaj” dokłada wiersz, a nazwy dyscyplin i dziedzin wpisujesz własnymi słowami |
+| **Panel `/ustawienia`** | Te same formularze bezterminowo. Wyłączenie pozycji zachowuje historię zamiast ją kasować |
+| **Raport `/raport`** | Jeden formularz na cały dzień: finanse, sprzedaż i umowy, leki, waga i woda, zadania, trening z możliwością zgłoszenia rekordu, nauka, samopoczucie |
+| **Kategorie** | `/finanse`, `/sprzedaz`, `/zdrowie`, `/zadania`, `/trening`, `/nauka`, `/projekty` — szczegóły i historia |
+| **Mentor `/mentor`** | Trzy tryby (mentor / trener / kierownik projektów). Analizuje agregaty z 7 i 30 dni i zwraca rekomendacje „obserwacja → działanie” ze statusami |
+| **PWA** | Instalowalna na telefonie, ze skrótami do raportu, zadań i mentora |
+
+Prawy pasek kategorii rozwija się na podkategorie, zwija do samych ikon, a na telefonie wysuwa się
+jako panel z prawej strony.
+
+## Uruchomienie lokalne
+
+```bash
+npm install
+cp .env.example .env          # uzupełnij DATABASE_URL
+npm run db:migrate            # zakłada 21 tabel
+npm run dev                   # http://localhost:3000
+```
+
+Pierwsze wejście na `/` przekieruje na `/login`. Pierwsze konto w pustej bazie założysz bez
+ograniczeń — kolejne wymagają dopisania adresu do `ALLOWED_SIGNUP_EMAILS`.
+
+## Zmienne środowiskowe
+
+| Zmienna | Wymagana | Do czego |
+|---|---|---|
+| `DATABASE_URL` | tak | Postgres. Na produkcji connection string z Neon (Vercel Marketplace) |
+| `ANTHROPIC_API_KEY` | do mentora | Klucz z [console.anthropic.com](https://console.anthropic.com). Bez niego reszta aplikacji działa normalnie, a mentor mówi, czego brakuje |
+| `ALLOWED_SIGNUP_EMAILS` | nie | Lista adresów po przecinku, które mogą założyć konto po pierwszym |
+| `CRON_SECRET` | do crona | Chroni `/api/cron/mentor`, który generuje rekomendacje o poranku |
+
+## Skrypty
+
+```bash
+npm run dev         # serwer deweloperski
+npm run build       # build produkcyjny
+npm run typecheck   # tsc --noEmit
+npm run lint        # eslint
+npm run test        # testy reguł domenowych (vitest)
+npm run db:generate # nowa migracja po zmianie schematu
+npm run db:migrate  # wykonanie migracji
+npm run icons       # regeneracja ikon PWA
+```
+
+## Jak to jest zbudowane
+
+- **Next.js 15** (App Router, React 19, server actions) + **TypeScript**
+- **Tailwind CSS v4** — tokeny kolorów w `app/globals.css`, motyw ciemny domyślnie, jasny zgodnie z ustawieniem systemu
+- **Postgres + Drizzle ORM** — schemat w `lib/db/schema.ts`, migracje w `drizzle/`
+- **Własne sesje** — nieprzezroczysty token w bazie (przechowywany jako skrót), ciasteczko `httpOnly`; middleware odsiewa żądania bez ciasteczka, a `requireUser()` weryfikuje token po stronie serwera
+- **Claude API** (`claude-opus-5`) ze structured outputs — mentor zwraca zwalidowany JSON, nie tekst do parsowania
+- **Wykresy** pisane ręcznie w SVG — brak zależności, renderują się po stronie serwera
+
+### Warstwy
+
+```
+app/            strony i server actions
+components/     komponenty UI, formularze, wykresy
+lib/domain/     reguły biznesowe (bez zależności od bazy) — pokryte testami
+lib/queries/    odczyt danych
+lib/actions/    zapis danych
+lib/db/         schemat i połączenie
+lib/ai/         mentor
+```
+
+Reguły domenowe są celowo oddzielone od bazy: progi nawodnienia, składanie planu nauki z planu
+tygodniowego i rocznego, harmonogram leków na dany dzień i wyliczanie rekordów to czyste funkcje
+w `lib/domain/`, przetestowane w `lib/domain/domain.test.ts`.
+
+## Wdrożenie na Vercel
+
+1. Podłącz repozytorium do projektu na Vercel.
+2. Dodaj bazę Neon z Vercel Marketplace — `DATABASE_URL` ustawi się samo.
+3. Uzupełnij pozostałe zmienne środowiskowe.
+4. Uruchom migracje względem bazy produkcyjnej: `DATABASE_URL="..." npm run db:migrate`.
+5. `vercel.json` konfiguruje crona mentora na 05:00 UTC (07:00 w Warszawie).
+
+## Uwaga
+
+Mentor nie udziela porad medycznych. Może zauważyć, że realizacja przyjmowania leków spadła, ale
+nigdy nie zaproponuje zmiany dawki ani nowego preparatu — dawki wpisujesz sam, a decyzje zdrowotne
+zostają między Tobą a lekarzem.

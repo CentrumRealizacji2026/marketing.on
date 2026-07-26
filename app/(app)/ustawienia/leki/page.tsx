@@ -27,7 +27,7 @@ export default async function MedicationSettingsPage() {
         action={saveMedications}
         addLabel="Dodaj lek lub suplement"
         emptyHint="Nie masz jeszcze żadnych leków ani suplementów. Dodaj pierwszą pozycję."
-        rowTitle={(row, index) => (row.name ? String(row.name) : `Pozycja ${index + 1}`)}
+        titleFields={["name"]}
       />
     </Card>
   );
