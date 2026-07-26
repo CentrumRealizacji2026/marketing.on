@@ -2,11 +2,14 @@ import Link from "next/link";
 import {
   AlertTriangle,
   Brain,
+  CalendarDays,
   CheckCircle2,
   Droplets,
   Dumbbell,
+  FolderKanban,
   GraduationCap,
   HeartPulse,
+  ListChecks,
   ListTodo,
   Scale,
   Trophy,
@@ -15,16 +18,19 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { CategoryWeek, WeekTotals } from "@/components/calendar/category-week";
 import { Meter, Sparkline } from "@/components/charts/sparkline";
 import { Card, CardHeader, EmptyState, StatTile, StatusPill } from "@/components/ui/card";
 import { addWater, toggleDose, toggleLearning, toggleTask, toggleTraining } from "@/lib/actions/quick";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
-import { formatTime, formatMoney, formatNumber } from "@/lib/utils";
-import { todayInTz } from "@/lib/domain/dates";
+import { cn, formatTime, formatMoney, formatNumber } from "@/lib/utils";
+import { AGENDA_CATEGORY_LABEL, CATEGORY_COLOR, buildAgenda } from "@/lib/domain/agenda";
+import { addDays, diffDays, startOfWeek, todayInTz } from "@/lib/domain/dates";
 import { formatDose, groupDosesBySlot } from "@/lib/domain/medication";
 import { formatRecordValue } from "@/lib/domain/records";
 import { conversionRates, formatPercent, goalProgress } from "@/lib/domain/sales";
 import { WATER_STATUS_LABEL, waterPercent, waterStatus } from "@/lib/domain/water";
+import { getCalendarRange } from "@/lib/queries/calendar";
 import { getDashboardData } from "@/lib/queries/dashboard";
 
 export const dynamic = "force-dynamic";
@@ -37,10 +43,18 @@ export default async function DashboardPage({
   const user = await requireOnboardedUser();
   const settings = await getUserSettings(user.id);
   const today = todayInTz(settings.timezone);
-  const [data, params] = await Promise.all([getDashboardData(user.id, settings, today), searchParams]);
+  const weekStart = startOfWeek(today, settings.weekStartsOn);
+  const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  const [data, weekDays, params] = await Promise.all([
+    getDashboardData(user.id, settings, today),
+    getCalendarRange(user.id, settings, weekDates),
+    searchParams,
+  ]);
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
+    // items-start: krótki kafelek nie rozciąga się do wysokości najwyższego w rzędzie.
+    <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-6">
       {params.zapisano ? (
         <p className="rounded-lg border border-good/40 bg-good/10 px-3 py-2 text-sm text-ink md:col-span-2 xl:col-span-6">
           Raport z dnia {params.zapisano} zapisany.
@@ -48,6 +62,7 @@ export default async function DashboardPage({
       ) : null}
       <Finanse data={data} currency={settings.currency} />
       <Sprzedaz data={data} settings={settings} currency={settings.currency} />
+      <PlanDnia data={data} />
       <Leki data={data} today={today} />
       <Priorytety data={data} />
       <Trening data={data} today={today} />
@@ -55,6 +70,8 @@ export default async function DashboardPage({
       <Nawodnienie data={data} settings={settings} today={today} />
       <Waga data={data} settings={settings} />
       <Rekordy data={data} />
+      <Projekty data={data} today={today} />
+      <Tydzien days={weekDays} today={today} currency={settings.currency} />
       <Mentor data={data} />
     </div>
   );
@@ -194,6 +211,91 @@ function Sprzedaz({ data, settings, currency }: { data: Data; settings: Ustawien
           </div>
         </dl>
       </div>
+    </Card>
+  );
+}
+
+/* --------------------------------------------------------- plan na dziś */
+
+/**
+ * Jedna oś czasu dnia złożona ze wszystkich kategorii — żeby po wejściu na stronę
+ * główną było widać cały plan, a nie trzeba go składać z osobnych kafelków.
+ */
+function PlanDnia({ data }: { data: Data }) {
+  const agenda = buildAgenda({
+    doses: data.zdrowie.doses,
+    training: data.trening.planned.map(({ plan, log }) => ({
+      id: plan.id,
+      discipline: plan.discipline,
+      title: plan.title,
+      startTime: plan.startTime,
+      durationMin: plan.durationMin,
+      done: Boolean(log?.done),
+    })),
+    learning: data.nauka.blocks.map(({ block, log }) => ({
+      id: block.planId,
+      skill: block.skill,
+      startTime: block.startTime,
+      durationMin: block.durationMin,
+      focus: block.focus,
+      done: Boolean(log?.done),
+    })),
+    tasks: [...data.zadania.priorytety, ...data.zadania.side],
+  });
+
+  const done = agenda.filter((item) => item.done).length;
+
+  return (
+    <Card className="xl:col-span-2">
+      <CardHeader
+        title="Plan na dziś"
+        subtitle={agenda.length > 0 ? `Zrobione ${done} z ${agenda.length}` : undefined}
+        icon={ListChecks}
+        action={
+          <Link href="/kalendarz" className="text-muted hover:text-ink">
+            Kalendarz
+          </Link>
+        }
+      />
+
+      {agenda.length === 0 ? (
+        <EmptyState
+          message="Na dziś nic nie jest zaplanowane — ani leków, ani treningu, ani nauki, ani zadań."
+          href="/raport"
+          cta="Wypełnij raport"
+        />
+      ) : (
+        <>
+          <Meter value={done} max={agenda.length} tone="var(--good)" label="Realizacja planu dnia" />
+          <ul className="mt-3 flex flex-col gap-0.5">
+            {agenda.map((item) => (
+              <li key={item.key}>
+                <Link
+                  href={item.href}
+                  className="flex items-baseline gap-2.5 rounded-lg px-2 py-1.5 hover:bg-surface-2"
+                >
+                  <span className="tabular w-14 shrink-0 text-xs text-muted">{item.when ?? "—"}</span>
+                  <span
+                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: CATEGORY_COLOR[item.category] }}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className={cn("block truncate text-sm", item.done ? "text-muted line-through" : "text-ink")}>
+                      {item.title}
+                    </span>
+                    <span className="block truncate text-xs text-muted">
+                      {AGENDA_CATEGORY_LABEL[item.category]}
+                      {item.detail ? ` · ${item.detail}` : ""}
+                    </span>
+                  </span>
+                  {item.done ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-good" /> : null}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </Card>
   );
 }
@@ -623,6 +725,85 @@ function Rekordy({ data }: { data: Data }) {
           ))}
         </ul>
       )}
+    </Card>
+  );
+}
+
+/* -------------------------------------------------------------- projekty */
+
+function Projekty({ data, today }: { data: Data; today: string }) {
+  return (
+    <Card className="xl:col-span-2">
+      <CardHeader
+        title="Projekty"
+        subtitle={data.projekty.length > 0 ? `${data.projekty.length} aktywnych` : undefined}
+        icon={FolderKanban}
+        action={
+          <Link href="/projekty" className="text-muted hover:text-ink">
+            Wszystkie
+          </Link>
+        }
+      />
+      {data.projekty.length === 0 ? (
+        <EmptyState message="Nie masz aktywnych projektów." href="/ustawienia/projekty" />
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {data.projekty.map((project) => {
+            const daysLeft = project.deadline ? diffDays(today, project.deadline) : null;
+            return (
+              <li key={project.id}>
+                <p className="flex items-baseline justify-between gap-2">
+                  <span className="truncate text-sm font-medium text-ink">{project.name}</span>
+                  {daysLeft !== null ? (
+                    <span
+                      className={cn(
+                        "shrink-0 text-xs",
+                        daysLeft < 0 ? "text-critical" : daysLeft <= 7 ? "text-warning" : "text-muted",
+                      )}
+                    >
+                      {daysLeft < 0 ? `${Math.abs(daysLeft)} dni po terminie` : `${daysLeft} dni`}
+                    </span>
+                  ) : null}
+                </p>
+                {project.nextAction ? (
+                  <p className="mt-0.5 truncate text-xs text-ink-2">→ {project.nextAction}</p>
+                ) : (
+                  <p className="mt-0.5 text-xs text-critical">Brak następnego kroku</p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------ tydzień w całości */
+
+function Tydzien({
+  days,
+  today,
+  currency,
+}: {
+  days: Awaited<ReturnType<typeof getCalendarRange>>;
+  today: string;
+  currency: string;
+}) {
+  return (
+    <Card className="md:col-span-2 xl:col-span-6">
+      <CardHeader
+        title="Ten tydzień"
+        subtitle="Wszystkie kategorie naraz — plan w przód, realizacja wstecz."
+        icon={CalendarDays}
+        action={
+          <Link href="/kalendarz" className="text-muted hover:text-ink">
+            Pełny kalendarz
+          </Link>
+        }
+      />
+      <CategoryWeek days={days} today={today} currency={currency} />
+      <WeekTotals days={days} currency={currency} />
     </Card>
   );
 }

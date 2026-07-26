@@ -1,6 +1,7 @@
 import {
   Activity,
   Brain,
+  CalendarDays,
   ClipboardList,
   Dumbbell,
   FolderKanban,
@@ -27,6 +28,16 @@ export type NavCategory = {
  * prowadzą do sekcji na stronie danej kategorii.
  */
 export const NAV: NavCategory[] = [
+  {
+    key: "kalendarz",
+    label: "Kalendarz",
+    href: "/kalendarz",
+    icon: CalendarDays,
+    items: [
+      { label: "Miesiąc", href: "/kalendarz" },
+      { label: "Wybrany dzień", href: "/kalendarz#dzien" },
+    ],
+  },
   {
     key: "finanse",
     label: "Finanse",

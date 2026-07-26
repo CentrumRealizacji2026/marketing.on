@@ -80,7 +80,48 @@ export function isWithin(dateStr: string, start: string | null, end: string | nu
   return true;
 }
 
+export function addMonths(monthStr: string, months: number): string {
+  const [year, month] = monthStr.split("-").map(Number);
+  const total = year * 12 + (month - 1) + months;
+  const nextYear = Math.floor(total / 12);
+  const nextMonth = (total % 12) + 1;
+  return `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
+}
+
+export function endOfMonth(dateStr: string): string {
+  const nextMonthStart = `${addMonths(dateStr.slice(0, 7), 1)}-01`;
+  return addDays(nextMonthStart, -1);
+}
+
+/**
+ * Pełna siatka miesiąca: od początku tygodnia zawierającego pierwszy dzień
+ * do końca tygodnia zawierającego ostatni — zawsze pełne wiersze po 7 dni.
+ */
+export function monthGridDates(monthStr: string, weekStartsOn = 1): string[] {
+  const first = `${monthStr}-01`;
+  const gridStart = startOfWeek(first, weekStartsOn);
+  const last = endOfMonth(first);
+  const lastWeekStart = startOfWeek(last, weekStartsOn);
+  const gridEnd = addDays(lastWeekStart, 6);
+
+  const total = diffDays(gridStart, gridEnd) + 1;
+  return Array.from({ length: total }, (_, i) => addDays(gridStart, i));
+}
+
+/** Dni tygodnia w kolejności zależnej od ustawienia „tydzień zaczyna się od”. */
+export function orderedWeekdays(weekStartsOn = 1) {
+  return Array.from({ length: 7 }, (_, i) => {
+    const value = ((weekStartsOn - 1 + i) % 7) + 1;
+    return WEEKDAYS.find((day) => day.value === value)!;
+  });
+}
+
 const plDate = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long", year: "numeric" });
+const plMonth = new Intl.DateTimeFormat("pl-PL", { month: "long", year: "numeric" });
+
+export function formatMonthPl(monthStr: string): string {
+  return plMonth.format(new Date(`${monthStr}-01T00:00:00Z`));
+}
 const plDateShort = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short" });
 
 export function formatDatePl(dateStr: string): string {

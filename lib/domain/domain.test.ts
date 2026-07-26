@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { addDays, isoWeekday, lastNDays, startOfWeek, todayInTz } from "./dates";
+import { agendaSortKey, buildAgenda } from "./agenda";
+import {
+  addDays,
+  addMonths,
+  endOfMonth,
+  isoWeekday,
+  lastNDays,
+  monthGridDates,
+  orderedWeekdays,
+  startOfWeek,
+  todayInTz,
+} from "./dates";
 import { learningBlocksForDate } from "./learning";
 import { medicationScheduleForDate, slotSortKey } from "./medication";
 import { beatsRecord, currentRecords } from "./records";
@@ -31,6 +42,102 @@ describe("daty", () => {
     const late = new Date("2026-07-26T23:30:00Z");
     expect(todayInTz("Europe/Warsaw", late)).toBe("2026-07-27");
     expect(todayInTz("UTC", late)).toBe("2026-07-26");
+  });
+});
+
+describe("kalendarz miesięczny", () => {
+  it("przesuwa miesiąc przez granicę roku", () => {
+    expect(addMonths("2026-12", 1)).toBe("2027-01");
+    expect(addMonths("2026-01", -1)).toBe("2025-12");
+  });
+
+  it("zna ostatni dzień miesiąca, także w lutym roku przestępnego", () => {
+    expect(endOfMonth("2026-02-10")).toBe("2026-02-28");
+    expect(endOfMonth("2028-02-10")).toBe("2028-02-29");
+    expect(endOfMonth("2026-07-01")).toBe("2026-07-31");
+  });
+
+  it("buduje siatkę z pełnych tygodni obejmującą cały miesiąc", () => {
+    const grid = monthGridDates("2026-07", 1);
+    expect(grid.length % 7).toBe(0);
+    expect(isoWeekday(grid[0])).toBe(1); // zaczyna się w poniedziałek
+    expect(isoWeekday(grid.at(-1)!)).toBe(7); // kończy w niedzielę
+    expect(grid).toContain("2026-07-01");
+    expect(grid).toContain("2026-07-31");
+  });
+
+  it("respektuje inny początek tygodnia", () => {
+    const grid = monthGridDates("2026-07", 7); // tydzień od niedzieli
+    expect(isoWeekday(grid[0])).toBe(7);
+    expect(orderedWeekdays(7)[0].value).toBe(7);
+    expect(orderedWeekdays(1)[0].value).toBe(1);
+  });
+});
+
+describe("agenda dnia", () => {
+  const dose = (name: string, slot: string, taken = false) => ({
+    medicationId: `m-${name}`,
+    name,
+    kind: "lek" as const,
+    doseAmount: 1,
+    doseUnit: "tabletka",
+    slot,
+    taken,
+    notes: null,
+  });
+
+  it("porządkuje nazwane pory dnia razem z godzinami", () => {
+    expect(agendaSortKey("rano")).toBe(7 * 60);
+    expect(agendaSortKey("18:30")).toBe(18 * 60 + 30);
+    expect(agendaSortKey("wieczór")).toBe(19 * 60);
+    expect(agendaSortKey(null)).toBeNull();
+  });
+
+  it("składa jedną oś czasu ze wszystkich kategorii", () => {
+    const agenda = buildAgenda({
+      doses: [dose("Magnez", "wieczór"), dose("Witamina D", "rano", true)],
+      training: [
+        { id: "t1", discipline: "rower", title: "interwały", startTime: "18:00:00", durationMin: 60, done: false },
+      ],
+      learning: [
+        { id: "l1", skill: "hiszpański", startTime: "20:00:00", durationMin: 45, focus: "czasy przeszłe", done: false },
+      ],
+      tasks: [{ id: "z1", title: "Zadzwonić do klientów", kind: "priorytet", position: 1, done: false }],
+    });
+
+    expect(agenda.map((item) => item.title)).toEqual([
+      "Witamina D", // rano (07:00)
+      "interwały", // 18:00
+      "Magnez", // wieczór (19:00)
+      "hiszpański", // 20:00
+      "Zadzwonić do klientów", // bez pory — na końcu
+    ]);
+  });
+
+  it("przenosi pozycje bez godziny na koniec, nawet gdy są pierwsze na wejściu", () => {
+    const agenda = buildAgenda({
+      doses: [],
+      training: [],
+      learning: [],
+      tasks: [
+        { id: "z1", title: "Side quest", kind: "side", position: 0, done: false },
+        { id: "z2", title: "Priorytet", kind: "priorytet", position: 1, done: true },
+      ],
+    });
+    expect(agenda.every((item) => item.when === null)).toBe(true);
+    expect(agenda).toHaveLength(2);
+  });
+
+  it("oznacza wykonane pozycje i zachowuje kategorię", () => {
+    const agenda = buildAgenda({
+      doses: [dose("Magnez", "rano", true)],
+      training: [{ id: "t1", discipline: "bieg", title: null, startTime: null, durationMin: null, done: true }],
+      learning: [],
+      tasks: [],
+    });
+    expect(agenda.find((i) => i.title === "Magnez")?.category).toBe("zdrowie");
+    expect(agenda.find((i) => i.title === "bieg")?.category).toBe("trening");
+    expect(agenda.every((item) => item.done)).toBe(true);
   });
 });
 

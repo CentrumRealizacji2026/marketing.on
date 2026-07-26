@@ -12,7 +12,8 @@ je później w panelu zarządzania.
 
 | Obszar | Co robi |
 |---|---|
-| **Dashboard `/`** | Kafelki na dziś: stan środków, sprzedaż z konwersjami, leki i suplementy do odhaczenia, 3 priorytety i side questy, trening, blok nauki, nawodnienie z oceną, waga, rekordy, rekomendacje mentora |
+| **Dashboard `/`** | Podsumowanie z każdej kategorii: stan środków, sprzedaż z konwersjami, leki i suplementy do odhaczenia, 3 priorytety i side questy, trening, blok nauki, nawodnienie z oceną, waga, rekordy, projekty, rekomendacje mentora. Do tego **plan na dziś** — jedna oś czasu złożona ze wszystkich kategorii — i **pasek tygodnia** z kategoriami w wierszach i dniami w kolumnach |
+| **Kalendarz `/kalendarz`** | Siatka miesiąca z kropkami kategorii przy każdym dniu, tydzień wybranego dnia w układzie kategorie × dni i szczegóły dnia z podziałem na kategorie. Dni w przód pokazują plan, dni wstecz — plan i realizację |
 | **Kreator `/start`** | 11 kroków konfiguracji. Leki, trening, rekordy, nauka i projekty to listy dynamiczne — „+ dodaj” dokłada wiersz, a nazwy dyscyplin i dziedzin wpisujesz własnymi słowami |
 | **Panel `/ustawienia`** | Te same formularze bezterminowo. Wyłączenie pozycji zachowuje historię zamiast ją kasować |
 | **Raport `/raport`** | Jeden formularz na cały dzień: finanse, sprzedaż i umowy, leki, waga i woda, zadania, trening z możliwością zgłoszenia rekordu, nauka, samopoczucie |
@@ -79,8 +80,8 @@ lib/ai/         mentor
 ```
 
 Reguły domenowe są celowo oddzielone od bazy: progi nawodnienia, składanie planu nauki z planu
-tygodniowego i rocznego, harmonogram leków na dany dzień i wyliczanie rekordów to czyste funkcje
-w `lib/domain/`, przetestowane w `lib/domain/domain.test.ts`.
+tygodniowego i rocznego, harmonogram leków na dany dzień, wyliczanie rekordów, sortowanie agendy
+dnia i siatka miesiąca to czyste funkcje w `lib/domain/`, przetestowane w `lib/domain/domain.test.ts`.
 
 ## Wdrożenie na Vercel
 
