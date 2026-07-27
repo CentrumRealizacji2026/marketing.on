@@ -43,17 +43,30 @@ bez zamykania panelu.
 
 ## Uruchomienie lokalne
 
-Potrzebny jest Node 20+ i Postgres. Baza z Dockera to jedna komenda — jeśli masz własnego
-Postgresa, pomiń pierwszy krok i wpisz swój connection string do `.env`.
+Potrzebny jest **Node 20+** i **Docker Desktop** (albo własny Postgres). Reszta dzieje się sama:
+
+```bash
+npm install
+npm run kokpit
+```
+
+Druga komenda podnosi bazę, zakłada plik `.env`, tworzy tabele, wypełnia dane pokazowe i startuje
+aplikację na **http://localhost:3000**. Logujesz się kontem **demo@kokpit.local / demo12345**.
+Każdy krok pomija się sam, jeśli był już zrobiony, więc kolejne uruchomienie jest szybkie i niczego
+nie kasuje. Zatrzymanie: `Ctrl+C`.
+
+Jeśli wolisz mieć kontrolę nad każdym krokiem — to samo ręcznie:
 
 ```bash
 docker compose up -d          # Postgres na localhost:5432 (baza „zycie")
-npm install
 cp .env.example .env          # domyślny DATABASE_URL pasuje do docker compose
 npm run db:migrate            # zakłada 31 tabel
 npm run db:seed-demo          # dane pokazowe — opcjonalnie, ale warto
 npm run dev                   # http://localhost:3000
 ```
+
+Masz własnego Postgresa? Wpisz jego adres do `.env` — `npm run kokpit` rozpozna, że baza nie stoi
+na localhost, i nie będzie ruszał Dockera.
 
 `db:seed-demo` zakłada konto **demo@kokpit.local / demo12345** z ponad miesiącem historii:
 finanse, sprzedaż, leki, treningi, nauka, cele oszczędnościowe, rachunki, rodzina i wyniki testów
@@ -80,6 +93,7 @@ mentora mówi wprost, czego brakuje.
 ## Skrypty
 
 ```bash
+npm run kokpit      # całe uruchomienie lokalne jedną komendą
 npm run dev         # serwer deweloperski
 npm run build       # build produkcyjny
 npm run typecheck   # tsc --noEmit

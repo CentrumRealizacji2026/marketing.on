@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "kokpit": "bash scripts/start-local.sh",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
