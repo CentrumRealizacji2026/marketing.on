@@ -26,6 +26,14 @@ import {
   paymentsInRange,
   summarizeObligations,
 } from "./obligations";
+import {
+  LIMIT_EMAIL,
+  LIMIT_IP,
+  OKNO_MINUT,
+  adresIp,
+  ocenBlokade,
+  opiszBlokade,
+} from "./rate-limit";
 import { savingsPace, savingsProgress, summarizeSavings } from "./savings";
 import { niceScaleMax, scaleTicks } from "./scale";
 import { beatsRecord, currentRecords } from "./records";
@@ -884,5 +892,56 @@ describe("testy stanu psychicznego", () => {
     expect(compareScores("gad7", 8, 12)).toEqual({ delta: -4, improved: true });
     expect(compareScores("who5", 60, null).improved).toBeNull();
     expect(compareScores("who5", 60, 60).improved).toBeNull();
+  });
+});
+
+describe("blokada po nieudanych logowaniach", () => {
+  const teraz = new Date("2026-07-27T12:00:00Z");
+  const minutTemu = (n: number) => new Date(teraz.getTime() - n * 60_000);
+
+  it("nie blokuje, dopóki prób jest mniej niż limit", () => {
+    const proby = Array.from({ length: LIMIT_EMAIL - 1 }, () => minutTemu(1));
+    expect(ocenBlokade(proby, LIMIT_EMAIL, teraz).zablokowane).toBe(false);
+  });
+
+  it("blokuje po osiągnięciu limitu", () => {
+    const proby = Array.from({ length: LIMIT_EMAIL }, () => minutTemu(1));
+    expect(ocenBlokade(proby, LIMIT_EMAIL, teraz).zablokowane).toBe(true);
+  });
+
+  it("nie liczy prób sprzed okna — blokada sama mija", () => {
+    const stare = Array.from({ length: LIMIT_EMAIL }, () => minutTemu(OKNO_MINUT + 1));
+    expect(ocenBlokade(stare, LIMIT_EMAIL, teraz).zablokowane).toBe(false);
+  });
+
+  it("podaje, ile minut zostało do odblokowania", () => {
+    // Najstarsza z liczonych prób sprzed 10 minut wypada z okna po kolejnych 5.
+    const proby = Array.from({ length: LIMIT_EMAIL }, (_, i) => minutTemu(i === 0 ? 10 : 1));
+    const blokada = ocenBlokade(proby, LIMIT_EMAIL, teraz);
+    expect(blokada.zablokowane).toBe(true);
+    expect(blokada.minutDoKonca).toBe(5);
+  });
+
+  it("nigdy nie mówi „za 0 minut”", () => {
+    const proby = Array.from({ length: LIMIT_EMAIL }, () => minutTemu(OKNO_MINUT - 0.1));
+    expect(ocenBlokade(proby, LIMIT_EMAIL, teraz).minutDoKonca).toBeGreaterThanOrEqual(1);
+  });
+
+  it("limit dla IP jest luźniejszy niż dla pojedynczego konta", () => {
+    expect(LIMIT_IP).toBeGreaterThan(LIMIT_EMAIL);
+    const proby = Array.from({ length: LIMIT_EMAIL }, () => minutTemu(1));
+    expect(ocenBlokade(proby, LIMIT_IP, teraz).zablokowane).toBe(false);
+  });
+
+  it("odmienia minuty po polsku", () => {
+    expect(opiszBlokade(1)).toContain("1 minutę");
+    expect(opiszBlokade(3)).toContain("3 minuty");
+    expect(opiszBlokade(12)).toContain("12 minut");
+  });
+
+  it("czyta adres klienta zza proxy, a nie adresu proxy", () => {
+    expect(adresIp(new Headers({ "x-forwarded-for": "203.0.113.7, 70.41.3.18" }))).toBe("203.0.113.7");
+    expect(adresIp(new Headers({ "x-real-ip": "203.0.113.9" }))).toBe("203.0.113.9");
+    expect(adresIp(new Headers())).toBe("nieznany");
   });
 });

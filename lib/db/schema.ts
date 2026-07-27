@@ -76,6 +76,24 @@ export const sessions = pgTable(
   (t) => [uniqueIndex("sessions_token_hash_key").on(t.tokenHash), index("sessions_user_idx").on(t.userId)],
 );
 
+/**
+ * Nieudane próby logowania. Publiczny adres znaczy, że hasło może zgadywać
+ * każdy, kto zna URL — a bez licznika może to robić bez końca.
+ *
+ * Licznik siedzi w bazie, nie w pamięci procesu, bo na serverless każde żądanie
+ * może trafić do innej instancji i pamięć nic by nie pamiętała.
+ */
+export const loginAttempts = pgTable(
+  "login_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Adres e-mail albo IP — liczymy osobno, żeby jedno konto nie blokowało całej sieci. */
+    identifier: text("identifier").notNull(),
+    attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("login_attempts_key").on(t.identifier, t.attemptedAt)],
+);
+
 /* ------------------------------------------------------- ustawienia i cele */
 
 export const settings = pgTable("settings", {
