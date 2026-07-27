@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "node scripts/migrate-on-build.mjs && next build",
+  "regions": ["fra1"],
   "crons": [
     {
       "path": "/api/cron/mentor",

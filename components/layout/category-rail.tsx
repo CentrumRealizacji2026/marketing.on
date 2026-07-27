@@ -49,12 +49,26 @@ function CategoryGroup({
     <details open={active} className="group">
       <summary
         className={cn(
-          "flex cursor-pointer list-none items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+          "flex cursor-pointer list-none items-center gap-2.5 rounded-lg pr-2.5 text-sm transition-colors",
           active ? "bg-series-1/15 font-medium text-ink" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
         )}
       >
-        <Icon className={cn("h-4 w-4 shrink-0", active ? "text-series-1" : "text-muted")} />
-        <span className="flex-1 truncate">{category.label}</span>
+        {/*
+          Nazwa kategorii prowadzi na jej stronę, a strzałka rozwija podkategorie.
+          stopPropagation trzyma te dwie rzeczy osobno: kliknięcie w nazwę nie
+          zwija właśnie otwieranej kategorii.
+        */}
+        <Link
+          href={category.href}
+          onClick={(event) => {
+            event.stopPropagation();
+            onNavigate?.();
+          }}
+          className="flex min-w-0 flex-1 items-center gap-2.5 py-2 pl-2.5"
+        >
+          <Icon className={cn("h-4 w-4 shrink-0", active ? "text-series-1" : "text-muted")} />
+          <span className="truncate">{category.label}</span>
+        </Link>
         <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted transition-transform group-open:rotate-180" />
       </summary>
 
