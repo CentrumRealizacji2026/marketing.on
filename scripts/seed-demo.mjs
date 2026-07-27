@@ -610,8 +610,6 @@ console.log(
     `Konto demo: ${EMAIL} / ${PASSWORD}`,
     `Historia: ${dates.length} dni (${dates[0]} → ${dates.at(-1)})`,
     `Umowy: ${contractsToInsert.length} · saldo dziś: ${balance.toFixed(2)} zł`,
-    "",
-    "Zaloguj się na http://localhost:3000/login",
   ].join("\n"),
 );
 

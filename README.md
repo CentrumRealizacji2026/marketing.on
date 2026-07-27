@@ -50,10 +50,14 @@ npm install
 npm run kokpit
 ```
 
-Druga komenda podnosi bazę, zakłada plik `.env`, tworzy tabele, wypełnia dane pokazowe i startuje
-aplikację na **http://localhost:3000**. Logujesz się kontem **demo@kokpit.local / demo12345**.
+Druga komenda podnosi bazę, zakłada plik `.env`, tworzy tabele, wypełnia dane pokazowe, startuje
+aplikację i otwiera ją w przeglądarce. Logujesz się kontem **demo@kokpit.local / demo12345**.
 Każdy krok pomija się sam, jeśli był już zrobiony, więc kolejne uruchomienie jest szybkie i niczego
 nie kasuje. Zatrzymanie: `Ctrl+C`.
+
+Adres to zwykle `http://localhost:3000`, ale **port bierze się z tego, co akurat jest wolne** —
+jeśli 3000 zajmuje inny projekt, kokpit wstanie na 3001 i tyle będzie w komunikacie. Zawsze czytaj
+adres wypisany w terminalu; samo „localhost" bez numeru to port 80, czyli zupełnie inna aplikacja.
 
 Jeśli wolisz mieć kontrolę nad każdym krokiem — to samo ręcznie:
 

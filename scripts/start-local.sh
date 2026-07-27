@@ -97,14 +97,30 @@ if [ "$LICZBA_KONT" = "0" ]; then
   npm run db:seed-demo --silent
 fi
 
-# ------------------------------------------------------------------ 7. start
+# ------------------------------------------------------------------ 7. port
+
+# Port 3000 bywa zajęty przez inny projekt — wtedy pod „localhost:3000" otworzy
+# się cudza strona i wygląda to, jakby kokpit nie działał. Szukamy wolnego portu
+# i wypisujemy dokładny adres, zamiast zakładać, że 3000 jest nasze.
+PORT=3000
+for kandydat in 3000 3001 3002 3003 3004 3005; do
+  if ! node -e "require('net').connect($kandydat,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))" 2>/dev/null; then
+    PORT=$kandydat
+    break
+  fi
+done
+
+ADRES="http://localhost:${PORT}"
 
 cat <<INFO
 
 ────────────────────────────────────────────────────────────
   Kokpit startuje. Otwórz w przeglądarce:
 
-      http://localhost:3000
+      ${ADRES}
+
+  ↑ dokładnie ten adres, razem z numerem po dwukropku.
+    Sam „localhost" to inna strona.
 
   Zaloguj się danymi konta pokazowego:
 
@@ -116,4 +132,20 @@ cat <<INFO
 
 INFO
 
-npm run dev
+# ------------------------------------------------------------ 8. przeglądarka
+
+# Otwarcie okna w tle: czekamy, aż serwer odpowie, i dopiero wtedy pokazujemy stronę.
+(
+  for _ in $(seq 1 60); do
+    if node -e "require('net').connect(${PORT},'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))" 2>/dev/null; then
+      if command -v open >/dev/null; then open "$ADRES"            # macOS
+      elif command -v xdg-open >/dev/null; then xdg-open "$ADRES"  # Linux
+      elif command -v explorer.exe >/dev/null; then explorer.exe "$ADRES"  # Windows
+      fi
+      exit 0
+    fi
+    sleep 1
+  done
+) >/dev/null 2>&1 &
+
+npm run dev -- --port "$PORT"
