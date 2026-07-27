@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { AlertTriangle, CheckCircle2, Droplets, HeartPulse, Scale, Smile, XCircle } from "lucide-react";
 
+import { DayBars } from "@/components/charts/day-bars";
 import { Meter, Sparkline } from "@/components/charts/sparkline";
 import { Card, CardHeader, EmptyState, StatTile, StatusPill } from "@/components/ui/card";
 import { toggleDose } from "@/lib/actions/quick";
@@ -99,7 +100,6 @@ export default async function HealthPage() {
     .slice(-10)
     .reverse();
 
-  const maxWater = Math.max(...waterValues.map((v) => v ?? 0), settings.waterGoalMl ?? 0, 1);
 
   return (
     <div className="flex flex-col gap-3">
@@ -180,26 +180,27 @@ export default async function HealthPage() {
                 ) : null}
               </div>
 
-              <div className="flex items-end gap-2" style={{ height: 96 }}>
-                {days7.map((date, index) => {
+              <DayBars
+                bars={days7.map((date, index) => {
                   const value = waterValues[index];
-                  const status = waterStatus(value, settings.waterGoalMl, settings.waterGoodPct, settings.waterOkPct);
-                  const height = value === null ? 2 : Math.max((value / maxWater) * 100, 6);
-                  return (
-                    <div key={date} className="flex flex-1 flex-col items-center gap-1">
-                      <div
-                        className="w-full max-w-8 rounded-t-[4px]"
-                        style={{
-                          height: `${height}%`,
-                          background: status ? TONE[status] : "var(--line)",
-                        }}
-                        title={`${date}: ${value ?? "brak wpisu"}`}
-                      />
-                      <span className="text-[10px] text-muted">{formatDateShortPl(date)}</span>
-                    </div>
+                  const status = waterStatus(
+                    value,
+                    settings.waterGoalMl,
+                    settings.waterGoodPct,
+                    settings.waterOkPct,
                   );
+                  return {
+                    date,
+                    value,
+                    label: formatDateShortPl(date),
+                    tone: status ? TONE[status] : undefined,
+                  };
                 })}
-              </div>
+                today={today}
+                goal={settings.waterGoalMl}
+                unit="ml"
+              />
+
               <p className="mt-2 text-xs text-muted">
                 Cel: {formatNumber(settings.waterGoalMl)} ml. Progi: dobrze ≥ {settings.waterGoodPct}%, w normie ≥{" "}
                 {settings.waterOkPct}%.

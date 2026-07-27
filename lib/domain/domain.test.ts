@@ -26,6 +26,7 @@ import {
   summarizeObligations,
 } from "./obligations";
 import { savingsPace, savingsProgress, summarizeSavings } from "./savings";
+import { niceScaleMax, scaleTicks } from "./scale";
 import { beatsRecord, currentRecords } from "./records";
 import { conversionRates, sumSales } from "./sales";
 import { averageOfReportedDays, waterStatus } from "./water";
@@ -604,6 +605,32 @@ describe("plan drobnych gestów", () => {
       expect(gesture.source).toBeTruthy();
     }
     expect(new Set(GESTURES.map((g) => g.id)).size).toBe(GESTURES.length);
+  });
+});
+
+describe("skala wykresu", () => {
+  it("zaokrągla górę osi w górę do okrągłej wartości", () => {
+    expect(niceScaleMax(22)).toBe(25);
+    expect(niceScaleMax(3400)).toBe(4000);
+    expect(niceScaleMax(7)).toBe(8);
+    expect(niceScaleMax(1)).toBe(1);
+  });
+
+  it("zawsze zostawia miejsce nad najwyższym słupkiem albo kończy równo", () => {
+    for (const value of [1, 3, 9, 17, 48, 260, 2450, 19999]) {
+      expect(niceScaleMax(value)).toBeGreaterThanOrEqual(value);
+    }
+  });
+
+  it("nie wywraca się na zerze i wartościach ujemnych", () => {
+    expect(niceScaleMax(0)).toBe(1);
+    expect(niceScaleMax(-5)).toBe(1);
+    expect(niceScaleMax(Number.NaN)).toBe(1);
+  });
+
+  it("daje podpisy od góry do zera", () => {
+    expect(scaleTicks(25)).toEqual([25, 12.5, 0]);
+    expect(scaleTicks(4000, 4)).toEqual([4000, 3000, 2000, 1000, 0]);
   });
 });
 

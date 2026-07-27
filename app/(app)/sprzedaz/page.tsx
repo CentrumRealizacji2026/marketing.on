@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
 import { FileSignature, TrendingUp } from "lucide-react";
 
+import { DayBars } from "@/components/charts/day-bars";
 import { BarRow, Meter } from "@/components/charts/sparkline";
 import { Card, CardHeader, EmptyState, StatTile } from "@/components/ui/card";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
@@ -99,7 +100,6 @@ export default async function SalesPage() {
 
       {sections.map((section) => {
         const values = dates.map((date) => byDate.get(date)?.[section.key] ?? 0);
-        const max = Math.max(...values, section.goal ?? 0, 1);
         const todayValue = byDate.get(today)?.[section.key] ?? 0;
         const progress = goalProgress(todayValue, section.goal);
 
@@ -120,25 +120,15 @@ export default async function SalesPage() {
                 />
               </div>
             ) : null}
-            <div className="flex items-end gap-1.5" style={{ height: 96 }}>
-              {dates.map((date, index) => {
-                const value = values[index];
-                const height = Math.max((value / max) * 100, value > 0 ? 6 : 2);
-                return (
-                  <div key={date} className="flex flex-1 flex-col items-center gap-1">
-                    <div
-                      className="w-full max-w-6 rounded-t-[4px]"
-                      style={{
-                        height: `${height}%`,
-                        background: date === today ? "var(--series-1)" : "color-mix(in oklab, var(--series-1) 45%, transparent)",
-                      }}
-                      title={`${date}: ${value}`}
-                    />
-                    <span className="text-[10px] text-muted">{formatDateShortPl(date).replace(" ", " ")}</span>
-                  </div>
-                );
-              })}
-            </div>
+            <DayBars
+              bars={dates.map((date, index) => ({
+                date,
+                value: values[index],
+                label: formatDateShortPl(date),
+              }))}
+              today={today}
+              goal={section.goal}
+            />
           </Card>
         );
       })}

@@ -65,7 +65,7 @@ npm run icons       # regeneracja ikon PWA
 - **Postgres + Drizzle ORM** — schemat w `lib/db/schema.ts` (30 tabel), migracje w `drizzle/`
 - **Własne sesje** — nieprzezroczysty token w bazie (przechowywany jako skrót), ciasteczko `httpOnly`; middleware odsiewa żądania bez ciasteczka, a `requireUser()` weryfikuje token po stronie serwera
 - **Claude API** (`claude-opus-5`) ze structured outputs — mentor zwraca zwalidowany JSON, nie tekst do parsowania
-- **Wykresy** pisane ręcznie w SVG — brak zależności, renderują się po stronie serwera
+- **Wykresy** pisane ręcznie (SVG i CSS) — brak zależności, renderują się po stronie serwera. Wykres dzienny ma oś z zaokrągloną skalą, wartość nad każdym słupkiem i przerywaną linię celu; na wąskim ekranie podpisy skracają się do numeru dnia
 
 ### Warstwy
 
