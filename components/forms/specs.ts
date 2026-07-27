@@ -3,12 +3,14 @@ import {
   DISCIPLINE_SUGGESTIONS,
   DOSE_UNIT_SUGGESTIONS,
   MATERIAL_TYPE_OPTIONS,
+  FAMILY_RELATION_SUGGESTIONS,
   OBLIGATION_CATEGORY_SUGGESTIONS,
   PROJECT_STATUS_OPTIONS,
   RECORD_METRIC_SUGGESTIONS,
   SKILL_SUGGESTIONS,
 } from "@/lib/domain/suggestions";
 import { SLOT_SUGGESTIONS } from "@/lib/domain/medication";
+import { FAMILY_KIND_OPTIONS } from "@/lib/domain/family";
 import { CADENCE_OPTIONS } from "@/lib/domain/obligations";
 
 /**
@@ -347,6 +349,68 @@ export function savingsGoalToRow(row: {
     deadline: row.deadline ?? "",
     note: row.note ?? "",
   };
+}
+
+/* ------------------------------------------------------------------ rodzina */
+
+export const familyMemberFields: FieldSpec[] = [
+  { name: "name", label: "Imię", type: "text", span: 2, placeholder: "np. Ania" },
+  {
+    name: "relation",
+    label: "Kim jest",
+    type: "text",
+    span: 2,
+    placeholder: "np. partnerka, syn, mama",
+    suggestions: FAMILY_RELATION_SUGGESTIONS,
+  },
+  { name: "birthDate", label: "Data urodzin", type: "date", span: 2 },
+  { name: "note", label: "Notatka", type: "text", span: 6, placeholder: "np. lubi książki o górach" },
+];
+
+export const familyMemberDefault = { name: "", relation: "", birthDate: "", note: "" };
+
+export function familyMemberToRow(row: {
+  id: string;
+  name: string;
+  relation: string | null;
+  birthDate: string | null;
+  note: string | null;
+}) {
+  return {
+    id: row.id,
+    name: row.name,
+    relation: row.relation ?? "",
+    birthDate: row.birthDate ?? "",
+    note: row.note ?? "",
+  };
+}
+
+export const familyEventFields: FieldSpec[] = [
+  { name: "name", label: "Nazwa", type: "text", span: 3, placeholder: "np. rocznica ślubu" },
+  { name: "kind", label: "Rodzaj", type: "select", span: 1, options: FAMILY_KIND_OPTIONS },
+  { name: "date", label: "Data", type: "date", span: 2 },
+  {
+    name: "recurring",
+    label: "Powtarzanie",
+    type: "checkbox",
+    span: 3,
+    placeholder: "Wraca co roku",
+    hint: "Zaznacz przy rocznicach. Randka albo wyjazd to zwykle jednorazowa data.",
+  },
+  { name: "note", label: "Notatka", type: "text", span: 3, placeholder: "np. stolik na 19:00" },
+];
+
+export const familyEventDefault = { name: "", kind: "wydarzenie", date: "", recurring: false, note: "" };
+
+export function familyEventToRow(row: {
+  id: string;
+  name: string;
+  date: string;
+  kind: string;
+  recurring: boolean;
+  note: string | null;
+}) {
+  return { id: row.id, name: row.name, date: row.date, kind: row.kind, recurring: row.recurring, note: row.note ?? "" };
 }
 
 /* ------------------------------------------------------------ odliczanie */

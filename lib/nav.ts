@@ -6,6 +6,7 @@ import {
   Dumbbell,
   FolderKanban,
   GraduationCap,
+  Heart,
   HeartPulse,
   ListTodo,
   Settings,
@@ -59,11 +60,23 @@ export const NAV: NavCategory[] = [
     href: "/sprzedaz",
     icon: TrendingUp,
     items: [
+      { label: "Do podpisania", href: "/sprzedaz#do-podpisania" },
       { label: "Rozmowy", href: "/sprzedaz#rozmowy" },
       { label: "Spotkania umówione", href: "/sprzedaz#umowione" },
       { label: "Spotkania odbyte", href: "/sprzedaz#odbyte" },
       { label: "Umowy", href: "/sprzedaz#umowy" },
       { label: "Lejek", href: "/sprzedaz#lejek" },
+    ],
+  },
+  {
+    key: "rodzina",
+    label: "Rodzina",
+    href: "/rodzina",
+    icon: Heart,
+    items: [
+      { label: "Najbliższe daty", href: "/rodzina#daty" },
+      { label: "Drobne gesty", href: "/rodzina#gesty" },
+      { label: "Osoby i wydarzenia", href: "/rodzina#osoby" },
     ],
   },
   {

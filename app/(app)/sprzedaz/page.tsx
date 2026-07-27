@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
-import { TrendingUp } from "lucide-react";
+import { FileSignature, TrendingUp } from "lucide-react";
 
 import { BarRow, Meter } from "@/components/charts/sparkline";
 import { Card, CardHeader, EmptyState, StatTile } from "@/components/ui/card";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { contracts, salesDaily } from "@/lib/db/schema";
+import { DealsTable } from "@/components/forms/deals-table";
+import { saveDeals } from "@/lib/actions/config";
+import { getDeals } from "@/lib/queries/config";
 import { addDays, formatDateShortPl, lastNDays, startOfWeek, todayInTz } from "@/lib/domain/dates";
 import { conversionRates, formatPercent, goalProgress, sumSales } from "@/lib/domain/sales";
 import { formatMoney, formatNumber } from "@/lib/utils";
@@ -23,7 +26,7 @@ export default async function SalesPage() {
   const from = addDays(today, -(RANGE - 1));
   const weekStart = startOfWeek(today, settings.weekStartsOn);
 
-  const [rows, contractRows] = await Promise.all([
+  const [rows, contractRows, dealRows] = await Promise.all([
     db
       .select()
       .from(salesDaily)
@@ -34,6 +37,7 @@ export default async function SalesPage() {
       .from(contracts)
       .where(and(eq(contracts.userId, user.id), gte(contracts.signedOn, from)))
       .orderBy(desc(contracts.signedOn)),
+    getDeals(user.id),
   ]);
 
   const byDate = new Map(rows.map((row) => [row.date, row]));
@@ -167,6 +171,25 @@ export default async function SalesPage() {
           Procent przy każdym etapie to konwersja z etapu poprzedniego. Od rozmowy do umowy:{" "}
           {formatPercent(rates.callToContract)}.
         </p>
+      </Card>
+
+      <Card id="do-podpisania">
+        <CardHeader
+          title="Do podpisania"
+          subtitle="Klienci, z którymi umowa jeszcze nie jest zamknięta, i szacowana wartość"
+          icon={FileSignature}
+        />
+        <DealsTable
+          initial={dealRows.map((row) => ({
+            id: row.id,
+            clientName: row.clientName,
+            valuePln: row.valuePln,
+            expectedDate: row.expectedDate,
+            stage: row.stage,
+          }))}
+          action={saveDeals}
+          currency={settings.currency}
+        />
       </Card>
 
       <Card id="umowy">

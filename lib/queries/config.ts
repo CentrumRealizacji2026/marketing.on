@@ -5,6 +5,9 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   countdowns,
+  deals,
+  familyEvents,
+  familyMembers,
   learningPlanWeek,
   learningPlanYear,
   materials,
@@ -90,9 +93,30 @@ export function getCountdowns(userId: string) {
     .orderBy(asc(countdowns.targetDate), asc(countdowns.position));
 }
 
+export function getDeals(userId: string) {
+  return db.select().from(deals).where(eq(deals.userId, userId)).orderBy(asc(deals.position));
+}
+
+export function getFamilyMembers(userId: string) {
+  return db
+    .select()
+    .from(familyMembers)
+    .where(eq(familyMembers.userId, userId))
+    .orderBy(asc(familyMembers.position));
+}
+
+export function getFamilyEvents(userId: string) {
+  return db
+    .select()
+    .from(familyEvents)
+    .where(eq(familyEvents.userId, userId))
+    .orderBy(asc(familyEvents.date), asc(familyEvents.position));
+}
+
 /** Ile sekcji konfiguracji jest już wypełnionych — napędza podpowiedzi „skonfiguruj →". */
 export async function getConfigStatus(userId: string) {
-  const [meds, training, records, week, year, project, material, savings, bills, timers] = await Promise.all([
+  const [meds, training, records, week, year, project, material, savings, bills, timers, dealRows, family] =
+    await Promise.all([
     getMedications(userId),
     getTrainingPlans(userId),
     getPersonalRecords(userId),
@@ -103,6 +127,8 @@ export async function getConfigStatus(userId: string) {
     getSavingsGoals(userId),
     getObligations(userId),
     getCountdowns(userId),
+    getDeals(userId),
+    getFamilyMembers(userId),
   ]);
 
   return {
@@ -116,5 +142,7 @@ export async function getConfigStatus(userId: string) {
     savingsGoals: savings.length,
     obligations: bills.length,
     countdowns: timers.length,
+    deals: dealRows.length,
+    familyMembers: family.length,
   };
 }

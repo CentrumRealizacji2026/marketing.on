@@ -31,6 +31,8 @@ export type ProjectStatus = "aktywny" | "wstrzymany" | "zakonczony";
 export type MaterialType = "wideo" | "pdf" | "kurs" | "ksiazka" | "inne";
 export type RecommendationStatus = "nowa" | "przyjeta" | "zrobiona" | "odrzucona";
 export type MentorMode = "mentor" | "trener" | "pm";
+export type DealStage = "do-podpisania" | "podpisana" | "przepadla";
+export type FamilyEventKind = "rocznica" | "urodziny" | "randka" | "wyjazd" | "wydarzenie";
 export type ObligationCadence =
   | "jednorazowo"
   | "tygodniowo"
@@ -86,6 +88,8 @@ export const settings = pgTable("settings", {
 
   // Nawodnienie — cel i własne progi kategorii "dobrze / w normie / źle".
   waterGoalMl: integer("water_goal_ml"),
+  /** Ile drobnych gestów dla bliskiej osoby planować tygodniowo. 0 wyłącza podpowiedzi. */
+  familyGesturesPerWeek: integer("family_gestures_per_week").notNull().default(2),
   waterGoodPct: integer("water_good_pct").notNull().default(100),
   waterOkPct: integer("water_ok_pct").notNull().default(80),
 
@@ -321,6 +325,95 @@ export const obligationPayments = pgTable(
     uniqueIndex("obligation_payments_due_key").on(t.obligationId, t.dueDate),
     index("obligation_payments_user_due_idx").on(t.userId, t.dueDate),
   ],
+);
+
+/* --------------------------------------------------- lejek do podpisania */
+
+/**
+ * Klient, z którym umowa jeszcze nie jest podpisana, wraz z szacowaną wartością.
+ * To lista robocza, nie historia — podpisana umowa trafia do `contracts` przez
+ * raport dzienny, a wpis w lejku dostaje status i przestaje liczyć się do sumy.
+ */
+export const deals = pgTable(
+  "deals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    clientName: text("client_name").notNull(),
+    /** Szacowana kwota do zarobienia. */
+    valuePln: numeric("value_pln", { precision: 12, scale: 2, mode: "number" }).notNull().default(0),
+    expectedDate: date("expected_date", { mode: "string" }),
+    stage: text("stage").$type<DealStage>().notNull().default("do-podpisania"),
+    note: text("note"),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("deals_user_idx").on(t.userId, t.stage)],
+);
+
+/* ------------------------------------------------------------------ rodzina */
+
+/** Osoba i jej data — urodziny powtarzają się co roku same z siebie. */
+export const familyMembers = pgTable(
+  "family_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Kim jest ta osoba — wpisywane własnymi słowami, bez zamkniętej listy. */
+    relation: text("relation"),
+    birthDate: date("birth_date", { mode: "string" }),
+    note: text("note"),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("family_members_user_idx").on(t.userId)],
+);
+
+/**
+ * Wydarzenie rodzinne: rocznica, randka, wspólny wyjazd. `recurring` odróżnia
+ * datę, która wraca co roku, od jednorazowego planu.
+ */
+export const familyEvents = pgTable(
+  "family_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    date: date("date", { mode: "string" }).notNull(),
+    kind: text("kind").$type<FamilyEventKind>().notNull().default("wydarzenie"),
+    recurring: boolean("recurring").notNull().default(false),
+    note: text("note"),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("family_events_user_idx").on(t.userId, t.date)],
+);
+
+/**
+ * Odhaczenie zaplanowanego gestu. Sam plan nie jest zapisywany — powstaje
+ * z katalogu i numeru tygodnia, więc zmiana katalogu nie fałszuje historii.
+ */
+export const familyGestureLogs = pgTable(
+  "family_gesture_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    date: date("date", { mode: "string" }).notNull(),
+    gestureId: text("gesture_id").notNull(),
+    done: boolean("done").notNull().default(true),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("family_gesture_logs_key").on(t.userId, t.date, t.gestureId)],
 );
 
 /* -------------------------------------------------------------- odliczanie */
@@ -643,6 +736,9 @@ export type MedicationLog = typeof medicationLogs.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type SavingsGoal = typeof savingsGoals.$inferSelect;
 export type CountdownRow = typeof countdowns.$inferSelect;
+export type Deal = typeof deals.$inferSelect;
+export type FamilyMember = typeof familyMembers.$inferSelect;
+export type FamilyEvent = typeof familyEvents.$inferSelect;
 export type Obligation = typeof obligations.$inferSelect;
 export type ObligationPayment = typeof obligationPayments.$inferSelect;
 export type SavingsContribution = typeof savingsContributions.$inferSelect;

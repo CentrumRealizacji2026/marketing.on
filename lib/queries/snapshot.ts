@@ -13,6 +13,7 @@ import {
   medications,
   personalRecords,
   projects,
+  deals,
   salesDaily,
   tasks,
   trainingLogs,
@@ -20,6 +21,7 @@ import {
   type Settings,
 } from "@/lib/db/schema";
 import { addDays, isoWeekday, lastNDays } from "@/lib/domain/dates";
+import { summarizeDeals, type DealInput } from "@/lib/domain/deals";
 import { dayCashFlow, sumExpenses, sumIncome } from "@/lib/domain/finance";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
@@ -49,7 +51,7 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
   const start30 = addDays(today, -29);
   const start7 = addDays(today, -6);
 
-  const [logs, salesRows, contractRows, medRows, medLogRows, taskRows, planRows, trainingLogRows, weekPlans, yearPlans, learningLogRows, recordRows, projectRows] =
+  const [logs, salesRows, contractRows, medRows, medLogRows, taskRows, planRows, trainingLogRows, weekPlans, yearPlans, learningLogRows, recordRows, projectRows, dealRows] =
     await Promise.all([
       db
         .select()
@@ -86,6 +88,7 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
         .where(and(eq(learningLogs.userId, userId), gte(learningLogs.date, start30), lte(learningLogs.date, today))),
       db.select().from(personalRecords).where(eq(personalRecords.userId, userId)),
       db.select().from(projects).where(and(eq(projects.userId, userId), eq(projects.status, "aktywny"))),
+      db.select().from(deals).where(eq(deals.userId, userId)),
     ]);
 
   // Cele i rachunki mają własne zapytania — mentor dostaje wyliczony stan, nie surowe wiersze.
@@ -229,6 +232,13 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
         kwota: payment.amountPln,
         termin: payment.dueDate,
       })),
+    },
+
+    lejek: {
+      ...summarizeDeals(dealRows as DealInput[]),
+      pozycje: dealRows
+        .filter((row) => row.stage === "do-podpisania")
+        .map((row) => ({ klient: row.clientName, kwota: row.valuePln, spodziewanyPodpis: row.expectedDate })),
     },
 
     sprzedaz: {

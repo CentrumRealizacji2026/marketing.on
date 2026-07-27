@@ -7,6 +7,9 @@ import {
   countdownDefault,
   countdownFields,
   countdownToRow,
+  familyMemberDefault,
+  familyMemberFields,
+  familyMemberToRow,
   obligationDefault,
   obligationFields,
   obligationToRow,
@@ -37,6 +40,7 @@ import { Card } from "@/components/ui/card";
 import {
   finishOnboarding,
   saveCountdowns,
+  saveFamilyMembers,
   saveLearningWeek,
   saveLearningYear,
   saveObligations,
@@ -53,6 +57,7 @@ import { todayInTz } from "@/lib/domain/dates";
 import {
   getConfigStatus,
   getCountdowns,
+  getFamilyMembers,
   getLearningWeek,
   getLearningYear,
   getObligations,
@@ -81,7 +86,8 @@ const STEPS = [
   { n: 11, title: "Nauka — rok", desc: "Okresy, które zawężają temat bloków." },
   { n: 12, title: "Projekty", desc: "Co prowadzisz i jaki jest następny krok." },
   { n: 13, title: "Odliczanie", desc: "Wydarzenia, do których chcesz liczyć dni." },
-  { n: 14, title: "Gotowe", desc: "Podgląd konfiguracji." },
+  { n: 14, title: "Rodzina", desc: "Imiona i daty bliskich osób." },
+  { n: 15, title: "Gotowe", desc: "Podgląd konfiguracji." },
 ];
 
 function next(step: number) {
@@ -395,10 +401,29 @@ async function StepContent({
           action={saveCountdowns}
           hiddenFields={hidden}
           addLabel="Dodaj odliczanie"
-          submitLabel="Zapisz i zakończ"
+          submitLabel="Zapisz i dalej"
           emptyHint="Wakacje, egzamin, ślub, koniec kredytu — cokolwiek, co chcesz mieć przed oczami."
           titleFields={["name"]}
           itemNoun="Odliczanie"
+          footer={<SkipLink step={step} />}
+        />
+      );
+    }
+
+    case 14: {
+      const rows = await getFamilyMembers(userId);
+      return (
+        <RowsEditor
+          fields={familyMemberFields}
+          initial={rows.map(familyMemberToRow)}
+          defaultRow={familyMemberDefault}
+          action={saveFamilyMembers}
+          hiddenFields={hidden}
+          addLabel="Dodaj osobę"
+          submitLabel="Zapisz i zakończ"
+          emptyHint="Imiona i daty urodzin bliskich. Rocznice i wspólne wyjazdy dodasz później w panelu."
+          titleFields={["name", "relation"]}
+          itemNoun="Osoba"
           footer={<SkipLink step={step} />}
         />
       );
@@ -422,6 +447,7 @@ async function Summary({ userId }: { userId: string }) {
     { label: "Okresy planu rocznego", count: status.learningYear, href: "/start?krok=11" },
     { label: "Projekty", count: status.projects, href: "/start?krok=12" },
     { label: "Odliczanie", count: status.countdowns, href: "/start?krok=13" },
+    { label: "Osoby w rodzinie", count: status.familyMembers, href: "/start?krok=14" },
   ];
 
   return (

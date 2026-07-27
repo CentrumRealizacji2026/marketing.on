@@ -9,6 +9,10 @@ import { db } from "@/lib/db";
 import {
   countdowns,
   dailyLogs,
+  deals,
+  familyEvents,
+  familyGestureLogs,
+  familyMembers,
   learningPlanWeek,
   learningPlanYear,
   materials,
@@ -25,6 +29,9 @@ import { getUserSettings, requireUser } from "@/lib/auth/session";
 import { todayInTz } from "@/lib/domain/dates";
 import {
   countdownSchema,
+  dealSchema,
+  familyEventSchema,
+  familyMemberSchema,
   financeStartSchema,
   goalsSchema,
   learningWeekSchema,
@@ -416,6 +423,156 @@ export async function saveSavingsGoals(_prev: FormState, formData: FormData): Pr
   return afterSave(user.id, formData);
 }
 
+/* ------------------------------------------------------ lejek sprzedaży */
+
+export async function saveDeals(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+
+  // Tabela startuje z pustymi wierszami, więc puste odsiewamy przed walidacją —
+  // inaczej dziesięć miejsc na start oznaczałoby dziesięć błędów.
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(formData.get("rows") ?? "[]"));
+  } catch {
+    return { error: "Nie udało się odczytać tabeli." };
+  }
+  const filled = Array.isArray(raw)
+    ? raw.filter((row) => typeof row === "object" && row !== null && String((row as { clientName?: unknown }).clientName ?? "").trim() !== "")
+    : [];
+
+  const parsed = rowsPayload(dealSchema).safeParse(filled);
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const rows = parsed.data;
+  const keepIds = rows.map((row) => row.id).filter((value): value is string => Boolean(value));
+
+  await db
+    .delete(deals)
+    .where(and(eq(deals.userId, user.id), keepIds.length > 0 ? notInArray(deals.id, keepIds) : undefined));
+
+  for (const [index, row] of rows.entries()) {
+    const values = {
+      clientName: row.clientName,
+      valuePln: row.valuePln,
+      expectedDate: row.expectedDate,
+      stage: row.stage,
+      note: row.note,
+      position: index,
+    };
+
+    if (row.id) {
+      await db.update(deals).set(values).where(and(eq(deals.id, row.id), eq(deals.userId, user.id)));
+    } else {
+      await db.insert(deals).values({ ...values, userId: user.id });
+    }
+  }
+
+  return afterSave(user.id, formData);
+}
+
+/* ------------------------------------------------------------------ rodzina */
+
+export async function saveFamilyMembers(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = rowsPayload(familyMemberSchema).safeParse(formData.get("rows"));
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const rows = parsed.data;
+  const keepIds = rows.map((row) => row.id).filter((value): value is string => Boolean(value));
+
+  await db
+    .delete(familyMembers)
+    .where(
+      and(
+        eq(familyMembers.userId, user.id),
+        keepIds.length > 0 ? notInArray(familyMembers.id, keepIds) : undefined,
+      ),
+    );
+
+  for (const [index, row] of rows.entries()) {
+    const values = { name: row.name, relation: row.relation, birthDate: row.birthDate, note: row.note, position: index };
+
+    if (row.id) {
+      await db
+        .update(familyMembers)
+        .set(values)
+        .where(and(eq(familyMembers.id, row.id), eq(familyMembers.userId, user.id)));
+    } else {
+      await db.insert(familyMembers).values({ ...values, userId: user.id });
+    }
+  }
+
+  return afterSave(user.id, formData);
+}
+
+export async function saveFamilyEvents(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = rowsPayload(familyEventSchema).safeParse(formData.get("rows"));
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const rows = parsed.data;
+  const keepIds = rows.map((row) => row.id).filter((value): value is string => Boolean(value));
+
+  await db
+    .delete(familyEvents)
+    .where(
+      and(
+        eq(familyEvents.userId, user.id),
+        keepIds.length > 0 ? notInArray(familyEvents.id, keepIds) : undefined,
+      ),
+    );
+
+  for (const [index, row] of rows.entries()) {
+    const values = {
+      name: row.name,
+      date: row.date,
+      kind: row.kind,
+      recurring: row.recurring,
+      note: row.note,
+      position: index,
+    };
+
+    if (row.id) {
+      await db
+        .update(familyEvents)
+        .set(values)
+        .where(and(eq(familyEvents.id, row.id), eq(familyEvents.userId, user.id)));
+    } else {
+      await db.insert(familyEvents).values({ ...values, userId: user.id });
+    }
+  }
+
+  return afterSave(user.id, formData);
+}
+
+/** Odhaczenie zaplanowanego gestu — wpis istnieje tylko wtedy, gdy coś zrobiono. */
+export async function toggleGesture(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const date = String(formData.get("date") ?? "");
+  const gestureId = String(formData.get("gestureId") ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !gestureId) return;
+
+  const [existing] = await db
+    .select({ id: familyGestureLogs.id })
+    .from(familyGestureLogs)
+    .where(
+      and(
+        eq(familyGestureLogs.userId, user.id),
+        eq(familyGestureLogs.date, date),
+        eq(familyGestureLogs.gestureId, gestureId),
+      ),
+    )
+    .limit(1);
+
+  if (existing) {
+    await db.delete(familyGestureLogs).where(eq(familyGestureLogs.id, existing.id));
+  } else {
+    await db.insert(familyGestureLogs).values({ userId: user.id, date, gestureId, done: true });
+  }
+
+  refresh();
+}
+
 /* ------------------------------------------------------------ odliczanie */
 
 export async function saveCountdowns(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -594,6 +751,7 @@ export async function saveGoals(_prev: FormState, formData: FormData): Promise<F
 
   const values = {
     waterGoalMl: parsed.data.waterGoalMl === null ? null : Math.round(parsed.data.waterGoalMl),
+    familyGesturesPerWeek: parsed.data.familyGesturesPerWeek,
     waterGoodPct: parsed.data.waterGoodPct,
     waterOkPct: parsed.data.waterOkPct,
     weightTargetKg: parsed.data.weightTargetKg,

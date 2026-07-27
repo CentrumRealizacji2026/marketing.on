@@ -101,6 +101,28 @@ function cellFor(category: CategoryKey, day: CalendarDay, currency: string): Cel
       };
     }
 
+    case "rodzina": {
+      const entries = day.rodzina;
+      if (entries.length === 0) return EMPTY;
+
+      const dates = entries.filter((entry) => entry.kind !== "gest");
+      const gestures = entries.filter((entry) => entry.kind === "gest");
+      const parts: CellPart[] = [];
+
+      if (dates.length > 0) {
+        parts.push({
+          text: dates[0].label + (dates.length > 1 ? ` +${dates.length - 1}` : ""),
+          tone: "saving",
+        });
+      }
+      if (gestures.length > 0) parts.push({ text: "♥ gest" });
+
+      return {
+        parts,
+        title: entries.map((entry) => [entry.label, entry.detail].filter(Boolean).join(": ")).join(" · "),
+      };
+    }
+
     case "sprzedaz": {
       const { calls, meetingsScheduled, meetingsHeld, contracts, valuePln } = day.sprzedaz;
       if (calls + meetingsScheduled + meetingsHeld + contracts === 0) return EMPTY;

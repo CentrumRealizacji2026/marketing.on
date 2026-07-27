@@ -10,6 +10,8 @@ import {
   learningPlanWeek,
   learningPlanYear,
   medicationLogs,
+  familyEvents,
+  familyMembers,
   medications,
   obligationPayments,
   obligations,
@@ -23,7 +25,9 @@ import {
   trainingPlans,
   type Settings,
 } from "@/lib/db/schema";
-import { addDays, isoWeekday, todayInTz } from "@/lib/domain/dates";
+import { addDays, isoWeekday, startOfWeek, todayInTz } from "@/lib/domain/dates";
+import { familyDatesInRange, type EventInput, type MemberInput } from "@/lib/domain/family";
+import { planGesturesForWeek, seedFromId } from "@/lib/domain/gestures";
 import { dayCashFlow, type CashFlowSource } from "@/lib/domain/finance";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { paymentsInRange, type ObligationInput, type PaymentStatus } from "@/lib/domain/obligations";
@@ -48,6 +52,8 @@ export type CalendarDay = {
   platnosci: Array<{ name: string; amountPln: number; status: PaymentStatus }>;
   /** Ile i na co odłożone tego dnia. */
   oszczednosci: Array<{ name: string; amountPln: number }>;
+  /** Urodziny, rocznice, randki oraz zaplanowane drobne gesty. */
+  rodzina: Array<{ label: string; detail: string | null; kind: string }>;
   sprzedaz: { calls: number; meetingsScheduled: number; meetingsHeld: number; contracts: number; valuePln: number };
   zdrowie: {
     dosesPlanned: number;
@@ -78,6 +84,8 @@ export function hasActivity(day: CalendarDay, category: keyof typeof CATEGORY_KE
       );
     case "platnosci":
       return day.platnosci.length > 0;
+    case "rodzina":
+      return day.rodzina.length > 0;
     case "sprzedaz":
       return day.sprzedaz.calls + day.sprzedaz.meetingsHeld + day.sprzedaz.contracts > 0;
     case "zdrowie":
@@ -102,6 +110,7 @@ export const CATEGORY_KEYS = {
   finanse: "Finanse",
   platnosci: "Płatności",
   sprzedaz: "Sprzedaż",
+  rodzina: "Rodzina",
   zdrowie: "Zdrowie",
   zadania: "Zadania",
   trening: "Trening",
@@ -141,6 +150,8 @@ export async function getCalendarRange(
     learningLogRows,
     projectRows,
     milestoneRows,
+    memberRows,
+    eventRows,
     obligationRows,
     paymentRows,
     contributionRows,
@@ -180,6 +191,8 @@ export async function getCalendarRange(
       .where(and(eq(learningLogs.userId, userId), gte(learningLogs.date, from), lte(learningLogs.date, to))),
     db.select().from(projects).where(eq(projects.userId, userId)),
     db.select().from(projectMilestones).where(eq(projectMilestones.userId, userId)),
+    db.select().from(familyMembers).where(eq(familyMembers.userId, userId)),
+    db.select().from(familyEvents).where(eq(familyEvents.userId, userId)),
     db.select().from(obligations).where(and(eq(obligations.userId, userId), eq(obligations.active, true))),
     db
       .select()
@@ -221,6 +234,26 @@ export async function getCalendarRange(
 
   // Terminy nie są wierszami w bazie — generujemy je raz na cały zakres.
   const today = todayInTz(settings.timezone);
+
+  const familyDates = familyDatesInRange(
+    memberRows as MemberInput[],
+    eventRows as EventInput[],
+    from,
+    to,
+    today,
+  );
+
+  // Gesty planowane są tygodniami, więc zbieramy plany wszystkich tygodni z zakresu.
+  const gestureSeed = seedFromId(userId);
+  const gestureByDate = new Map<string, string[]>();
+  if (settings.familyGesturesPerWeek > 0) {
+    for (let cursor = startOfWeek(from, settings.weekStartsOn); cursor <= to; cursor = addDays(cursor, 7)) {
+      for (const entry of planGesturesForWeek(cursor, settings.familyGesturesPerWeek, gestureSeed)) {
+        if (entry.date < from || entry.date > to) continue;
+        gestureByDate.set(entry.date, [...(gestureByDate.get(entry.date) ?? []), entry.gesture.text]);
+      }
+    }
+  }
   const duePayments = paymentsInRange(obligationRows as ObligationInput[], paymentRows, from, to, today);
 
   return dates.map((date) => {
@@ -290,6 +323,16 @@ export async function getCalendarRange(
       oszczednosci: contributionRows
         .filter((row) => row.date === date)
         .map((row) => ({ name: row.name, amountPln: row.amountPln })),
+      rodzina: [
+        ...familyDates
+          .filter((entry) => entry.date === date)
+          .map((entry) => ({
+            label: entry.label,
+            detail: entry.ordinal ? `${entry.ordinal}. rocznica` : entry.note,
+            kind: entry.kind,
+          })),
+        ...(gestureByDate.get(date) ?? []).map((text) => ({ label: "Drobny gest", detail: text, kind: "gest" })),
+      ],
       finanse: {
         cashBalancePln: log?.cashBalancePln ?? null,
         expensesPln: flow.expensesPln,

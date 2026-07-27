@@ -14,10 +14,10 @@ je później w panelu zarządzania.
 |---|---|
 | **Dashboard `/`** | Podsumowanie z każdej kategorii: stan środków, sprzedaż z konwersjami, leki i suplementy do odhaczenia, 3 priorytety i side questy, trening, blok nauki, nawodnienie z oceną, waga, rekordy, projekty, rekomendacje mentora. Do tego **plan na dziś** — jedna oś czasu złożona ze wszystkich kategorii — i **pasek tygodnia** z kategoriami w wierszach i dniami w kolumnach |
 | **Kalendarz `/kalendarz`** | Siatka miesiąca z kropkami kategorii przy każdym dniu, tydzień wybranego dnia w układzie kategorie × dni i szczegóły dnia z podziałem na kategorie. Dni w przód pokazują plan, dni wstecz — plan i realizację |
-| **Kreator `/start`** | 14 kroków konfiguracji. Leki, trening, rekordy, nauka i projekty to listy dynamiczne — „+ dodaj” dokłada wiersz, a nazwy dyscyplin i dziedzin wpisujesz własnymi słowami |
+| **Kreator `/start`** | 15 kroków konfiguracji. Leki, trening, rekordy, nauka i projekty to listy dynamiczne — „+ dodaj” dokłada wiersz, a nazwy dyscyplin i dziedzin wpisujesz własnymi słowami |
 | **Panel `/ustawienia`** | Te same formularze bezterminowo. Wyłączenie pozycji zachowuje historię zamiast ją kasować |
 | **Raport `/raport`** | Jeden formularz na cały dzień: finanse (stan środków, wydane, wpłynęło), dopłaty na cele oszczędnościowe, rachunki do odhaczenia, sprzedaż i umowy, leki, waga i woda, zadania, trening z możliwością zgłoszenia rekordu, nauka oraz zdrowie psychiczne (samopoczucie, energia, stres, myśli, co dobrego się wydarzyło) |
-| **Kategorie** | `/finanse` (stan środków, przepływy, oszczędności, płatności, pozycja na tle świata), `/sprzedaz`, `/zdrowie`, `/zadania`, `/trening`, `/nauka`, `/projekty` |
+| **Kategorie** | `/finanse` (stan środków, przepływy, oszczędności, płatności, pozycja na tle świata), `/sprzedaz` (lejek „do podpisania”, konwersje, umowy), `/rodzina`, `/zdrowie`, `/zadania`, `/trening`, `/nauka`, `/projekty` |
 | **Mentor `/mentor`** | Trzy tryby (mentor / trener / kierownik projektów). Analizuje agregaty z 7 i 30 dni i zwraca rekomendacje „obserwacja → działanie” ze statusami |
 | **PWA** | Instalowalna na telefonie, ze skrótami do raportu, zadań i mentora |
 
@@ -29,7 +29,7 @@ jako panel z prawej strony.
 ```bash
 npm install
 cp .env.example .env          # uzupełnij DATABASE_URL
-npm run db:migrate            # zakłada 26 tabel
+npm run db:migrate            # zakłada 30 tabel
 npm run dev                   # http://localhost:3000
 ```
 
@@ -62,7 +62,7 @@ npm run icons       # regeneracja ikon PWA
 
 - **Next.js 15** (App Router, React 19, server actions) + **TypeScript**
 - **Tailwind CSS v4** — tokeny kolorów w `app/globals.css`, motyw ciemny domyślnie, jasny zgodnie z ustawieniem systemu
-- **Postgres + Drizzle ORM** — schemat w `lib/db/schema.ts` (26 tabel), migracje w `drizzle/`
+- **Postgres + Drizzle ORM** — schemat w `lib/db/schema.ts` (30 tabel), migracje w `drizzle/`
 - **Własne sesje** — nieprzezroczysty token w bazie (przechowywany jako skrót), ciasteczko `httpOnly`; middleware odsiewa żądania bez ciasteczka, a `requireUser()` weryfikuje token po stronie serwera
 - **Claude API** (`claude-opus-5`) ze structured outputs — mentor zwraca zwalidowany JSON, nie tekst do parsowania
 - **Wykresy** pisane ręcznie w SVG — brak zależności, renderują się po stronie serwera
@@ -103,6 +103,49 @@ kolejnymi wpisami stanu środków — to gorsze źródło i tak jest opisane w p
 kwoty zawsze mają pierwszeństwo. Sumy i średnie liczą się wyłącznie z dni z wpisem: brak raportu
 to brak danych, a nie zero wydatków. Mentor dostaje te same liczby wraz z informacją, z ilu dni
 pochodzą.
+
+## Do podpisania
+
+Tabela na `/sprzedaz` z klientami, z którymi umowa jeszcze nie jest zamknięta, i szacowaną kwotą przy
+każdym. Startuje z dziesięcioma pustymi wierszami, kolejne dokłada przycisk. Pod tabelą podsumowanie:
+ile kontraktów czeka i ile jest do zdobycia — liczone na żywo, w trakcie wpisywania, a nie dopiero po
+zapisie. Puste wiersze są odsiewane przy zapisie, więc dziesięć miejsc na start nie oznacza dziesięciu
+błędów walidacji.
+
+Do sumy „do zdobycia” wchodzą wyłącznie pozycje ze statusem *do podpisania*. Podpisana umowa liczy się
+już w kontraktach z raportu dziennego, a przepadła nie liczy się nigdzie — inaczej ta sama złotówka
+byłaby w dwóch miejscach naraz.
+
+## Rodzina
+
+Osoby z datami urodzin i wydarzenia: rocznice, randki, wspólne wyjazdy. Urodziny i rocznice wracają
+co roku same — 29 lutego w roku nieprzestępnym wypada 28 lutego, żeby nikt nie tracił urodzin co
+cztery lata. Wszystko trafia do kalendarza jako osobna kategoria: własna kropka w siatce miesiąca,
+własny wiersz w pasku tygodnia i lista w szczegółach dnia.
+
+### Drobne gesty
+
+Aplikacja planuje w tygodniu kilka drobnych rzeczy do zrobienia dla bliskiej osoby (domyślnie dwie,
+zmienisz w **Celach i normach**, zero wyłącza). Plan jest deterministyczny — ten sam tydzień daje ten
+sam zestaw, więc odświeżenie strony niczego nie podmienia — i przesuwa się przez katalog, żeby
+propozycje nie zaczęły się powtarzać po dwóch tygodniach.
+
+Katalog nie jest zbiorem porad z internetu. Każda pozycja wynika z jednego z czterech mechanizmów
+opisanych w badaniach:
+
+| Mechanizm | Co z tego wynika | Źródło |
+|---|---|---|
+| Reagowanie na drobne zaczepki | Pary, które przetrwały, odpowiadały na nie w 86% przypadków; te, które się rozstały — w 33%. Stąd „małe rzeczy, często” zamiast wielkich gestów raz na kwartał | [Gottman Institute](https://www.gottman.com/blog/the-magic-ratio-the-key-to-relationship-satisfaction/) |
+| Wdzięczność mówiąca o drugiej osobie | Działa ta odmiana, która nazywa cechę („to pokazuje, jaki jesteś”), a nie własną korzyść („bardzo mi pomogłeś”) | [Algoe, Kurtz, Hilaire (2016)](https://journals.sagepub.com/doi/full/10.1177/1948550616651681) |
+| Wspólne nowe aktywności | Nowość i pobudzenie zwiększają poczucie bliskości mocniej niż powtarzalna rozrywka; liczy się nowość, nie koszt | [Aron, Tomlinson](https://assets.cambridge.org/97811084/75686/excerpt/9781108475686_excerpt.pdf) |
+| Rytuały i aktualna wiedza o drugiej osobie | Powitania, rozmowa o dniu bez doradzania, pytania o to, czym ktoś żyje teraz | [Gottman Institute](https://www.gottman.com/blog/the-magic-ratio-the-key-to-relationship-satisfaction/) |
+
+Świadomie **nie** opieramy tego na „językach miłości”: [przegląd Impett, Park i Muise (2024)](https://journals.sagepub.com/doi/10.1177/09637214231217663)
+pokazuje, że trzy założenia tej koncepcji — jeden dominujący język, dokładnie pięć języków i wyższa
+satysfakcja przy dopasowaniu — nie mają mocnego wsparcia w danych.
+
+Dane rodzinne **nie idą do mentora AI**. Mentor dostaje liczby o finansach, sprzedaży, zdrowiu
+i realizacji planów; imiona bliskich, daty i notatki zostają w bazie.
 
 ## Odliczanie
 

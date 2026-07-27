@@ -9,6 +9,7 @@ import {
   Dumbbell,
   FolderKanban,
   GraduationCap,
+  Heart,
   HeartPulse,
   Hourglass,
   ListChecks,
@@ -30,6 +31,7 @@ import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { cn, formatTime, formatMoney, formatNumber, pluralPl } from "@/lib/utils";
 import { AGENDA_CATEGORY_LABEL, CATEGORY_COLOR, buildAgenda } from "@/lib/domain/agenda";
 import { describeCountdown } from "@/lib/domain/countdown";
+import { describeFamilyDate } from "@/lib/domain/family";
 import { addDays, diffDays, startOfWeek, todayInTz } from "@/lib/domain/dates";
 import { formatDose, groupDosesBySlot } from "@/lib/domain/medication";
 import { dueLabel } from "@/lib/domain/obligations";
@@ -72,6 +74,7 @@ export default async function DashboardPage({
       <Oszczednosci data={data} currency={settings.currency} />
       <Platnosci data={data} today={today} currency={settings.currency} />
       <Odliczanie data={data} />
+      <Rodzina data={data} />
       <PlanDnia data={data} />
       <Leki data={data} today={today} />
       <Priorytety data={data} />
@@ -248,6 +251,73 @@ function Oszczednosci({ data, currency }: { data: Data; currency: string }) {
             </li>
           ))}
         </ul>
+      )}
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------ rodzina */
+
+function Rodzina({ data }: { data: Data }) {
+  const { upcoming, gestures } = data.rodzina;
+  const next = upcoming[0] ?? null;
+  const today = data.today;
+  const todayGestures = gestures.filter((entry) => entry.date === today);
+
+  return (
+    <Card className="xl:col-span-2">
+      <CardHeader
+        title="Rodzina"
+        icon={Heart}
+        action={
+          <Link href="/rodzina" className="text-muted hover:text-ink">
+            Szczegóły
+          </Link>
+        }
+      />
+      {!next && gestures.length === 0 ? (
+        <EmptyState message="Brak dat i gestów." href="/ustawienia/rodzina" cta="Skonfiguruj" />
+      ) : (
+        <>
+          {next ? (
+            <div>
+              <p className="text-sm font-medium text-ink">{next.label}</p>
+              <p className="mt-0.5 text-xs text-muted">
+                {next.date} · {describeFamilyDate(next)}
+                {next.ordinal ? ` · ${next.ordinal}.` : ""}
+              </p>
+            </div>
+          ) : null}
+
+          {todayGestures.length > 0 ? (
+            <div className={cn("rounded-lg border border-edge p-2.5", next ? "mt-3" : "")}>
+              <p className="text-xs font-medium tracking-wide text-muted uppercase">Drobny gest na dziś</p>
+              {todayGestures.map((entry) => (
+                <p
+                  key={entry.gesture.id}
+                  className={cn("mt-1 text-sm", entry.done ? "text-muted line-through" : "text-ink")}
+                >
+                  {entry.gesture.text}
+                </p>
+              ))}
+            </div>
+          ) : gestures.length > 0 ? (
+            <p className={cn("text-xs text-muted", next ? "mt-3" : "")}>
+              Najbliższy gest: {gestures.find((entry) => entry.date >= today)?.date ?? "w tym tygodniu"}.
+            </p>
+          ) : null}
+
+          {upcoming.length > 1 ? (
+            <ul className="mt-3 flex flex-col gap-1 border-t border-line pt-2.5">
+              {upcoming.slice(1, 4).map((entry) => (
+                <li key={entry.id} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="truncate text-ink-2">{entry.label}</span>
+                  <span className="tabular shrink-0 text-muted">{describeFamilyDate(entry)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
       )}
     </Card>
   );

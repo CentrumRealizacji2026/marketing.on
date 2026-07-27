@@ -30,6 +30,7 @@ import { currentRecords } from "@/lib/domain/records";
 import { sumSales, type SalesTotals } from "@/lib/domain/sales";
 import { averageOfReportedDays } from "@/lib/domain/water";
 import { getObligationsOverview } from "@/lib/queries/obligations";
+import { getFamilyOverview } from "@/lib/queries/family";
 import { getSavingsOverview } from "@/lib/queries/savings";
 
 const TREND_DAYS = 30;
@@ -136,9 +137,10 @@ export async function getDashboardData(userId: string, settings: Settings, today
   ]);
 
   // Cele i rachunki mają własne zapytania — kafelki dostają gotowy stan, nie surowe wiersze.
-  const [savings, bills] = await Promise.all([
+  const [savings, bills, family] = await Promise.all([
     getSavingsOverview(userId, today),
     getObligationsOverview(userId, today, 14),
+    getFamilyOverview(userId, settings, today),
   ]);
 
   const byDate = new Map(logs.map((log) => [log.date, log]));
@@ -231,6 +233,7 @@ export async function getDashboardData(userId: string, settings: Settings, today
     oszczednosci: savings,
     platnosci: bills,
     odliczanie: sortCountdowns(countdownRows.map((row) => countdownFor(row, today))),
+    rodzina: family,
 
     sprzedaz: {
       today: salesToday,

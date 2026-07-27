@@ -30,6 +30,12 @@ export default async function SettingsOverview() {
       count: status.obligations,
     },
     {
+      href: "/ustawienia/rodzina",
+      title: "Rodzina",
+      desc: "Osoby, daty urodzin, rocznice, randki i wspólne wyjazdy.",
+      count: status.familyMembers,
+    },
+    {
       href: "/ustawienia/odliczanie",
       title: "Odliczanie",
       desc: "Wydarzenia, do których liczysz dni — wakacje, egzamin, termin.",

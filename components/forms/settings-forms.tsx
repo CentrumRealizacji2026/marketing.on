@@ -167,6 +167,7 @@ export function GoalsForm({
     goalMeetingsHeldPerDay: number | null;
     goalContractsPerWeek: number | null;
     monthlyRevenueGoalPln: number | null;
+    familyGesturesPerWeek: number;
   };
   hiddenFields?: Record<string, string>;
   submitLabel?: string;
@@ -208,6 +209,7 @@ export function GoalsForm({
           <input type="hidden" name="weightTargetDate" value={initial.weightTargetDate ?? ""} />
           <input type="hidden" name="weightStartKg" value={value(initial.weightStartKg)} />
           <input type="hidden" name="weightStartDate" value={initial.weightStartDate ?? ""} />
+          <input type="hidden" name="familyGesturesPerWeek" value={String(initial.familyGesturesPerWeek)} />
         </>
       ) : null}
 
@@ -268,6 +270,20 @@ export function GoalsForm({
             </Field>
             <Field label="Próg „w normie” (% celu)" htmlFor="waterOkPct" hint="Poniżej tego progu: „źle”.">
               <NumberInput id="waterOkPct" name="waterOkPct" step="5" defaultValue={String(initial.waterOkPct)} />
+            </Field>
+            <Field
+              label="Gesty dla bliskiej osoby (tygodniowo)"
+              htmlFor="familyGesturesPerWeek"
+              hint="Ile drobnych gestów planować w tygodniu. 0 wyłącza podpowiedzi."
+            >
+              <NumberInput
+                id="familyGesturesPerWeek"
+                name="familyGesturesPerWeek"
+                step="1"
+                min="0"
+                max="7"
+                defaultValue={String(initial.familyGesturesPerWeek)}
+              />
             </Field>
             {showCurrentWeight ? (
               <Field

@@ -12,6 +12,9 @@ import {
   todayInTz,
 } from "./dates";
 import { countdownFor, describeCountdown, formatDaysPl, sortCountdowns } from "./countdown";
+import { summarizeDeals } from "./deals";
+import { familyDatesInRange, nextAnnualOccurrence, occurrencesInRange, upcomingFamilyDates } from "./family";
+import { GESTURES, planGesturesForWeek, seedFromId } from "./gestures";
 import { dayCashFlow, sumExpenses, sumIncome } from "./finance";
 import { describeRank, formatTopPct, incomeRank } from "./income-rank";
 import { learningBlocksForDate } from "./learning";
@@ -485,6 +488,122 @@ describe("odliczanie", () => {
     expect(at("2027-06-10")).toBe("za 3 tygodnie");
     expect(at("2027-01-04")).toBe("za 6 miesięcy");
     expect(at("2027-07-20")).toBe("16 dni temu");
+  });
+});
+
+describe("lejek do podpisania", () => {
+  const deals = [
+    { clientName: "Alfa", valuePln: 12000, stage: "do-podpisania" as const },
+    { clientName: "Beta", valuePln: 8000, stage: "do-podpisania" as const },
+    { clientName: "Gamma", valuePln: 30000, stage: "podpisana" as const },
+    { clientName: "Delta", valuePln: 5000, stage: "przepadla" as const },
+  ];
+
+  it("sumuje tylko pozycje czekające na podpis", () => {
+    const summary = summarizeDeals(deals);
+    expect(summary.open).toBe(2);
+    expect(summary.openPln).toBe(20000);
+  });
+
+  it("liczy podpisane i przepadłe osobno", () => {
+    const summary = summarizeDeals(deals);
+    expect(summary.won).toBe(1);
+    expect(summary.wonPln).toBe(30000);
+    expect(summary.lost).toBe(1);
+    expect(summary.winRate).toBe(50);
+  });
+
+  it("bez zamkniętych pozycji nie wylicza skuteczności", () => {
+    expect(summarizeDeals([deals[0]]).winRate).toBeNull();
+    expect(summarizeDeals([]).openPln).toBe(0);
+  });
+});
+
+describe("daty rodzinne", () => {
+  const ania = { id: "m1", name: "Ania", birthDate: "1990-03-14" };
+  const rocznica = {
+    id: "e1",
+    name: "Rocznica ślubu",
+    date: "2018-09-08",
+    kind: "rocznica" as const,
+    recurring: true,
+  };
+  const randka = { id: "e2", name: "Randka", date: "2026-08-02", kind: "randka" as const, recurring: false };
+
+  it("znajduje najbliższe urodziny, także po przejściu przez koniec roku", () => {
+    expect(nextAnnualOccurrence("1990-03-14", "2026-07-27")).toBe("2027-03-14");
+    expect(nextAnnualOccurrence("1990-08-14", "2026-07-27")).toBe("2026-08-14");
+    // Dzień wydarzenia liczy się jako najbliższy, nie jako miniony.
+    expect(nextAnnualOccurrence("1990-07-27", "2026-07-27")).toBe("2026-07-27");
+  });
+
+  it("przenosi 29 lutego na 28 w roku nieprzestępnym", () => {
+    expect(nextAnnualOccurrence("2000-02-29", "2026-01-01")).toBe("2026-02-28");
+    expect(nextAnnualOccurrence("2000-02-29", "2028-01-01")).toBe("2028-02-29");
+  });
+
+  it("wydarzenie jednorazowe pojawia się tylko raz", () => {
+    expect(occurrencesInRange("2026-08-02", false, "2026-01-01", "2028-01-01")).toEqual(["2026-08-02"]);
+    expect(occurrencesInRange("2026-08-02", true, "2026-01-01", "2028-01-01")).toEqual([
+      "2026-08-02",
+      "2027-08-02",
+    ]);
+  });
+
+  it("dokłada wiek i numer rocznicy", () => {
+    const dates = familyDatesInRange([ania], [rocznica], "2026-01-01", "2026-12-31", "2026-07-27");
+    const urodziny = dates.find((entry) => entry.kind === "urodziny");
+    const jubileusz = dates.find((entry) => entry.kind === "rocznica");
+    expect(urodziny?.ordinal).toBe(36);
+    expect(urodziny?.label).toBe("Urodziny — Ania");
+    expect(jubileusz?.ordinal).toBe(8);
+  });
+
+  it("sortuje najbliższe daty rosnąco", () => {
+    const upcoming = upcomingFamilyDates([ania], [rocznica, randka], "2026-07-27", 120);
+    expect(upcoming.map((entry) => entry.date)).toEqual(["2026-08-02", "2026-09-08"]);
+  });
+});
+
+describe("plan drobnych gestów", () => {
+  it("planuje tyle gestów, ile ustawiono, i rozkłada je w tygodniu", () => {
+    const plan = planGesturesForWeek("2026-07-27", 2);
+    expect(plan).toHaveLength(2);
+    expect(plan[0].date).toBe("2026-07-27");
+    expect(plan[1].date).toBe("2026-07-30");
+  });
+
+  it("zero wyłącza podpowiedzi", () => {
+    expect(planGesturesForWeek("2026-07-27", 0)).toEqual([]);
+  });
+
+  it("ten sam tydzień daje ten sam plan, kolejny — inny", () => {
+    const a = planGesturesForWeek("2026-07-27", 2);
+    const b = planGesturesForWeek("2026-07-27", 2);
+    const next = planGesturesForWeek("2026-08-03", 2);
+    expect(a.map((e) => e.gesture.id)).toEqual(b.map((e) => e.gesture.id));
+    expect(next.map((e) => e.gesture.id)).not.toEqual(a.map((e) => e.gesture.id));
+  });
+
+  it("nie powtarza gestu w obrębie tygodnia", () => {
+    const plan = planGesturesForWeek("2026-07-27", 5);
+    expect(new Set(plan.map((entry) => entry.gesture.id)).size).toBe(5);
+  });
+
+  it("różnicuje plan między kontami", () => {
+    const a = planGesturesForWeek("2026-07-27", 2, seedFromId("user-a"));
+    const b = planGesturesForWeek("2026-07-27", 2, seedFromId("user-b"));
+    expect(a.map((e) => e.gesture.id)).not.toEqual(b.map((e) => e.gesture.id));
+  });
+
+  it("każdy gest w katalogu ma źródło i konkretną instrukcję", () => {
+    for (const gesture of GESTURES) {
+      expect(gesture.text.length).toBeGreaterThan(20);
+      expect(gesture.why.length).toBeGreaterThan(10);
+      expect(gesture.minutes).toBeGreaterThan(0);
+      expect(gesture.source).toBeTruthy();
+    }
+    expect(new Set(GESTURES.map((g) => g.id)).size).toBe(GESTURES.length);
   });
 });
 

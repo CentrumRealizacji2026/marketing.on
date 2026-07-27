@@ -151,6 +151,42 @@ export const savingsGoalSchema = z.object({
   note: optionalText,
 });
 
+/* ------------------------------------------------------ lejek sprzedaży */
+
+export const dealSchema = z.object({
+  id,
+  clientName: trimmed.min(1, "Podaj nazwę klienta."),
+  valuePln: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? 0 : Number(String(v).replace(",", "."))),
+    z.number().min(0, "Kwota nie może być ujemna.").default(0),
+  ),
+  expectedDate: optionalDate,
+  stage: z.enum(["do-podpisania", "podpisana", "przepadla"]).default("do-podpisania"),
+  note: optionalText,
+});
+
+/* ------------------------------------------------------------------ rodzina */
+
+export const familyMemberSchema = z.object({
+  id,
+  name: trimmed.min(1, "Podaj imię."),
+  relation: optionalText,
+  birthDate: optionalDate,
+  note: optionalText,
+});
+
+export const familyEventSchema = z.object({
+  id,
+  name: trimmed.min(1, "Podaj nazwę wydarzenia."),
+  date: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Podaj datę wydarzenia w formacie RRRR-MM-DD."),
+  kind: z.enum(["rocznica", "urodziny", "randka", "wyjazd", "wydarzenie"]).default("wydarzenie"),
+  recurring: z.coerce.boolean().default(false),
+  note: optionalText,
+});
+
 /* ------------------------------------------------------------ odliczanie */
 
 export const countdownSchema = z.object({
@@ -221,6 +257,7 @@ export const goalsSchema = z.object({
   weightStartDate: optionalDate,
   weightTargetDate: optionalDate,
   waterGoalMl: optionalNumber,
+  familyGesturesPerWeek: z.coerce.number().int().min(0).max(7).default(2),
   waterGoodPct: z.coerce.number().int().min(1).max(200).default(100),
   waterOkPct: z.coerce.number().int().min(1).max(200).default(80),
   weightTargetKg: optionalNumber,
@@ -251,3 +288,6 @@ export type ProjectInput = z.infer<typeof projectSchema>;
 export type SavingsGoalInput = z.infer<typeof savingsGoalSchema>;
 export type ObligationInput = z.infer<typeof obligationSchema>;
 export type CountdownInput = z.infer<typeof countdownSchema>;
+export type DealInput = z.infer<typeof dealSchema>;
+export type FamilyMemberInput = z.infer<typeof familyMemberSchema>;
+export type FamilyEventInput = z.infer<typeof familyEventSchema>;

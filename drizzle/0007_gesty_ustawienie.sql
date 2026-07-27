@@ -1,0 +1,1 @@
+ALTER TABLE "settings" ADD COLUMN "family_gestures_per_week" integer DEFAULT 2 NOT NULL;

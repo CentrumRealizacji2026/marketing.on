@@ -277,6 +277,25 @@ function DayDetail({
     });
   }
 
+  if (day.rodzina.length > 0) {
+    filled.push({
+      key: "rodzina",
+      content: (
+        <ul className="flex flex-col gap-1 text-sm">
+          {day.rodzina.map((entry, index) => (
+            <li key={`${entry.label}-${index}`}>
+              <span className={cn(entry.kind === "gest" ? "text-[var(--series-3)]" : "text-ink")}>
+                {entry.kind === "gest" ? "♥ " : ""}
+                {entry.label}
+              </span>
+              {entry.detail ? <p className="text-xs text-muted">{entry.detail}</p> : null}
+            </li>
+          ))}
+        </ul>
+      ),
+    });
+  }
+
   if (day.sprzedaz.calls + day.sprzedaz.meetingsScheduled + day.sprzedaz.meetingsHeld + day.sprzedaz.contracts > 0) {
     filled.push({
       key: "sprzedaz",

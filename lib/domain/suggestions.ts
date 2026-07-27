@@ -66,3 +66,20 @@ export const OBLIGATION_CATEGORY_SUGGESTIONS = [
   "zdrowie",
   "firma",
 ];
+
+/** Podpowiedzi „kim jest ta osoba" — wpisać można cokolwiek. */
+export const FAMILY_RELATION_SUGGESTIONS = [
+  "partnerka",
+  "partner",
+  "żona",
+  "mąż",
+  "córka",
+  "syn",
+  "mama",
+  "tata",
+  "siostra",
+  "brat",
+  "teściowa",
+  "teść",
+  "przyjaciel",
+];
