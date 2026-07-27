@@ -42,23 +42,20 @@ export async function getDashboardData(userId: string, settings: Settings, today
   const monthStart = startOfMonth(today);
   const weekday = isoWeekday(today);
 
-  const [
-    logs,
-    salesRows,
-    contractRows,
-    medRows,
-    medLogRows,
-    taskRows,
-    planRows,
-    trainingLogRows,
-    weekPlanRows,
-    yearPlanRows,
-    learningLogRows,
-    recordRows,
-    recommendationRows,
-    projectRows,
-    countdownRows,
-  ] = await Promise.all([
+  /*
+   * Przeglądy celów, rachunków, rodziny i testów nie potrzebują niczego z surowych
+   * wierszy — zależą wyłącznie od użytkownika i dzisiejszej daty. Startują więc
+   * razem z resztą, a nie po niej: dashboard czeka na najwolniejsze zapytanie,
+   * a nie na sumę dwóch fal.
+   */
+  const przeglady = Promise.all([
+    getSavingsOverview(userId, today),
+    getObligationsOverview(userId, today, 14),
+    getFamilyOverview(userId, settings, today),
+    getWellbeingSummary(userId, today),
+  ]);
+
+  const wiersze = Promise.all([
     db
       .select()
       .from(dailyLogs)
@@ -137,13 +134,26 @@ export async function getDashboardData(userId: string, settings: Settings, today
       .orderBy(asc(countdowns.targetDate)),
   ]);
 
-  // Cele i rachunki mają własne zapytania — kafelki dostają gotowy stan, nie surowe wiersze.
-  const [savings, bills, family, wellbeing] = await Promise.all([
-    getSavingsOverview(userId, today),
-    getObligationsOverview(userId, today, 14),
-    getFamilyOverview(userId, settings, today),
-    getWellbeingSummary(userId, today),
-  ]);
+  const [
+    [
+      logs,
+      salesRows,
+      contractRows,
+      medRows,
+      medLogRows,
+      taskRows,
+      planRows,
+      trainingLogRows,
+      weekPlanRows,
+      yearPlanRows,
+      learningLogRows,
+      recordRows,
+      recommendationRows,
+      projectRows,
+      countdownRows,
+    ],
+    [savings, bills, family, wellbeing],
+  ] = await Promise.all([wiersze, przeglady]);
 
   const byDate = new Map(logs.map((log) => [log.date, log]));
   const trendDates = lastNDays(today, TREND_DAYS);

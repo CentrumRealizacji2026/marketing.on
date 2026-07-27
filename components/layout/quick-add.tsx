@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useCallback, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { ArrowLeft, Check, ListTodo, Plus, TrendingDown, TrendingUp, X } from "lucide-react";
 
@@ -52,21 +52,21 @@ function Result({ state }: { state: QuickState }) {
 
 /**
  * Kwota dokłada się do sumy dnia, więc po zapisie pola się czyszczą i można od
- * razu dorzucić kolejny wpis — stąd remount formularza kluczem zamiast zamykania
- * panelu. Potwierdzenie zostaje na wierzchu, bo leży poza formularzem.
+ * razu dorzucić kolejny wpis, ale pusty formularz zaraz po zapisie wygląda tak
+ * samo jak formularz, który się nie wysłał. Dlatego po zapisie wracamy do menu
+ * z potwierdzeniem: widać, że wpis poszedł, a kolejny jest o jedno kliknięcie.
  */
-function CashForm({ kind }: { kind: "koszt" | "zysk" }) {
+function CashForm({ kind, onSaved }: { kind: "koszt" | "zysk"; onSaved: (komunikat: string) => void }) {
   const [state, formAction] = useActionState<QuickState, FormData>(addCashFlow, undefined);
-  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    if (state?.ok) setNonce((value) => value + 1);
-  }, [state]);
+    if (state?.ok) onSaved(state.ok);
+  }, [state, onSaved]);
 
   return (
     <div className="flex flex-col gap-2">
       <Result state={state} />
-      <form key={nonce} action={formAction} className="flex flex-col gap-2">
+      <form action={formAction} className="flex flex-col gap-2">
         <input type="hidden" name="kind" value={kind} />
         <input
           name="amount"
@@ -94,18 +94,17 @@ function CashForm({ kind }: { kind: "koszt" | "zysk" }) {
   );
 }
 
-function TaskForm() {
+function TaskForm({ onSaved }: { onSaved: (komunikat: string) => void }) {
   const [state, formAction] = useActionState<QuickState, FormData>(addQuickTask, undefined);
-  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    if (state?.ok) setNonce((value) => value + 1);
-  }, [state]);
+    if (state?.ok) onSaved(state.ok);
+  }, [state, onSaved]);
 
   return (
     <div className="flex flex-col gap-2">
       <Result state={state} />
-      <form key={nonce} action={formAction} className="flex flex-col gap-2">
+      <form action={formAction} className="flex flex-col gap-2">
         <input
           name="title"
           type="text"
@@ -139,12 +138,31 @@ function TaskForm() {
 export function QuickAdd() {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View | null>(null);
+  const [potwierdzenie, setPotwierdzenie] = useState<string | null>(null);
+
+  // Po zapisie wracamy do menu i zostawiamy potwierdzenie — pusty formularz
+  // wyglądałby jak formularz, który się nie wysłał.
+  const poZapisie = useCallback((komunikat: string) => {
+    setPotwierdzenie(komunikat);
+    setView(null);
+  }, []);
+
+  function otworzWidok(id: View) {
+    setPotwierdzenie(null);
+    setView(id);
+  }
+
+  function zamknij() {
+    setOpen(false);
+    setPotwierdzenie(null);
+    setView(null);
+  }
 
   // Escape zamyka panel z klawiatury, tak samo jak kliknięcie w tło.
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") zamknij();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -158,7 +176,7 @@ export function QuickAdd() {
         <button
           type="button"
           aria-label="Zamknij szybkie dodawanie"
-          onClick={() => setOpen(false)}
+          onClick={zamknij}
           className="fixed inset-0 z-40 bg-black/40"
         />
       ) : null}
@@ -170,7 +188,10 @@ export function QuickAdd() {
               {active ? (
                 <button
                   type="button"
-                  onClick={() => setView(null)}
+                  onClick={() => {
+                    setPotwierdzenie(null);
+                    setView(null);
+                  }}
                   aria-label="Wróć do listy"
                   className="flex h-7 w-7 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-ink"
                 >
@@ -182,13 +203,20 @@ export function QuickAdd() {
               </p>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={zamknij}
                 aria-label="Zamknij"
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-ink"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
+
+            {active === null && potwierdzenie ? (
+              <p className="mb-2 flex items-center gap-1.5 rounded-lg border border-good/40 bg-good/10 px-3 py-2 text-xs text-ink">
+                <Check className="h-3.5 w-3.5 shrink-0 text-good" />
+                {potwierdzenie}
+              </p>
+            ) : null}
 
             {active === null ? (
               <ul className="flex flex-col gap-1">
@@ -198,7 +226,7 @@ export function QuickAdd() {
                     <li key={entry.id}>
                       <button
                         type="button"
-                        onClick={() => setView(entry.id)}
+                        onClick={() => otworzWidok(entry.id)}
                         className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-surface-2"
                       >
                         <Icon className={cn("h-4 w-4 shrink-0", entry.tone)} />
@@ -212,9 +240,9 @@ export function QuickAdd() {
                 })}
               </ul>
             ) : active.id === "zadanie" ? (
-              <TaskForm />
+              <TaskForm onSaved={poZapisie} />
             ) : (
-              <CashForm kind={active.id} />
+              <CashForm kind={active.id} onSaved={poZapisie} />
             )}
           </div>
         ) : null}

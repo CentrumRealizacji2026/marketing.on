@@ -26,14 +26,22 @@ function getDb(): Db {
     );
   }
 
-  // Serverless mnoży procesy, więc każdy trzyma jedno połączenie — inaczej kilkanaście
-  // równoległych wywołań wyczerpuje limit bazy. Lokalnie jeden proces obsługuje wszystko,
-  // więc pool może być większy.
-  const serverless = Boolean(process.env.VERCEL);
+  /*
+   * Rozmiar puli decyduje o tym, ile zapytań leci naraz. Dashboard wysyła ich
+   * kilkanaście równolegle, więc pula jednego połączenia ustawiłaby je w kolejkę
+   * i czas ładowania byłby ich sumą zamiast czasu najwolniejszego.
+   *
+   * Przy połączeniu przez pooler (Neon: host z „-pooler") nie ma powodu się
+   * ograniczać — pooler jest właśnie od tego, żeby przyjąć wiele połączeń
+   * klienta i zmultipleksować je na kilka po stronie bazy. Przy połączeniu
+   * bezpośrednim zostajemy przy małej puli, bo tam limit jest realny.
+   */
+  const przezPooler = url.includes("-pooler.");
+  const bezposrednieNaServerless = Boolean(process.env.VERCEL) && !przezPooler;
 
   // prepare: false jest konieczne za poolerem (pgbouncer) — prepared statements go rozkładają.
   globalForDb.__sql ??= postgres(url, {
-    max: serverless ? 1 : 5,
+    max: bezposrednieNaServerless ? 1 : 10,
     prepare: false,
     idle_timeout: 20,
     connect_timeout: 15,
