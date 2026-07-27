@@ -11,6 +11,7 @@ import {
   startOfWeek,
   todayInTz,
 } from "./dates";
+import { countdownFor, describeCountdown, formatDaysPl, sortCountdowns } from "./countdown";
 import { dayCashFlow, sumExpenses, sumIncome } from "./finance";
 import { describeRank, formatTopPct, incomeRank } from "./income-rank";
 import { learningBlocksForDate } from "./learning";
@@ -433,6 +434,57 @@ describe("pozycja zarobkowa", () => {
   it("opisuje wynik zdaniem dopasowanym do rozkładu", () => {
     expect(describeRank({ percentile: 99.89, topPct: 0.11 }, "swiat")).toContain("dorosłych na świecie");
     expect(describeRank({ percentile: 82, topPct: 18 }, "polska")).toBe("Więcej niż 82% zatrudnionych w Polsce");
+  });
+});
+
+describe("odliczanie", () => {
+  const wakacje = { id: "c1", name: "wakacje Włochy 2027", targetDate: "2027-07-04" };
+
+  it("liczy dni do wydarzenia", () => {
+    const countdown = countdownFor(wakacje, "2026-07-27");
+    expect(countdown.days).toBe(342);
+    expect(countdown.state).toBe("przed");
+  });
+
+  it("rozpoznaje dzień wydarzenia i dni po nim", () => {
+    expect(countdownFor(wakacje, "2027-07-04").state).toBe("dzis");
+    expect(countdownFor(wakacje, "2027-07-04").days).toBe(0);
+    expect(countdownFor(wakacje, "2027-07-10").days).toBe(-6);
+    expect(countdownFor(wakacje, "2027-07-10").state).toBe("po");
+  });
+
+  it("nie gubi dnia na przełomie roku ani w roku przestępnym", () => {
+    expect(countdownFor({ ...wakacje, targetDate: "2027-01-01" }, "2026-12-31").days).toBe(1);
+    expect(countdownFor({ ...wakacje, targetDate: "2028-03-01" }, "2028-02-28").days).toBe(2);
+  });
+
+  it("stawia najbliższe wydarzenie na początku, a minione na końcu", () => {
+    const today = "2026-07-27";
+    const list = sortCountdowns([
+      countdownFor({ id: "a", name: "dawno", targetDate: "2026-07-01" }, today),
+      countdownFor({ id: "b", name: "daleko", targetDate: "2027-07-04" }, today),
+      countdownFor({ id: "c", name: "blisko", targetDate: "2026-08-10" }, today),
+      countdownFor({ id: "d", name: "wczoraj", targetDate: "2026-07-26" }, today),
+    ]);
+    expect(list.map((entry) => entry.name)).toEqual(["blisko", "daleko", "wczoraj", "dawno"]);
+  });
+
+  it("odmienia dni po polsku", () => {
+    expect(formatDaysPl(1)).toBe("1 dzień");
+    expect(formatDaysPl(2)).toBe("2 dni");
+    expect(formatDaysPl(22)).toBe("22 dni");
+    expect(formatDaysPl(-5)).toBe("5 dni");
+  });
+
+  it("opisuje odległość w naturalnej jednostce", () => {
+    const at = (date: string) => describeCountdown(countdownFor(wakacje, date));
+    expect(at("2027-07-04")).toBe("dzisiaj");
+    expect(at("2027-07-03")).toBe("jutro");
+    expect(at("2027-07-05")).toBe("wczoraj");
+    expect(at("2027-06-30")).toBe("za 4 dni");
+    expect(at("2027-06-10")).toBe("za 3 tygodnie");
+    expect(at("2027-01-04")).toBe("za 6 miesięcy");
+    expect(at("2027-07-20")).toBe("16 dni temu");
   });
 });
 

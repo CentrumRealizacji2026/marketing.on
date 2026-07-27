@@ -36,6 +36,13 @@
       "when": 1785101419671,
       "tag": "0004_platnosci_cykliczne",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785112598613,
+      "tag": "0005_odliczanie",
+      "breakpoints": true
     }
   ]
 }

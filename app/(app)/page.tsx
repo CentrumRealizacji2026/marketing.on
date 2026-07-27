@@ -10,6 +10,7 @@ import {
   FolderKanban,
   GraduationCap,
   HeartPulse,
+  Hourglass,
   ListChecks,
   ListTodo,
   PiggyBank,
@@ -28,6 +29,7 @@ import { addWater, toggleDose, toggleLearning, toggleTask, toggleTraining } from
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { cn, formatTime, formatMoney, formatNumber, pluralPl } from "@/lib/utils";
 import { AGENDA_CATEGORY_LABEL, CATEGORY_COLOR, buildAgenda } from "@/lib/domain/agenda";
+import { describeCountdown } from "@/lib/domain/countdown";
 import { addDays, diffDays, startOfWeek, todayInTz } from "@/lib/domain/dates";
 import { formatDose, groupDosesBySlot } from "@/lib/domain/medication";
 import { dueLabel } from "@/lib/domain/obligations";
@@ -69,6 +71,7 @@ export default async function DashboardPage({
       <Sprzedaz data={data} settings={settings} currency={settings.currency} />
       <Oszczednosci data={data} currency={settings.currency} />
       <Platnosci data={data} today={today} currency={settings.currency} />
+      <Odliczanie data={data} />
       <PlanDnia data={data} />
       <Leki data={data} today={today} />
       <Priorytety data={data} />
@@ -245,6 +248,72 @@ function Oszczednosci({ data, currency }: { data: Data; currency: string }) {
             </li>
           ))}
         </ul>
+      )}
+    </Card>
+  );
+}
+
+/* -------------------------------------------------------- odliczanie */
+
+function Odliczanie({ data }: { data: Data }) {
+  const list = data.odliczanie;
+  // Minione wydarzenia schodzą na dół listy, więc pierwsze jest zawsze to najbliższe.
+  const [next, ...rest] = list;
+
+  return (
+    <Card className="xl:col-span-2">
+      <CardHeader
+        title="Odliczanie"
+        icon={Hourglass}
+        action={
+          <Link href="/ustawienia/odliczanie" className="text-muted hover:text-ink">
+            Zmień
+          </Link>
+        }
+      />
+      {!next ? (
+        <EmptyState
+          message="Nie masz jeszcze żadnego odliczania."
+          href="/ustawienia/odliczanie"
+          cta="Skonfiguruj"
+        />
+      ) : (
+        <>
+          {/* Duża liczba dni i podpis, do czego odliczamy — po to jest ten kafelek. */}
+          <p className="flex items-baseline gap-2">
+            <span
+              className={cn(
+                "text-[3.25rem] leading-none font-semibold",
+                next.state === "po" ? "text-muted" : "text-ink",
+              )}
+            >
+              {Math.abs(next.days)}
+            </span>
+            <span className="text-sm text-muted">
+              {next.state === "dzis" ? "dni — to dziś!" : Math.abs(next.days) === 1 ? "dzień" : "dni"}
+            </span>
+          </p>
+          <p className="mt-1 text-base font-medium text-ink">{next.name}</p>
+          <p className="mt-0.5 text-xs text-muted">
+            {next.targetDate} · {describeCountdown(next)}
+            {next.note ? ` · ${next.note}` : ""}
+          </p>
+
+          {rest.length > 0 ? (
+            <ul className="mt-3 flex flex-col gap-1 border-t border-line pt-3">
+              {rest.slice(0, 3).map((entry) => (
+                <li key={entry.id} className="flex items-center justify-between gap-3 text-sm">
+                  <span className={cn("truncate", entry.state === "po" ? "text-muted" : "text-ink-2")}>
+                    {entry.name}
+                  </span>
+                  <span className={cn("tabular shrink-0", entry.state === "po" ? "text-muted" : "text-ink")}>
+                    {entry.state === "po" ? `−${Math.abs(entry.days)}` : entry.days} dni
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
       )}
     </Card>
   );

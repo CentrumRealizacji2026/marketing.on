@@ -7,6 +7,7 @@ import type { z } from "zod";
 
 import { db } from "@/lib/db";
 import {
+  countdowns,
   dailyLogs,
   learningPlanWeek,
   learningPlanYear,
@@ -23,6 +24,7 @@ import {
 import { getUserSettings, requireUser } from "@/lib/auth/session";
 import { todayInTz } from "@/lib/domain/dates";
 import {
+  countdownSchema,
   financeStartSchema,
   goalsSchema,
   learningWeekSchema,
@@ -408,6 +410,42 @@ export async function saveSavingsGoals(_prev: FormState, formData: FormData): Pr
         .where(and(eq(savingsGoals.id, row.id), eq(savingsGoals.userId, user.id)));
     } else {
       await db.insert(savingsGoals).values({ ...values, userId: user.id });
+    }
+  }
+
+  return afterSave(user.id, formData);
+}
+
+/* ------------------------------------------------------------ odliczanie */
+
+export async function saveCountdowns(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = rowsPayload(countdownSchema).safeParse(formData.get("rows"));
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const rows = parsed.data;
+  const keepIds = rows.map((row) => row.id).filter((value): value is string => Boolean(value));
+
+  // Licznik nie ma historii do ocalenia, więc usunięty z formularza znika naprawdę.
+  await db
+    .delete(countdowns)
+    .where(
+      and(
+        eq(countdowns.userId, user.id),
+        keepIds.length > 0 ? notInArray(countdowns.id, keepIds) : undefined,
+      ),
+    );
+
+  for (const [index, row] of rows.entries()) {
+    const values = { name: row.name, targetDate: row.targetDate, note: row.note, position: index, active: true };
+
+    if (row.id) {
+      await db
+        .update(countdowns)
+        .set(values)
+        .where(and(eq(countdowns.id, row.id), eq(countdowns.userId, user.id)));
+    } else {
+      await db.insert(countdowns).values({ ...values, userId: user.id });
     }
   }
 

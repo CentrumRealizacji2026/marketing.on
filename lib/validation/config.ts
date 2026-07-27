@@ -151,6 +151,18 @@ export const savingsGoalSchema = z.object({
   note: optionalText,
 });
 
+/* ------------------------------------------------------------ odliczanie */
+
+export const countdownSchema = z.object({
+  id,
+  name: trimmed.min(1, "Podaj, do czego odliczamy."),
+  targetDate: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Podaj datę wydarzenia w formacie RRRR-MM-DD."),
+  note: optionalText,
+});
+
 /* ---------------------------------------------------------- zobowiązania */
 
 const requiredDate = z
@@ -238,3 +250,4 @@ export type MaterialInput = z.infer<typeof materialSchema>;
 export type ProjectInput = z.infer<typeof projectSchema>;
 export type SavingsGoalInput = z.infer<typeof savingsGoalSchema>;
 export type ObligationInput = z.infer<typeof obligationSchema>;
+export type CountdownInput = z.infer<typeof countdownSchema>;

@@ -4,6 +4,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import {
+  countdowns,
   learningPlanWeek,
   learningPlanYear,
   materials,
@@ -81,9 +82,17 @@ export function getObligations(userId: string) {
     .orderBy(asc(obligations.position));
 }
 
+export function getCountdowns(userId: string) {
+  return db
+    .select()
+    .from(countdowns)
+    .where(and(eq(countdowns.userId, userId), eq(countdowns.active, true)))
+    .orderBy(asc(countdowns.targetDate), asc(countdowns.position));
+}
+
 /** Ile sekcji konfiguracji jest już wypełnionych — napędza podpowiedzi „skonfiguruj →". */
 export async function getConfigStatus(userId: string) {
-  const [meds, training, records, week, year, project, material, savings, bills] = await Promise.all([
+  const [meds, training, records, week, year, project, material, savings, bills, timers] = await Promise.all([
     getMedications(userId),
     getTrainingPlans(userId),
     getPersonalRecords(userId),
@@ -93,6 +102,7 @@ export async function getConfigStatus(userId: string) {
     getMaterials(userId),
     getSavingsGoals(userId),
     getObligations(userId),
+    getCountdowns(userId),
   ]);
 
   return {
@@ -105,5 +115,6 @@ export async function getConfigStatus(userId: string) {
     materials: material.length,
     savingsGoals: savings.length,
     obligations: bills.length,
+    countdowns: timers.length,
   };
 }

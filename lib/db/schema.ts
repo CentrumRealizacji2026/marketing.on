@@ -323,6 +323,29 @@ export const obligationPayments = pgTable(
   ],
 );
 
+/* -------------------------------------------------------------- odliczanie */
+
+/**
+ * Licznik dni do wydarzenia: data i to, do czego odliczamy. Nic poza tym —
+ * ma pokazywać jedną dużą liczbę i podpis, a nie być kolejnym projektem.
+ */
+export const countdowns = pgTable(
+  "countdowns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    targetDate: date("target_date", { mode: "string" }).notNull(),
+    note: text("note"),
+    active: boolean("active").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("countdowns_user_idx").on(t.userId, t.active)],
+);
+
 /* ------------------------------------------------------ zadania i projekty */
 
 export const projects = pgTable(
@@ -619,6 +642,7 @@ export type Medication = typeof medications.$inferSelect;
 export type MedicationLog = typeof medicationLogs.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type SavingsGoal = typeof savingsGoals.$inferSelect;
+export type CountdownRow = typeof countdowns.$inferSelect;
 export type Obligation = typeof obligations.$inferSelect;
 export type ObligationPayment = typeof obligationPayments.$inferSelect;
 export type SavingsContribution = typeof savingsContributions.$inferSelect;

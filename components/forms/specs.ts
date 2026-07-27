@@ -349,6 +349,26 @@ export function savingsGoalToRow(row: {
   };
 }
 
+/* ------------------------------------------------------------ odliczanie */
+
+export const countdownFields: FieldSpec[] = [
+  {
+    name: "name",
+    label: "Do czego odliczamy",
+    type: "text",
+    span: 4,
+    placeholder: "np. wakacje Włochy 2027",
+  },
+  { name: "targetDate", label: "Data wydarzenia", type: "date", span: 2 },
+  { name: "note", label: "Notatka", type: "text", span: 6, placeholder: "np. wylot z Katowic, 6:40" },
+];
+
+export const countdownDefault = { name: "", targetDate: "", note: "" };
+
+export function countdownToRow(row: { id: string; name: string; targetDate: string; note: string | null }) {
+  return { id: row.id, name: row.name, targetDate: row.targetDate, note: row.note ?? "" };
+}
+
 /* ----------------------------------------------------- płatności stałe */
 
 export const obligationFields: FieldSpec[] = [

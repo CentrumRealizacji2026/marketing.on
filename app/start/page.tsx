@@ -4,6 +4,9 @@ import { Check } from "lucide-react";
 import { RowsEditor } from "@/components/forms/rows-editor";
 import { FinanceStartForm, GoalsForm, ProfileForm } from "@/components/forms/settings-forms";
 import {
+  countdownDefault,
+  countdownFields,
+  countdownToRow,
   obligationDefault,
   obligationFields,
   obligationToRow,
@@ -33,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   finishOnboarding,
+  saveCountdowns,
   saveLearningWeek,
   saveLearningYear,
   saveObligations,
@@ -48,6 +52,7 @@ import { dailyLogs } from "@/lib/db/schema";
 import { todayInTz } from "@/lib/domain/dates";
 import {
   getConfigStatus,
+  getCountdowns,
   getLearningWeek,
   getLearningYear,
   getObligations,
@@ -75,7 +80,8 @@ const STEPS = [
   { n: 10, title: "Nauka — tydzień", desc: "Który dzień, jaka dziedzina, o której godzinie." },
   { n: 11, title: "Nauka — rok", desc: "Okresy, które zawężają temat bloków." },
   { n: 12, title: "Projekty", desc: "Co prowadzisz i jaki jest następny krok." },
-  { n: 13, title: "Gotowe", desc: "Podgląd konfiguracji." },
+  { n: 13, title: "Odliczanie", desc: "Wydarzenia, do których chcesz liczyć dni." },
+  { n: 14, title: "Gotowe", desc: "Podgląd konfiguracji." },
 ];
 
 function next(step: number) {
@@ -370,10 +376,29 @@ async function StepContent({
           action={saveProjects}
           hiddenFields={hidden}
           addLabel="Dodaj projekt"
-          submitLabel="Zapisz i zakończ"
+          submitLabel="Zapisz i dalej"
           emptyHint="Dodaj projekty, które prowadzisz. Mentor będzie pytał o ich następne kroki."
           titleFields={["name"]}
           itemNoun="Projekt"
+          footer={<SkipLink step={step} />}
+        />
+      );
+    }
+
+    case 13: {
+      const rows = await getCountdowns(userId);
+      return (
+        <RowsEditor
+          fields={countdownFields}
+          initial={rows.map(countdownToRow)}
+          defaultRow={countdownDefault}
+          action={saveCountdowns}
+          hiddenFields={hidden}
+          addLabel="Dodaj odliczanie"
+          submitLabel="Zapisz i zakończ"
+          emptyHint="Wakacje, egzamin, ślub, koniec kredytu — cokolwiek, co chcesz mieć przed oczami."
+          titleFields={["name"]}
+          itemNoun="Odliczanie"
           footer={<SkipLink step={step} />}
         />
       );
@@ -396,6 +421,7 @@ async function Summary({ userId }: { userId: string }) {
     { label: "Bloki nauki w tygodniu", count: status.learningWeek, href: "/start?krok=10" },
     { label: "Okresy planu rocznego", count: status.learningYear, href: "/start?krok=11" },
     { label: "Projekty", count: status.projects, href: "/start?krok=12" },
+    { label: "Odliczanie", count: status.countdowns, href: "/start?krok=13" },
   ];
 
   return (

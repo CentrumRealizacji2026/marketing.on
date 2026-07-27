@@ -30,6 +30,12 @@ export default async function SettingsOverview() {
       count: status.obligations,
     },
     {
+      href: "/ustawienia/odliczanie",
+      title: "Odliczanie",
+      desc: "Wydarzenia, do których liczysz dni — wakacje, egzamin, termin.",
+      count: status.countdowns,
+    },
+    {
       href: "/ustawienia/leki",
       title: "Leki i suplementy",
       desc: "Nazwy, dawki, pory dnia i dni tygodnia.",

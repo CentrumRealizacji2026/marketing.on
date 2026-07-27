@@ -12,6 +12,7 @@ import {
   medicationLogs,
   medications,
   personalRecords,
+  countdowns,
   projects,
   recommendations,
   salesDaily,
@@ -24,6 +25,7 @@ import { addDays, isoWeekday, lastNDays, startOfMonth, startOfWeek } from "@/lib
 import { dayCashFlow, sumExpenses, sumIncome } from "@/lib/domain/finance";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
+import { countdownFor, sortCountdowns } from "@/lib/domain/countdown";
 import { currentRecords } from "@/lib/domain/records";
 import { sumSales, type SalesTotals } from "@/lib/domain/sales";
 import { averageOfReportedDays } from "@/lib/domain/water";
@@ -53,6 +55,7 @@ export async function getDashboardData(userId: string, settings: Settings, today
     recordRows,
     recommendationRows,
     projectRows,
+    countdownRows,
   ] = await Promise.all([
     db
       .select()
@@ -124,6 +127,12 @@ export async function getDashboardData(userId: string, settings: Settings, today
       .where(and(eq(projects.userId, userId), eq(projects.status, "aktywny")))
       .orderBy(asc(projects.position))
       .limit(5),
+
+    db
+      .select()
+      .from(countdowns)
+      .where(and(eq(countdowns.userId, userId), eq(countdowns.active, true)))
+      .orderBy(asc(countdowns.targetDate)),
   ]);
 
   // Cele i rachunki mają własne zapytania — kafelki dostają gotowy stan, nie surowe wiersze.
@@ -221,6 +230,7 @@ export async function getDashboardData(userId: string, settings: Settings, today
 
     oszczednosci: savings,
     platnosci: bills,
+    odliczanie: sortCountdowns(countdownRows.map((row) => countdownFor(row, today))),
 
     sprzedaz: {
       today: salesToday,

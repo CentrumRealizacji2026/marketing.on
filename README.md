@@ -14,7 +14,7 @@ je później w panelu zarządzania.
 |---|---|
 | **Dashboard `/`** | Podsumowanie z każdej kategorii: stan środków, sprzedaż z konwersjami, leki i suplementy do odhaczenia, 3 priorytety i side questy, trening, blok nauki, nawodnienie z oceną, waga, rekordy, projekty, rekomendacje mentora. Do tego **plan na dziś** — jedna oś czasu złożona ze wszystkich kategorii — i **pasek tygodnia** z kategoriami w wierszach i dniami w kolumnach |
 | **Kalendarz `/kalendarz`** | Siatka miesiąca z kropkami kategorii przy każdym dniu, tydzień wybranego dnia w układzie kategorie × dni i szczegóły dnia z podziałem na kategorie. Dni w przód pokazują plan, dni wstecz — plan i realizację |
-| **Kreator `/start`** | 13 kroków konfiguracji. Leki, trening, rekordy, nauka i projekty to listy dynamiczne — „+ dodaj” dokłada wiersz, a nazwy dyscyplin i dziedzin wpisujesz własnymi słowami |
+| **Kreator `/start`** | 14 kroków konfiguracji. Leki, trening, rekordy, nauka i projekty to listy dynamiczne — „+ dodaj” dokłada wiersz, a nazwy dyscyplin i dziedzin wpisujesz własnymi słowami |
 | **Panel `/ustawienia`** | Te same formularze bezterminowo. Wyłączenie pozycji zachowuje historię zamiast ją kasować |
 | **Raport `/raport`** | Jeden formularz na cały dzień: finanse (stan środków, wydane, wpłynęło), dopłaty na cele oszczędnościowe, rachunki do odhaczenia, sprzedaż i umowy, leki, waga i woda, zadania, trening z możliwością zgłoszenia rekordu, nauka oraz zdrowie psychiczne (samopoczucie, energia, stres, myśli, co dobrego się wydarzyło) |
 | **Kategorie** | `/finanse` (stan środków, przepływy, oszczędności, płatności, pozycja na tle świata), `/sprzedaz`, `/zdrowie`, `/zadania`, `/trening`, `/nauka`, `/projekty` |
@@ -29,7 +29,7 @@ jako panel z prawej strony.
 ```bash
 npm install
 cp .env.example .env          # uzupełnij DATABASE_URL
-npm run db:migrate            # zakłada 25 tabel
+npm run db:migrate            # zakłada 26 tabel
 npm run dev                   # http://localhost:3000
 ```
 
@@ -62,7 +62,7 @@ npm run icons       # regeneracja ikon PWA
 
 - **Next.js 15** (App Router, React 19, server actions) + **TypeScript**
 - **Tailwind CSS v4** — tokeny kolorów w `app/globals.css`, motyw ciemny domyślnie, jasny zgodnie z ustawieniem systemu
-- **Postgres + Drizzle ORM** — schemat w `lib/db/schema.ts` (25 tabel), migracje w `drizzle/`
+- **Postgres + Drizzle ORM** — schemat w `lib/db/schema.ts` (26 tabel), migracje w `drizzle/`
 - **Własne sesje** — nieprzezroczysty token w bazie (przechowywany jako skrót), ciasteczko `httpOnly`; middleware odsiewa żądania bez ciasteczka, a `requireUser()` weryfikuje token po stronie serwera
 - **Claude API** (`claude-opus-5`) ze structured outputs — mentor zwraca zwalidowany JSON, nie tekst do parsowania
 - **Wykresy** pisane ręcznie w SVG — brak zależności, renderują się po stronie serwera
@@ -103,6 +103,14 @@ kolejnymi wpisami stanu środków — to gorsze źródło i tak jest opisane w p
 kwoty zawsze mają pierwszeństwo. Sumy i średnie liczą się wyłącznie z dni z wpisem: brak raportu
 to brak danych, a nie zero wydatków. Mentor dostaje te same liczby wraz z informacją, z ilu dni
 pochodzą.
+
+## Odliczanie
+
+Licznik dni do wydarzenia: data i podpis, do czego odliczamy — na przykład „wakacje Włochy 2027".
+Na dashboardzie najbliższe wydarzenie zajmuje kafelek z dużą liczbą dni i nazwą pod spodem, a pod
+nim skrót pozostałych. Wydarzeń dodajesz dowolnie wiele; minione schodzą na koniec listy z liczbą
+dni ze znakiem minus, zamiast przykrywać to, co dopiero przed Tobą. Podpis pod liczbą dobiera
+jednostkę do odległości: „jutro", „za 4 dni", „za 3 tygodnie", „za 6 miesięcy".
 
 ## Cele oszczędnościowe
 
