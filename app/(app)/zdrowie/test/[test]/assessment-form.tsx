@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FormError, Textarea } from "@/components/ui/field";
 import { saveAssessment, type AssessmentState } from "@/lib/actions/mental";
 import type { MentalTest } from "@/lib/domain/mental-tests";
+import { cn } from "@/lib/utils";
 
 function Submit({ ready, count }: { ready: boolean; count: string }) {
   const { pending } = useFormStatus();
@@ -62,15 +63,22 @@ export function AssessmentForm({
               <span className="tabular mr-2 text-muted">{index + 1}.</span>
               {item}
             </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            {/* Siatka zamiast zawijania — inaczej ostatnia odpowiedź spada sama do nowej linii. */}
+            <div
+              className={cn(
+                "mt-2 grid gap-1.5",
+                test.options.length > 4 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-4",
+              )}
+            >
               {test.options.map((option) => {
                 const selected = answers[index] === option.value;
                 return (
                   <label
                     key={option.value}
-                    className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs ${
-                      selected ? "border-series-1 bg-series-1/15 text-ink" : "border-edge text-ink-2 hover:bg-line"
-                    }`}
+                    className={cn(
+                      "flex cursor-pointer items-center justify-center rounded-lg border px-2 py-1.5 text-center text-xs",
+                      selected ? "border-series-1 bg-series-1/15 text-ink" : "border-edge text-ink-2 hover:bg-line",
+                    )}
                   >
                     <input
                       type="radio"

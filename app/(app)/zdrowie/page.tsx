@@ -74,6 +74,9 @@ export default async function HealthPage() {
   });
   const plannedWeek = adherence.reduce((sum, d) => sum + d.planned, 0);
   const takenWeek = adherence.reduce((sum, d) => sum + d.taken, 0);
+  // Realizacja liczy wszystkie dawki, więc wisi pod pierwszą sekcją, która coś ma —
+  // inaczej przy samych suplementach stała pod komunikatem „nie masz leków".
+  const adherenceSectionId = leki.length > 0 ? "leki" : "suplementy";
 
   const waterValues = days7.map((date) => byDate.get(date)?.waterMl ?? null);
   const waterAvg = averageOfReportedDays(waterValues);
@@ -151,7 +154,7 @@ export default async function HealthPage() {
             </ul>
           )}
 
-          {section.id === "leki" && plannedWeek > 0 ? (
+          {section.id === adherenceSectionId && plannedWeek > 0 ? (
             <div className="mt-4 border-t border-line pt-3">
               <p className="mb-1.5 text-xs text-muted">
                 Realizacja z ostatnich 7 dni: {takenWeek} z {plannedWeek} dawek
