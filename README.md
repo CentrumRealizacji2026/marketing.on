@@ -260,6 +260,36 @@ ile waga powinna wynosić dzisiaj, i porównuje to z ostatnim pomiarem — z tol
 Kierunek liczy się poprawnie w obie strony: przy chudnięciu lepiej być poniżej linii, przy budowaniu
 masy powyżej. Kafelek pokazuje też tempo rzeczywiste obok planowanego, w kg na tydzień.
 
+## Dostęp i bezpieczeństwo
+
+Kokpit jest jednoosobowy w użyciu, ale wielokontowy w schemacie — każda tabela ma `user_id`, a **każde
+z 124 zapytań w aplikacji filtruje po identyfikatorze zalogowanej osoby**. Dołożenie kolejnych osób nie
+wymaga przebudowy, tylko dopisania adresów.
+
+**Kto może założyć konto** ustala `ALLOWED_SIGNUP_EMAILS` — lista adresów po przecinku. Lokalnie, przy
+pustej bazie, pierwsze konto zakłada się bez ograniczeń. **Na hostingu ta furtka jest zamknięta**: między
+wdrożeniem a Twoją rejestracją każdy, kto zna adres, mógłby zająć konto właściciela, więc w środowisku
+produkcyjnym lista adresów jest wymagana.
+
+**Hasła i sesje.** Hasło trafia do bazy jako skrót bcrypt (koszt 12). Sesja to losowy token, z którego
+w bazie leży wyłącznie skrót SHA-256 — wyciek bazy nie daje dostępu do kont. Ciasteczko jest `httpOnly`,
+`sameSite=lax` i poza trybem deweloperskim `secure`. Middleware odsiewa żądania bez ciasteczka na edge,
+a `requireUser()` weryfikuje token po stronie serwera, więc samo ciasteczko niczego nie otwiera.
+
+**Blokada zgadywania hasła.** Publiczny adres znaczy, że formularz logowania widzi każdy, kto zna URL.
+Licznik nieudanych prób działa w dwóch wymiarach: **8 prób na adres e-mail** i **25 na adres IP**
+w oknie 15 minut. Dwa wymiary łapią dwa różne scenariusze — dobieranie się do konkretnego konta i
+przemiatanie wielu adresów z jednej maszyny. Limit dla IP jest luźniejszy, bo za jednym adresem potrafi
+siedzieć cała sieć domowa. Licznik siedzi w bazie, nie w pamięci procesu: na serverless każde żądanie
+może trafić do innej instancji, więc pamięć nic by nie pamiętała. Udane logowanie zeruje licznik.
+
+**Nagłówki.** HSTS, `frame-ancestors 'none'` (obrona przed clickjackingiem), `nosniff`,
+`Referrer-Policy`, wyłączone uprawnienia do kamery, mikrofonu i lokalizacji oraz `noindex` — prywatny
+panel nie ma czego szukać w wyszukiwarce.
+
+Czego **nie ma**, a przy wpuszczaniu osób z zewnątrz byłoby potrzebne: odzyskiwania hasła,
+potwierdzania adresu e-mail, dwuskładnikowego logowania i panelu administratora.
+
 ## Ocena stanu psychicznego
 
 Suwak „samopoczucie 1–5" w raporcie jest pulsem dnia — zależy od godziny, pogody i tego, co się

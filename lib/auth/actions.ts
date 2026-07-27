@@ -1,11 +1,20 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
-import { settings, users } from "@/lib/db/schema";
+import { loginAttempts, settings, users } from "@/lib/db/schema";
+import {
+  LIMIT_EMAIL,
+  LIMIT_IP,
+  OKNO_MINUT,
+  adresIp,
+  ocenBlokade,
+  opiszBlokade,
+} from "@/lib/domain/rate-limit";
 import { createSession, destroySession, hashPassword, verifyPassword } from "./session";
 
 export type AuthState = { error?: string } | undefined;
@@ -37,16 +46,58 @@ function allowedSignupEmails(): string[] {
 }
 
 /**
- * Rejestracja jest zamknięta: konto założy pierwsza osoba (bo aplikacja jest jeszcze pusta)
- * albo adres wskazany w ALLOWED_SIGNUP_EMAILS. Publiczny adres nie zbiera więc obcych kont.
+ * Rejestracja jest zamknięta: konto zakłada adres wskazany w ALLOWED_SIGNUP_EMAILS,
+ * a przy pustej bazie — pierwsza osoba, która zdąży.
+ *
+ * „Pierwsza, która zdąży" jest bezpieczne lokalnie, ale nie pod publicznym adresem:
+ * między wdrożeniem a Twoją rejestracją każdy, kto zna URL, mógłby zająć konto
+ * właściciela. Dlatego na hostingu wymagamy listy adresów — wtedy okno znika,
+ * bo liczy się nie kolejność, tylko wpisany adres.
  */
+function publicznyHosting(): boolean {
+  return Boolean(process.env.VERCEL);
+}
+
 export async function canRegister(email?: string): Promise<boolean> {
-  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(users);
-  if (count === 0) return true;
   const allowed = allowedSignupEmails();
+  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(users);
+
+  if (count === 0 && !publicznyHosting()) return true;
   if (allowed.length === 0) return false;
   if (!email) return true;
   return allowed.includes(email.trim().toLowerCase());
+}
+
+/**
+ * Blokada po nieudanych próbach. Zwraca komunikat, gdy trzeba odmówić,
+ * albo null, gdy można sprawdzać hasło.
+ */
+async function sprawdzBlokade(email: string, ip: string): Promise<string | null> {
+  const teraz = new Date();
+  const odKiedy = new Date(teraz.getTime() - OKNO_MINUT * 60_000);
+
+  const proby = await db
+    .select({ identifier: loginAttempts.identifier, attemptedAt: loginAttempts.attemptedAt })
+    .from(loginAttempts)
+    .where(and(inArray(loginAttempts.identifier, [email, ip]), gte(loginAttempts.attemptedAt, odKiedy)));
+
+  for (const [identyfikator, limit] of [
+    [email, LIMIT_EMAIL],
+    [ip, LIMIT_IP],
+  ] as const) {
+    const dopasowane = proby.filter((p) => p.identifier === identyfikator).map((p) => p.attemptedAt);
+    const blokada = ocenBlokade(dopasowane, limit, teraz);
+    if (blokada.zablokowane) return opiszBlokade(blokada.minutDoKonca);
+  }
+
+  return null;
+}
+
+async function zapiszNieudanaProbe(email: string, ip: string): Promise<void> {
+  await db.insert(loginAttempts).values([{ identifier: email }, { identifier: ip }]);
+
+  // Sprzątanie starych wpisów przy okazji — tabela nie ma rosnąć w nieskończoność.
+  await db.delete(loginAttempts).where(lt(loginAttempts.attemptedAt, new Date(Date.now() - 86_400_000)));
 }
 
 export async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
@@ -59,6 +110,10 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
     return { error: parsed.error.issues[0]?.message ?? "Nieprawidłowe dane." };
   }
 
+  const ip = adresIp(await headers());
+  const blokada = await sprawdzBlokade(parsed.data.email, ip);
+  if (blokada) return { error: blokada };
+
   const [user] = await db
     .select()
     .from(users)
@@ -67,8 +122,12 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
 
   // Ten sam komunikat dla złego adresu i złego hasła — nie podpowiadamy, które konto istnieje.
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+    await zapiszNieudanaProbe(parsed.data.email, ip);
     return { error: "Nieprawidłowy e-mail lub hasło." };
   }
+
+  // Udane logowanie zeruje licznik — pomyłki przed trafieniem w hasło nie ciągną się dalej.
+  await db.delete(loginAttempts).where(inArray(loginAttempts.identifier, [parsed.data.email, ip]));
 
   await createSession(user.id);
   redirect(user.onboardedAt ? "/" : "/start");
