@@ -43,15 +43,30 @@ bez zamykania panelu.
 
 ## Uruchomienie lokalne
 
+Potrzebny jest Node 20+ i Postgres. Baza z Dockera to jedna komenda — jeśli masz własnego
+Postgresa, pomiń pierwszy krok i wpisz swój connection string do `.env`.
+
 ```bash
+docker compose up -d          # Postgres na localhost:5432 (baza „zycie")
 npm install
-cp .env.example .env          # uzupełnij DATABASE_URL
-npm run db:migrate            # zakłada 30 tabel
+cp .env.example .env          # domyślny DATABASE_URL pasuje do docker compose
+npm run db:migrate            # zakłada 31 tabel
+npm run db:seed-demo          # dane pokazowe — opcjonalnie, ale warto
 npm run dev                   # http://localhost:3000
 ```
 
-Pierwsze wejście na `/` przekieruje na `/login`. Pierwsze konto w pustej bazie założysz bez
-ograniczeń — kolejne wymagają dopisania adresu do `ALLOWED_SIGNUP_EMAILS`.
+`db:seed-demo` zakłada konto **demo@kokpit.local / demo12345** z ponad miesiącem historii:
+finanse, sprzedaż, leki, treningi, nauka, cele oszczędnościowe, rachunki, rodzina i wyniki testów
+przesiewowych. Wszystkie daty liczone są od dnia uruchomienia, więc dashboard zawsze pokazuje
+żywy dzień. Skrypt kasuje i zapisuje od nowa **wyłącznie** dane konta demo, a na bazie spoza
+localhost odmawia pracy (chyba że dostanie `--force`).
+
+Bez seeda też jest dobrze — wtedy `/` przekieruje na `/login`, założysz własne konto i przejdziesz
+kreator w 15 krokach. Pierwsze konto w pustej bazie zakłada się bez ograniczeń, kolejne wymagają
+dopisania adresu do `ALLOWED_SIGNUP_EMAILS`.
+
+Mentor AI potrzebuje `ANTHROPIC_API_KEY`. Bez klucza cała reszta działa normalnie, a kafelek
+mentora mówi wprost, czego brakuje.
 
 ## Zmienne środowiskowe
 
@@ -72,6 +87,7 @@ npm run lint        # eslint
 npm run test        # testy reguł domenowych (vitest)
 npm run db:generate # nowa migracja po zmianie schematu
 npm run db:migrate  # wykonanie migracji
+npm run db:seed-demo # konto demo z historią (tylko lokalnie)
 npm run icons       # regeneracja ikon PWA
 ```
 

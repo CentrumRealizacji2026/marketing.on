@@ -1,0 +1,29 @@
+# Postgres do pracy lokalnej. Dane zostają w wolumenie, więc `docker compose down`
+# nie kasuje bazy — do wyczyszczenia trzeba dodać `-v`.
+#
+#   docker compose up -d
+#
+# Connection string zgodny z .env.example:
+#   postgres://postgres:postgres@localhost:5432/zycie
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: kokpit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: zycie
+    ports:
+      - "5432:5432"
+    volumes:
+      - kokpit-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d zycie"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kokpit-db:
