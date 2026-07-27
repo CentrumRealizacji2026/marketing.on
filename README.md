@@ -24,6 +24,23 @@ je później w panelu zarządzania.
 Prawy pasek kategorii rozwija się na podkategorie, zwija do samych ikon, a na telefonie wysuwa się
 jako panel z prawej strony.
 
+## Szybkie dodawanie
+
+Nie każdy wpis jest wart otwierania całego raportu. Przy dolnej krawędzi — na telefonie i na
+komputerze — siedzi przycisk **Szybkie dodawanie**, który rozwija menu z trzema akcjami: koszt,
+zysk i zadanie na dziś. Przycisk stoi po lewej, bo prawy dolny róg na telefonie zajmuje przycisk
+kategorii.
+
+- **Koszt i zysk** dokładają się do sumy dnia zamiast ją zastępować — drugi wydatek nie kasuje
+  pierwszego. Opis (np. „paliwo") dopisuje się do notatki dnia, więc suma w raporcie ma źródło:
+  widać, z czego się wzięła.
+- **Zadanie** trafia na dziś. Zaznaczenie „priorytet dnia" działa, dopóki są wolne miejsca —
+  raport ma dokładnie trzy sloty na priorytety, więc czwarty zapisuje się jako side quest zamiast
+  zniknąć przy najbliższym zapisie raportu, a komunikat mówi o tym wprost.
+
+Po zapisie pola się czyszczą i potwierdzenie zostaje na wierzchu, więc kolejny wpis dorzuca się
+bez zamykania panelu.
+
 ## Uruchomienie lokalne
 
 ```bash

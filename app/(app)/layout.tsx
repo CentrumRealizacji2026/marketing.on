@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ClipboardList, LogOut } from "lucide-react";
 
 import { CategoryRail } from "@/components/layout/category-rail";
+import { QuickAdd } from "@/components/layout/quick-add";
 import { PwaRegister } from "@/components/pwa-register";
 import { logout } from "@/lib/auth/actions";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
@@ -43,10 +44,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="flex-1 px-4 pt-4 pb-24 lg:px-6 lg:pb-8">{children}</main>
+        {/* pb-24 na każdej szerokości: pływające przyciski nie mogą zasłaniać końca treści. */}
+        <main className="flex-1 px-4 pt-4 pb-24 lg:px-6">{children}</main>
       </div>
 
       <CategoryRail />
+      <QuickAdd />
       <PwaRegister />
     </div>
   );

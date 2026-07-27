@@ -16,6 +16,7 @@ import {
 } from "@/lib/db/schema";
 import { getUserSettings, requireUser } from "@/lib/auth/session";
 import { todayInTz } from "@/lib/domain/dates";
+import { formatMoney } from "@/lib/utils";
 
 /**
  * Szybkie akcje z dashboardu. Każda sprawdza sesję i filtruje po użytkowniku,
@@ -30,6 +31,8 @@ async function currentContext() {
 
 function refresh() {
   revalidatePath("/");
+  revalidatePath("/finanse");
+  revalidatePath("/kalendarz");
   revalidatePath("/zdrowie");
   revalidatePath("/zadania");
   revalidatePath("/trening");
@@ -176,4 +179,100 @@ export async function addWater(formData: FormData) {
     });
 
   refresh();
+}
+
+/* ------------------------------------------------------- szybkie dodawanie */
+
+export type QuickState = { error?: string; ok?: string } | undefined;
+
+function parseAmount(value: FormDataEntryValue | null): number | null {
+  const parsed = Number(String(value ?? "").trim().replace(/\s/g, "").replace(",", "."));
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 100) / 100 : null;
+}
+
+/**
+ * Koszt albo zysk dorzucony w dwa kliknięcia, bez otwierania całego raportu.
+ *
+ * Kwota dokłada się do sumy dnia zamiast ją zastępować — inaczej drugi wydatek
+ * kasowałby pierwszy. Opis dopisuje się do notatki dnia, więc suma w raporcie
+ * ma źródło: widać, z czego się wzięła.
+ */
+export async function addCashFlow(_prev: QuickState, formData: FormData): Promise<QuickState> {
+  const { user, settings, today } = await currentContext();
+  const kind = formData.get("kind") === "zysk" ? "zysk" : "koszt";
+  const amount = parseAmount(formData.get("amount"));
+  const description = String(formData.get("description") ?? "").trim().slice(0, 120);
+
+  if (amount === null) return { error: "Podaj kwotę większą od zera." };
+
+  const money = formatMoney(amount, settings.currency);
+  const line = `${kind === "zysk" ? "+" : "−"}${money}${description ? ` · ${description}` : ""}`;
+  // concat_ws pomija NULL, więc pierwsza notatka dnia nie zaczyna się od pustej linii.
+  // Rzutowanie na text jest konieczne — bez niego Postgres nie zna typu parametru.
+  const notes = sql`concat_ws(E'\n', ${dailyLogs.notes}, ${line}::text)`;
+
+  if (kind === "zysk") {
+    await db
+      .insert(dailyLogs)
+      .values({ userId: user.id, date: today, incomePln: amount, notes: line })
+      .onConflictDoUpdate({
+        target: [dailyLogs.userId, dailyLogs.date],
+        set: {
+          incomePln: sql`coalesce(${dailyLogs.incomePln}, 0) + ${amount}`,
+          notes,
+          updatedAt: new Date(),
+        },
+      });
+  } else {
+    await db
+      .insert(dailyLogs)
+      .values({ userId: user.id, date: today, expensesPln: amount, notes: line })
+      .onConflictDoUpdate({
+        target: [dailyLogs.userId, dailyLogs.date],
+        set: {
+          expensesPln: sql`coalesce(${dailyLogs.expensesPln}, 0) + ${amount}`,
+          notes,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  refresh();
+  return { ok: `Zapisano ${kind === "zysk" ? "zysk" : "koszt"} ${money}.` };
+}
+
+/**
+ * Zadanie na dziś dorzucone bez raportu. Priorytety mają w raporcie dokładnie
+ * trzy miejsca, więc czwarty ląduje jako side quest zamiast zniknąć przy
+ * najbliższym zapisie raportu — i akcja mówi o tym wprost.
+ */
+export async function addQuickTask(_prev: QuickState, formData: FormData): Promise<QuickState> {
+  const { user, today } = await currentContext();
+  const title = String(formData.get("title") ?? "").trim().slice(0, 200);
+  const wantsPriority = formData.get("kind") === "priorytet";
+
+  if (!title) return { error: "Wpisz treść zadania." };
+
+  const existing = await db
+    .select({ kind: tasks.kind })
+    .from(tasks)
+    .where(and(eq(tasks.userId, user.id), eq(tasks.date, today)));
+
+  const priorities = existing.filter((task) => task.kind === "priorytet").length;
+  const sideQuests = existing.filter((task) => task.kind === "side").length;
+  const asPriority = wantsPriority && priorities < 3;
+
+  await db.insert(tasks).values({
+    userId: user.id,
+    date: today,
+    title,
+    kind: asPriority ? "priorytet" : "side",
+    position: asPriority ? priorities + 1 : sideQuests + 1,
+  });
+
+  refresh();
+  if (asPriority) return { ok: `Dodano priorytet ${priorities + 1} z 3.` };
+  return {
+    ok: wantsPriority ? "Masz już 3 priorytety — zapisane jako side quest." : "Dodano side quest.",
+  };
 }
