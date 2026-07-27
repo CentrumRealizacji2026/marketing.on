@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Brak połączenia · Kokpit</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 2rem;
+        background: #0d0d0d;
+        color: #fff;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      .box {
+        max-width: 22rem;
+        text-align: center;
+      }
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.25rem;
+      }
+      p {
+        margin: 0 0 1.5rem;
+        color: #c3c2b7;
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+      button {
+        border: 0;
+        border-radius: 0.5rem;
+        background: #3987e5;
+        color: #fff;
+        font: inherit;
+        font-size: 0.875rem;
+        font-weight: 500;
+        padding: 0.625rem 1.25rem;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <h1>Brak połączenia</h1>
+      <p>
+        Kokpit pokazuje dane z serwera, więc bez internetu nie ma czego wyświetlić.
+        Spróbuj ponownie, gdy wróci zasięg.
+      </p>
+      <button type="button" onclick="location.reload()">Spróbuj ponownie</button>
+    </div>
+  </body>
+</html>
