@@ -89,7 +89,8 @@ export const NAV: NavCategory[] = [
       { label: "Suplementy", href: "/zdrowie#suplementy" },
       { label: "Waga i plan", href: "/zdrowie#waga" },
       { label: "Nawodnienie", href: "/zdrowie#nawodnienie" },
-      { label: "Zdrowie psychiczne", href: "/zdrowie#psychika" },
+      { label: "Testy psychiczne", href: "/zdrowie#testy" },
+      { label: "Puls dnia", href: "/zdrowie#psychika" },
     ],
   },
   {

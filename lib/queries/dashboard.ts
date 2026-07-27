@@ -31,6 +31,7 @@ import { sumSales, type SalesTotals } from "@/lib/domain/sales";
 import { averageOfReportedDays } from "@/lib/domain/water";
 import { getObligationsOverview } from "@/lib/queries/obligations";
 import { getFamilyOverview } from "@/lib/queries/family";
+import { getWellbeingSummary } from "@/lib/queries/mental";
 import { getSavingsOverview } from "@/lib/queries/savings";
 
 const TREND_DAYS = 30;
@@ -137,10 +138,11 @@ export async function getDashboardData(userId: string, settings: Settings, today
   ]);
 
   // Cele i rachunki mają własne zapytania — kafelki dostają gotowy stan, nie surowe wiersze.
-  const [savings, bills, family] = await Promise.all([
+  const [savings, bills, family, wellbeing] = await Promise.all([
     getSavingsOverview(userId, today),
     getObligationsOverview(userId, today, 14),
     getFamilyOverview(userId, settings, today),
+    getWellbeingSummary(userId, today),
   ]);
 
   const byDate = new Map(logs.map((log) => [log.date, log]));
@@ -252,6 +254,8 @@ export async function getDashboardData(userId: string, settings: Settings, today
     },
 
     psychika: {
+      // Testy przesiewowe — one niosą ocenę stanu, wpisy 1–5 są tylko pulsem dnia.
+      testy: wellbeing,
       dzis: {
         mood: byDate.get(today)?.mood ?? null,
         energy: byDate.get(today)?.energy ?? null,

@@ -17,7 +17,7 @@ je później w panelu zarządzania.
 | **Kreator `/start`** | 15 kroków konfiguracji. Leki, trening, rekordy, nauka i projekty to listy dynamiczne — „+ dodaj” dokłada wiersz, a nazwy dyscyplin i dziedzin wpisujesz własnymi słowami |
 | **Panel `/ustawienia`** | Te same formularze bezterminowo. Wyłączenie pozycji zachowuje historię zamiast ją kasować |
 | **Raport `/raport`** | Jeden formularz na cały dzień: finanse (stan środków, wydane, wpłynęło), dopłaty na cele oszczędnościowe, rachunki do odhaczenia, sprzedaż i umowy, leki, waga i woda, zadania, trening z możliwością zgłoszenia rekordu, nauka oraz zdrowie psychiczne (samopoczucie, energia, stres, myśli, co dobrego się wydarzyło) |
-| **Kategorie** | `/finanse` (stan środków, przepływy, oszczędności, płatności, pozycja na tle świata), `/sprzedaz` (lejek „do podpisania”, konwersje, umowy), `/rodzina`, `/zdrowie`, `/zadania`, `/trening`, `/nauka`, `/projekty` |
+| **Kategorie** | `/finanse` (stan środków, przepływy, oszczędności, płatności, pozycja na tle świata), `/sprzedaz` (lejek „do podpisania”, konwersje, umowy), `/rodzina`, `/zdrowie` (leki, waga, nawodnienie, testy stanu psychicznego), `/zadania`, `/trening`, `/nauka`, `/projekty` |
 | **Mentor `/mentor`** | Trzy tryby (mentor / trener / kierownik projektów). Analizuje agregaty z 7 i 30 dni i zwraca rekomendacje „obserwacja → działanie” ze statusami |
 | **PWA** | Instalowalna na telefonie, ze skrótami do raportu, zadań i mentora |
 
@@ -209,15 +209,56 @@ ile waga powinna wynosić dzisiaj, i porównuje to z ostatnim pomiarem — z tol
 Kierunek liczy się poprawnie w obie strony: przy chudnięciu lepiej być poniżej linii, przy budowaniu
 masy powyżej. Kafelek pokazuje też tempo rzeczywiste obok planowanego, w kg na tydzień.
 
+## Ocena stanu psychicznego
+
+Suwak „samopoczucie 1–5" w raporcie jest pulsem dnia — zależy od godziny, pogody i tego, co się
+akurat wydarzyło, więc nie da się z niego odczytać, czy jest lepiej niż miesiąc temu. Ocenę stanu
+niesie osobny wynik: krótki test z pytań o ustalonej punktacji i progach. Testy wypełnia się
+w `/zdrowie/test/<test>`, a wynik trafia na stronę zdrowia, na dashboard i do pakietu danych mentora.
+
+| Test | Co mierzy | Skala | Rytm |
+|---|---|---|---|
+| **WHO-5** | ogólny dobrostan psychiczny w ostatnich dwóch tygodniach | 0–100 (surowe 0–25 × 4) | co 7 dni |
+| **GAD-7** | nasilenie objawów lękowych | 0–21 | co 30 dni |
+| **PHQ-9** | nasilenie objawów depresyjnych | 0–27 | co 30 dni |
+
+Progi pochodzą z narzędzi, nie z tej aplikacji. W WHO-5 wynik ≤ 50 jest zalecanym progiem do
+dalszego sprawdzenia, a ≤ 28 odpowiada poziomowi dobrostanu spotykanemu przy depresji. W GAD-7
+i PHQ-9 dziesięć punktów to próg dalszej diagnostyki. **Żaden z tych wyników nie jest diagnozą** —
+to wskaźnik do obserwacji i rozmowy ze specjalistą, i aplikacja mówi to wprost przy każdym wyniku.
+
+Zasady, które wynikają z tego, jak te narzędzia działają:
+
+- **Test liczy się tylko w komplecie.** Zapis jest zablokowany, dopóki brakuje odpowiedzi —
+  częściowa suma nie jest porównywalna z progami z badań.
+- **Punktację liczy serwer**, z zapisanych odpowiedzi. Formularz wysyła wyłącznie odpowiedzi, więc
+  wyniku nie da się podstawić z boku, a korekta progów w kodzie od razu obejmuje całą historię.
+- **Pytanie 9 w PHQ-9** (myśli o śmierci lub samookaleczeniu) ma własną ścieżkę: każda odpowiedź
+  inna niż „wcale" wywołuje ramkę z numerami wsparcia niezależnie od sumy punktów, także przy
+  wyniku z najlepszego przedziału. Mentor dostaje ten sygnał osobnym polem i traktuje go
+  priorytetowo zamiast wpisywać w ranking obszarów.
+- **Powtórne wypełnienie tego samego dnia nadpisuje wpis** — to poprawka pomyłki, nie druga
+  obserwacja. Historia trzyma po jednym wyniku na dzień i test.
+- Raport dzienny i strona zdrowia przypominają o teście, którego termin minął.
+
+Źródła: WHO-5 —
+[przegląd systematyczny (Topp i in., 2015)](https://karger.com/pps/article/84/3/167/282903/The-WHO-5-Well-Being-Index-A-Systematic-Review-of),
+narzędzie dostępne bezpłatnie w wielu językach na who-5.org. PHQ-9 (Kroenke, Spitzer, Williams)
+i GAD-7 (Spitzer i in.) —
+[udostępnione przez Pfizer bez ograniczeń licencyjnych](https://www.pfizer.com/news/press-release/press-release-detail/pfizer_to_offer_free_public_access_to_mental_health_assessment_tools_to_improve_diagnosis_and_patient_care).
+Polskie sformułowania pytań przygotowano na potrzeby kokpitu — są wierne treści oryginałów, ale nie
+są oficjalnym, walidowanym tłumaczeniem, i interfejs mówi o tym wprost.
+
 ## Uwaga
 
 Mentor nie udziela porad medycznych. Może zauważyć, że realizacja przyjmowania leków spadła, ale
 nigdy nie zaproponuje zmiany dawki ani nowego preparatu — dawki wpisujesz sam, a decyzje zdrowotne
 zostają między Tobą a lekarzem.
 
-To samo dotyczy zdrowia psychicznego: mentor dostaje wpisy o samopoczuciu, myślach i dobrych
-rzeczach, może zauważyć zależności (na przykład między snem, stresem a realizacją planu) i
-przypomnieć zapisane wygrane, ale nie stawia diagnoz. Jeśli wpisy wskazują na poważny kryzys,
+To samo dotyczy zdrowia psychicznego: mentor dostaje wyniki testów przesiewowych razem z wpisami
+o samopoczuciu, myślach i dobrych rzeczach, może zauważyć zależności (na przykład między snem,
+stresem a realizacją planu) i przypomnieć zapisane wygrane, ale nie stawia diagnoz — przedział
+z testu powtarza jako wynik przesiewu, nigdy jako rozpoznanie. Jeśli wpisy wskazują na poważny kryzys,
 zamiast „działania na tydzień" kieruje do specjalisty i podaje kontakt. W samym raporcie i na
 stronie zdrowia widnieją numery: 800 70 2222 (całodobowe Centrum Wsparcia), 116 123 (kryzysowy
 telefon zaufania), 112 przy zagrożeniu życia.

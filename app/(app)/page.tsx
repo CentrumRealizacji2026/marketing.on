@@ -25,6 +25,7 @@ import {
 
 import { CategoryWeek, WeekTotals } from "@/components/calendar/category-week";
 import { Meter, Sparkline } from "@/components/charts/sparkline";
+import { BandPill } from "@/components/health/mental-panels";
 import { Card, CardHeader, EmptyState, StatTile, StatusPill } from "@/components/ui/card";
 import { addWater, toggleDose, toggleLearning, toggleTask, toggleTraining } from "@/lib/actions/quick";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
@@ -1099,7 +1100,7 @@ function Waga({ data, settings, today }: { data: Data; settings: Ustawienia; tod
 /* --------------------------------------------------- zdrowie psychiczne */
 
 function Psychika({ data }: { data: Data }) {
-  const { dzis, srednieTygodnia, ostatnieDobre } = data.psychika;
+  const { dzis, srednieTygodnia, ostatnieDobre, testy } = data.psychika;
   const hasToday =
     dzis.mood !== null || dzis.energy !== null || dzis.stress !== null || dzis.thoughts || dzis.goodThings;
 
@@ -1109,6 +1110,8 @@ function Psychika({ data }: { data: Data }) {
     { label: "Stres", value: dzis.stress, avg: srednieTygodnia.stress, goodHigh: false },
   ];
 
+  const who5 = testy.who5.latest;
+
   return (
     <Card className="xl:col-span-2">
       <CardHeader
@@ -1116,11 +1119,47 @@ function Psychika({ data }: { data: Data }) {
         subtitle={dzis.sleepH !== null ? `Sen: ${formatNumber(dzis.sleepH, 1)} h` : undefined}
         icon={Smile}
         action={
-          <Link href="/zdrowie#psychika" className="text-muted hover:text-ink">
+          <Link href="/zdrowie#testy" className="text-muted hover:text-ink">
             Szczegóły
           </Link>
         }
       />
+
+      {/* Stan psychiczny ocenia test, nie suwak — dlatego wynik WHO-5 jest tu pierwszy. */}
+      <Link
+        href="/zdrowie/test/who5"
+        className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-edge bg-surface-2 px-3 py-2 hover:bg-line"
+      >
+        <div className="min-w-0">
+          <p className="text-xs text-muted">WHO-5 — dobrostan</p>
+          <p className="tabular mt-0.5 text-lg leading-tight font-semibold text-ink">
+            {who5 ? (
+              <>
+                {who5.score}
+                <span className="text-sm font-normal text-ink-2"> / {who5.max}</span>
+              </>
+            ) : (
+              <span className="text-sm font-normal text-ink-2">Nie wypełniony</span>
+            )}
+          </p>
+        </div>
+        {who5 ? (
+          <BandPill band={who5.band} />
+        ) : (
+          <span className="shrink-0 text-xs font-medium text-series-1">Wypełnij test →</span>
+        )}
+      </Link>
+
+      {testy.riskFlag ? (
+        <p className="mb-3 rounded-lg border border-critical/60 bg-critical/10 px-3 py-2 text-xs text-ink">
+          Ostatni test zawiera odpowiedź, z którą nie zostaje się samemu. Wsparcie całodobowe:{" "}
+          <span className="font-medium">800 70 2222</span>.
+        </p>
+      ) : testy.dueTests.length > 0 ? (
+        <p className="mb-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-ink">
+          Czeka na wypełnienie: {testy.dueTests.join(", ")}.
+        </p>
+      ) : null}
 
       {!hasToday ? (
         <EmptyState message="Dziś nie wypełniłeś jeszcze tej części raportu." href="/raport" cta="Wypełnij raport" />

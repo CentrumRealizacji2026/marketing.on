@@ -33,6 +33,7 @@ export type RecommendationStatus = "nowa" | "przyjeta" | "zrobiona" | "odrzucona
 export type MentorMode = "mentor" | "trener" | "pm";
 export type DealStage = "do-podpisania" | "podpisana" | "przepadla";
 export type FamilyEventKind = "rocznica" | "urodziny" | "randka" | "wyjazd" | "wydarzenie";
+export type MentalTestId = "who5" | "gad7" | "phq9";
 export type ObligationCadence =
   | "jednorazowo"
   | "tygodniowo"
@@ -324,6 +325,34 @@ export const obligationPayments = pgTable(
   (t) => [
     uniqueIndex("obligation_payments_due_key").on(t.obligationId, t.dueDate),
     index("obligation_payments_user_due_idx").on(t.userId, t.dueDate),
+  ],
+);
+
+/* ------------------------------------------------- testy stanu psychicznego */
+
+/**
+ * Wypełniony kwestionariusz przesiewowy. Trzymamy odpowiedzi, a nie tylko wynik,
+ * żeby zmiana progów w kodzie nie unieważniła historii — punktacja liczy się
+ * z odpowiedzi przy każdym odczycie.
+ */
+export const mentalAssessments = pgTable(
+  "mental_assessments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    date: date("date", { mode: "string" }).notNull(),
+    test: text("test").$type<MentalTestId>().notNull(),
+    answers: jsonb("answers").$type<number[]>().notNull(),
+    /** Wynik w skali prezentowanej użytkownikowi — zapisany dla szybkich wykresów. */
+    score: integer("score").notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("mental_assessments_key").on(t.userId, t.date, t.test),
+    index("mental_assessments_user_idx").on(t.userId, t.test, t.date),
   ],
 );
 
@@ -737,6 +766,7 @@ export type Task = typeof tasks.$inferSelect;
 export type SavingsGoal = typeof savingsGoals.$inferSelect;
 export type CountdownRow = typeof countdowns.$inferSelect;
 export type Deal = typeof deals.$inferSelect;
+export type MentalAssessment = typeof mentalAssessments.$inferSelect;
 export type FamilyMember = typeof familyMembers.$inferSelect;
 export type FamilyEvent = typeof familyEvents.$inferSelect;
 export type Obligation = typeof obligations.$inferSelect;

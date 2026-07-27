@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { ReportForm } from "./report-form";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { formatFullDatePl, todayInTz } from "@/lib/domain/dates";
+import { MENTAL_TESTS } from "@/lib/domain/mental-tests";
+import { getWellbeingSummary } from "@/lib/queries/mental";
 import { getReportFormData } from "@/lib/queries/report";
 
 export const metadata: Metadata = { title: "Raport dzienny" };
@@ -20,7 +22,14 @@ export default async function ReportPage({
   const today = todayInTz(settings.timezone);
   const date = /^\d{4}-\d{2}-\d{2}$/.test(params.data ?? "") ? params.data! : today;
 
-  const data = await getReportFormData(user.id, date);
+  const [data, wellbeing] = await Promise.all([
+    getReportFormData(user.id, date),
+    getWellbeingSummary(user.id, today),
+  ]);
+
+  const dueTests = wellbeing.states
+    .filter((state) => state.due)
+    .map((state) => ({ id: state.testId, name: MENTAL_TESTS[state.testId].name }));
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
@@ -32,7 +41,13 @@ export default async function ReportPage({
         </p>
       </header>
 
-      <ReportForm data={data} today={today} currency={settings.currency} waterGoalMl={settings.waterGoalMl} />
+      <ReportForm
+        data={data}
+        today={today}
+        currency={settings.currency}
+        waterGoalMl={settings.waterGoalMl}
+        dueTests={dueTests}
+      />
     </div>
   );
 }

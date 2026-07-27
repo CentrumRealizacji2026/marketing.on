@@ -25,10 +25,12 @@ import { summarizeDeals, type DealInput } from "@/lib/domain/deals";
 import { dayCashFlow, sumExpenses, sumIncome } from "@/lib/domain/finance";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
+import { MENTAL_TESTS } from "@/lib/domain/mental-tests";
 import { currentRecords } from "@/lib/domain/records";
 import { conversionRates, sumSales } from "@/lib/domain/sales";
 import { averageOfReportedDays, waterStatus } from "@/lib/domain/water";
 import { weightPlanProgress } from "@/lib/domain/weight";
+import { getWellbeingSummary } from "@/lib/queries/mental";
 import { getObligationsOverview } from "@/lib/queries/obligations";
 import { getSavingsOverview } from "@/lib/queries/savings";
 
@@ -92,9 +94,10 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
     ]);
 
   // Cele i rachunki mają własne zapytania — mentor dostaje wyliczony stan, nie surowe wiersze.
-  const [savings, bills] = await Promise.all([
+  const [savings, bills, wellbeing] = await Promise.all([
     getSavingsOverview(userId, today),
     getObligationsOverview(userId, today, 30),
+    getWellbeingSummary(userId, today),
   ]);
 
   const days30 = lastNDays(today, 30);
@@ -275,6 +278,20 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
       : null,
 
     zdrowiePsychiczne: {
+      // Testy przesiewowe niosą ocenę stanu; średnie 1–5 poniżej to tylko puls dnia.
+      testy: wellbeing.states.map((state) => ({
+        test: MENTAL_TESTS[state.testId].name,
+        wynik: state.latest?.score ?? null,
+        maksimum: MENTAL_TESTS[state.testId].displayMax,
+        wyzszyLepszy: MENTAL_TESTS[state.testId].higherIsBetter,
+        przedzial: state.latest?.band.label ?? null,
+        data: state.latest?.date ?? null,
+        poprzedniWynik: state.previousScore,
+        poprawa: state.change.improved,
+        doWypelnienia: state.due,
+      })),
+      // Zaznaczone pytanie o myśli samobójcze — mentor ma o tym wiedzieć wprost.
+      sygnalRyzyka: wellbeing.riskFlag,
       samopoczucieSredniaTydzien: round(averageOfReportedDays(days7.map((d) => byDate.get(d)?.mood ?? null)), 1),
       energiaSredniaTydzien: round(averageOfReportedDays(days7.map((d) => byDate.get(d)?.energy ?? null)), 1),
       stresSredniaTydzien: round(averageOfReportedDays(days7.map((d) => byDate.get(d)?.stress ?? null)), 1),

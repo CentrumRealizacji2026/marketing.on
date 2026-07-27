@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
-import { AlertTriangle, CheckCircle2, Droplets, HeartPulse, Scale, Smile, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Droplets, HeartPulse, Scale, Smile, XCircle } from "lucide-react";
 
 import { DayBars } from "@/components/charts/day-bars";
 import { Meter, Sparkline } from "@/components/charts/sparkline";
+import { CrisisBox, TestScore } from "@/components/health/mental-panels";
 import { Card, CardHeader, EmptyState, StatTile, StatusPill } from "@/components/ui/card";
 import { toggleDose } from "@/lib/actions/quick";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
@@ -14,6 +15,7 @@ import { addDays, formatDatePl, formatDateShortPl, lastNDays, todayInTz } from "
 import { WEIGHT_STATUS_LABEL, describeWeightProgress, weightPlanProgress } from "@/lib/domain/weight";
 import { formatDose, medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
 import { WATER_STATUS_LABEL, averageOfReportedDays, waterStatus } from "@/lib/domain/water";
+import { getWellbeingSummary } from "@/lib/queries/mental";
 import { formatNumber } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Zdrowie" };
@@ -30,7 +32,7 @@ export default async function HealthPage() {
   const today = todayInTz(settings.timezone);
   const from = addDays(today, -(RANGE - 1));
 
-  const [logs, medRows, medLogRows] = await Promise.all([
+  const [logs, medRows, medLogRows, wellbeing] = await Promise.all([
     db
       .select()
       .from(dailyLogs)
@@ -45,6 +47,7 @@ export default async function HealthPage() {
       .select()
       .from(medicationLogs)
       .where(and(eq(medicationLogs.userId, user.id), gte(medicationLogs.date, from))),
+    getWellbeingSummary(user.id, today),
   ]);
 
   const byDate = new Map(logs.map((log) => [log.date, log]));
@@ -274,9 +277,46 @@ export default async function HealthPage() {
         </Card>
       </div>
 
+      <Card id="testy">
+        <CardHeader
+          title="Zdrowie psychiczne — ocena z testów"
+          subtitle="Wynik z kwestionariuszy przesiewowych — porównywalny w czasie, w odróżnieniu od codziennej oceny 1–5."
+          icon={ClipboardCheck}
+        />
+
+        {wellbeing.riskFlag ? (
+          <div className="mb-3">
+            <CrisisBox urgent />
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {wellbeing.states.map((state) => (
+            <Link
+              key={state.testId}
+              href={`/zdrowie/test/${state.testId}`}
+              className="rounded-lg border border-edge p-3 hover:bg-surface-2"
+            >
+              <TestScore state={state} compact />
+            </Link>
+          ))}
+        </div>
+
+        {wellbeing.dueTests.length > 0 ? (
+          <p className="mt-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-ink">
+            Czeka na wypełnienie: {wellbeing.dueTests.join(", ")}.
+          </p>
+        ) : null}
+
+        <p className="mt-3 text-xs text-muted">
+          WHO-5 powtarzaj co tydzień, GAD-7 i PHQ-9 co miesiąc. Żaden wynik nie jest diagnozą — to wskaźnik do
+          obserwacji i rozmowy ze specjalistą.
+        </p>
+      </Card>
+
       <Card id="psychika">
         <CardHeader
-          title="Zdrowie psychiczne"
+          title="Puls dnia"
           subtitle="Samopoczucie, energia i stres z ostatnich 7 dni oraz Twoje wpisy."
           icon={Smile}
         />
@@ -321,12 +361,9 @@ export default async function HealthPage() {
           </ul>
         )}
 
-        <p className="mt-4 rounded-lg border border-edge bg-surface-2 px-3 py-2 text-xs text-muted">
-          Kokpit nie zastępuje pomocy specjalisty. Darmowe całodobowe wsparcie:{" "}
-          <span className="text-ink">800 70 2222</span> (Centrum Wsparcia) lub{" "}
-          <span className="text-ink">116 123</span> (kryzysowy telefon zaufania). W sytuacji zagrożenia życia —{" "}
-          <span className="text-ink">112</span>.
-        </p>
+        <div className="mt-4">
+          <CrisisBox />
+        </div>
       </Card>
 
     </div>

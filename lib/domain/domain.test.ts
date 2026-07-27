@@ -19,6 +19,7 @@ import { dayCashFlow, sumExpenses, sumIncome } from "./finance";
 import { describeRank, formatTopPct, incomeRank } from "./income-rank";
 import { learningBlocksForDate } from "./learning";
 import { medicationScheduleForDate, slotSortKey } from "./medication";
+import { MENTAL_TESTS, compareScores, isDue, nextDueDate, scoreAssessment } from "./mental-tests";
 import {
   dueLabel,
   obligationOccurrences,
@@ -817,5 +818,71 @@ describe("sprzedaż", () => {
 
   it("nie dzieli przez zero", () => {
     expect(conversionRates(sumSales([])).callToScheduled).toBeNull();
+  });
+});
+
+describe("testy stanu psychicznego", () => {
+  const who5Max = MENTAL_TESTS.who5.items.map(() => 5);
+  const phq9Zero = MENTAL_TESTS.phq9.items.map(() => 0);
+
+  it("przelicza WHO-5 z surowych 0–25 na skalę 0–100", () => {
+    expect(scoreAssessment("who5", who5Max)?.score).toBe(100);
+    expect(scoreAssessment("who5", [0, 0, 0, 0, 0])?.score).toBe(0);
+    expect(scoreAssessment("who5", [3, 3, 3, 3, 3])?.score).toBe(60);
+  });
+
+  it("zwraca punkty wprost dla GAD-7 i PHQ-9", () => {
+    expect(scoreAssessment("gad7", [3, 3, 3, 3, 3, 3, 3])?.score).toBe(21);
+    expect(scoreAssessment("phq9", phq9Zero)?.score).toBe(0);
+  });
+
+  it("przypisuje przedziały zgodne z progami z narzędzi", () => {
+    // WHO-5: ≤28 to poziom spotykany przy depresji, ≤50 to próg przesiewowy.
+    expect(scoreAssessment("who5", [1, 1, 1, 1, 1])?.band.tone).toBe("critical");
+    expect(scoreAssessment("who5", [2, 2, 3, 2, 2])?.band.tone).toBe("warning");
+    expect(scoreAssessment("who5", [4, 4, 4, 4, 4])?.band.tone).toBe("good");
+
+    // GAD-7 i PHQ-9: od 10 punktów zalecana dalsza diagnostyka.
+    expect(scoreAssessment("gad7", [2, 2, 2, 2, 1, 1, 0])?.score).toBe(10);
+    expect(scoreAssessment("gad7", [2, 2, 2, 2, 1, 1, 0])?.band.tone).toBe("warning");
+    expect(scoreAssessment("gad7", [1, 1, 1, 1, 0, 0, 0])?.band.tone).toBe("good");
+    expect(scoreAssessment("phq9", [3, 3, 3, 3, 3, 3, 2, 0, 0])?.band.tone).toBe("critical");
+  });
+
+  it("odrzuca niekompletny i wykraczający poza skalę zestaw odpowiedzi", () => {
+    expect(scoreAssessment("who5", [5, 5, 5])).toBeNull();
+    expect(scoreAssessment("gad7", [0, 0, 0, 0, 0, 0, 4])).toBeNull();
+    expect(scoreAssessment("gad7", [0, 0, 0, 0, 0, 0, 1.5])).toBeNull();
+    expect(scoreAssessment("gad7", [0, 0, 0, 0, 0, 0, -1])).toBeNull();
+  });
+
+  it("podnosi sygnał ryzyka tylko przy dodatniej odpowiedzi w pytaniu 9 PHQ-9", () => {
+    expect(scoreAssessment("phq9", phq9Zero)?.riskFlag).toBe(false);
+    expect(scoreAssessment("phq9", [0, 0, 0, 0, 0, 0, 0, 0, 1])?.riskFlag).toBe(true);
+    // Niski wynik ogólny nie kasuje sygnału — o tym pytaniu decyduje sama odpowiedź.
+    expect(scoreAssessment("phq9", [0, 0, 0, 0, 0, 0, 0, 0, 1])?.band.tone).toBe("good");
+    expect(scoreAssessment("gad7", [3, 3, 3, 3, 3, 3, 3])?.riskFlag).toBe(false);
+  });
+
+  it("wyznacza termin kolejnego wypełnienia z rytmu testu", () => {
+    expect(nextDueDate("who5", "2026-07-01")).toBe("2026-07-08");
+    expect(nextDueDate("phq9", "2026-07-01")).toBe("2026-07-31");
+    expect(nextDueDate("who5", null)).toBeNull();
+  });
+
+  it("test nigdy nie wypełniony jest zawsze do zrobienia", () => {
+    expect(isDue("who5", null, "2026-07-27")).toBe(true);
+    expect(isDue("who5", "2026-07-27", "2026-07-27")).toBe(false);
+    expect(isDue("who5", "2026-07-20", "2026-07-27")).toBe(true);
+  });
+
+  it("czyta kierunek zmiany zgodnie ze skalą testu", () => {
+    // WHO-5: więcej punktów to lepiej.
+    expect(compareScores("who5", 72, 60)).toEqual({ delta: 12, improved: true });
+    // GAD-7: więcej punktów to więcej objawów.
+    expect(compareScores("gad7", 12, 8)).toEqual({ delta: 4, improved: false });
+    expect(compareScores("gad7", 8, 12)).toEqual({ delta: -4, improved: true });
+    expect(compareScores("who5", 60, null).improved).toBeNull();
+    expect(compareScores("who5", 60, 60).improved).toBeNull();
   });
 });

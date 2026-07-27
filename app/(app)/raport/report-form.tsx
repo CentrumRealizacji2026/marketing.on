@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -38,11 +39,14 @@ export function ReportForm({
   today,
   currency,
   waterGoalMl,
+  dueTests,
 }: {
   data: ReportFormData;
   today: string;
   currency: string;
   waterGoalMl: number | null;
+  /** Testy przesiewowe, których termin już minął — raport o nich przypomina. */
+  dueTests: Array<{ id: string; name: string }>;
 }) {
   const router = useRouter();
   const [state, formAction] = useActionState<ReportState, FormData>(submitReport, undefined);
@@ -791,8 +795,29 @@ export function ReportForm({
       <Card>
         <CardHeader
           title="Zdrowie psychiczne"
-          subtitle="Samopoczucie, myśli i to, co dobrego się wydarzyło. Wszystko jest opcjonalne."
+          subtitle="Puls dnia. Ocena stanu psychicznego wychodzi z testów — te wypełnia się osobno, rzadziej."
         />
+
+        {dueTests.length > 0 ? (
+          <div className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2">
+            <p className="text-xs text-ink">
+              Czeka na wypełnienie: {dueTests.map((test) => test.name).join(", ")}. To one dają wynik porównywalny
+              w czasie — pola poniżej są tylko dziennym pulsem.
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+              {dueTests.map((test) => (
+                <Link
+                  key={test.id}
+                  href={`/zdrowie/test/${test.id}`}
+                  className="text-xs font-medium text-series-1 hover:underline"
+                >
+                  {test.name} →
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           <Field label="Sen (godziny)" htmlFor="sleep">
             <NumberInput id="sleep" step="0.5" value={sleep} onChange={(e) => setSleep(e.target.value)} />
