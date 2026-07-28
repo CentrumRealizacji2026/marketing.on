@@ -3,6 +3,7 @@ import { ClipboardList, LogOut } from "lucide-react";
 
 import { CategoryRail } from "@/components/layout/category-rail";
 import { Clock } from "@/components/layout/clock";
+import { HeaderAdd } from "@/components/layout/header-add";
 import { QuickAdd } from "@/components/layout/quick-add";
 import { PwaRegister } from "@/components/pwa-register";
 import { logout } from "@/lib/auth/actions";
@@ -27,6 +28,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
           <div className="flex shrink-0 items-center gap-3">
             <Clock timezone={settings.timezone} />
+            {/* Kontekstowe dodawanie: przycisk zmienia się razem z kategorią. */}
+            <HeaderAdd currency={settings.currency} />
             <Link
               href="/raport"
               className="inline-flex h-9 items-center gap-2 rounded-lg bg-series-1 px-3 text-sm font-medium text-white hover:brightness-110"
