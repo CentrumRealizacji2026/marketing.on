@@ -1,0 +1,92 @@
+<!-- elgreen — reklama 2: inwestycja w 3 krokach. Logo = placeholder SVG -->
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  :root{--ink:#0A1510;--green:#3BD46C;--muted:#93A89A;--line:#1E3A29}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Manrope',sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+  .canvas{position:relative;width:1080px;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(1200px 800px at 85% -10%,#17422A 0%,transparent 60%),
+               radial-gradient(900px 700px at -15% 108%,#123422 0%,transparent 55%),var(--ink)}
+  body.story  .canvas{height:1920px;padding:256px 76px 352px}
+  body.feed   .canvas{height:1350px;padding:56px 64px 138px}
+  body.square .canvas{height:1080px;padding:52px 60px 60px}
+  .glow{position:absolute;width:760px;height:760px;border-radius:50%;pointer-events:none;filter:blur(130px);opacity:.20;
+    background:radial-gradient(circle,var(--green) 0%,transparent 62%);top:-300px;right:-260px}
+  .brand{display:flex;align-items:center;gap:16px;position:relative}
+  .sygnet{flex:none;width:64px;height:64px;border-radius:18px;background:var(--green);display:flex;align-items:center;justify-content:center}
+  .sygnet svg{width:38px;height:38px}
+  .wordmark{font-weight:800;font-size:52px;letter-spacing:-.02em;color:#fff}
+  .wordmark b{font-weight:800;color:var(--green)}
+  .headline{position:relative;font-weight:800;letter-spacing:-.02em;font-size:74px;line-height:1.1;margin-top:40px}
+  .headline em{font-style:normal;color:var(--green)}
+  .steps{flex:1;display:flex;flex-direction:column;justify-content:center;gap:0;position:relative;min-height:0}
+  .step{display:flex;gap:30px;position:relative;padding:26px 0}
+  .rail{flex:none;width:84px;display:flex;flex-direction:column;align-items:center}
+  .num{width:84px;height:84px;border-radius:50%;background:var(--green);color:var(--ink);display:flex;align-items:center;justify-content:center;
+    font-size:36px;font-weight:800;box-shadow:0 0 40px rgba(59,212,108,.35)}
+  .step.mid .num,.step.last .num{background:rgba(255,255,255,.06);color:var(--green);border:2px solid rgba(59,212,108,.5);box-shadow:none}
+  .rail::after{content:"";flex:1;width:3px;margin-top:10px;background:linear-gradient(180deg,rgba(59,212,108,.5),rgba(59,212,108,.08))}
+  .step.last .rail::after{display:none}
+  .body{padding-top:8px}
+  .body h2{font-size:40px;font-weight:800;letter-spacing:-.01em}
+  .body p{margin-top:10px;font-size:28px;line-height:1.4;color:var(--muted);font-weight:500;max-width:740px}
+  .body p b{color:#fff;font-weight:700}
+  .tag{display:inline-flex;margin-top:14px;border:1.5px solid rgba(59,212,108,.45);color:var(--green);border-radius:999px;
+    padding:7px 18px;font-size:21px;font-weight:800;letter-spacing:.05em}
+  .cta-row{position:relative;display:flex;justify-content:center}
+  .cta{background:var(--green);color:var(--ink);border-radius:999px;padding:28px 54px;font-size:32px;font-weight:800;
+    box-shadow:0 24px 60px -16px rgba(59,212,108,.45)}
+
+  /* feed 4:5 */
+  body.feed .wordmark{font-size:46px}
+  body.feed .sygnet{width:56px;height:56px;border-radius:16px}
+  body.feed .sygnet svg{width:33px;height:33px}
+  body.feed .headline{font-size:56px;margin-top:28px}
+  body.feed .step{padding:18px 0;gap:24px}
+  body.feed .rail{width:68px}
+  body.feed .num{width:68px;height:68px;font-size:30px}
+  body.feed .body h2{font-size:33px}
+  body.feed .body p{font-size:24px;margin-top:7px}
+  body.feed .tag{font-size:18px;padding:6px 15px;margin-top:10px}
+  body.feed .cta{font-size:28px;padding:22px 46px}
+
+  /* square 1:1 */
+  body.square .wordmark{font-size:42px}
+  body.square .sygnet{width:52px;height:52px;border-radius:15px}
+  body.square .sygnet svg{width:30px;height:30px}
+  body.square .headline{font-size:44px;margin-top:20px}
+  body.square .step{padding:12px 0;gap:18px}
+  body.square .rail{width:54px}
+  body.square .num{width:54px;height:54px;font-size:24px}
+  body.square .body{padding-top:4px}
+  body.square .body h2{font-size:27px}
+  body.square .body p{font-size:20px;margin-top:5px}
+  body.square .tag{font-size:15px;padding:5px 12px;margin-top:8px}
+  body.square .cta{font-size:23px;padding:16px 36px}
+</style>
+<body class="story">
+<div class="canvas">
+  <div class="glow"></div>
+  <div class="brand">
+    <span class="sygnet"><svg viewBox="0 0 48 48" fill="none"><path d="M27 6 L13 27 h9 L20 42 L35 20 h-10 Z" fill="#0A1510"/></svg></span>
+    <span class="wordmark">el<b>green</b></span>
+  </div>
+  <div class="headline">Inwestycja energetyczna w&nbsp;<em>3 krokach</em> — bez chodzenia po&nbsp;urzędach</div>
+  <div class="steps">
+    <div class="step">
+      <div class="rail"><span class="num">1</span></div>
+      <div class="body"><h2>Rozmawiamy o Twoim projekcie</h2><p>Analiza terenu i potrzeb, <b>bezpłatna konsultacja w 48 h</b>. Bez zobowiązań.</p></div>
+    </div>
+    <div class="step mid">
+      <div class="rail"><span class="num">2</span></div>
+      <div class="body"><h2>Projektujemy i załatwiamy formalności</h2><p>Koncepcja, projekt, <b>warunki przyłączenia i uzgodnienia z operatorem</b> — wszystko po naszej stronie.</p><span class="tag">JEDEN WYKONAWCA</span></div>
+    </div>
+    <div class="step last">
+      <div class="rail"><span class="num">3</span></div>
+      <div class="body"><h2>Budujemy i serwisujemy</h2><p>Budowa, odbiory i opieka O&amp;M — <b>3000+ projektów</b> w energetyce, OZE i&nbsp;e-mobility.</p><span class="tag">15+ LAT DOŚWIADCZENIA</span></div>
+    </div>
+  </div>
+  <div class="cta-row"><span class="cta">Zacznij od bezpłatnej konsultacji →</span></div>
+</div>
+</body>

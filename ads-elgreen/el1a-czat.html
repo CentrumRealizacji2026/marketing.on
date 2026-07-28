@@ -1,0 +1,139 @@
+<!-- elgreen — reklama 1, wersja A: rozmowa (czat). Logo = placeholder SVG, do podmiany na oryginalny sygnet+logotyp -->
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  :root{
+    --ink:#0A1510; --paper:#F1F6F0; --green:#35C563; --green-deep:#1D9A48;
+    --muted:#55645A; --line:#DCE5DA;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Manrope',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  .canvas{position:relative;width:1080px;overflow:hidden;background:var(--paper);display:flex;flex-direction:column}
+  /* story: strefy bezpieczne Meta — gora ~250px i dol ~350px wolne od tresci */
+  body.story  .canvas{height:1920px;padding:256px 72px 352px}
+  body.feed   .canvas{height:1350px;padding:56px 64px 138px}
+  body.square .canvas{height:1080px;padding:52px 60px 60px}
+  .slash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(245deg,var(--green) 0%,var(--green) 26%,transparent 26.2%)}
+  .slash2{position:absolute;inset:0;pointer-events:none;background:linear-gradient(245deg,transparent 25%,rgba(10,21,16,.14) 25.2%,transparent 26.6%)}
+
+  .brand{display:flex;align-items:center;gap:16px;position:relative}
+  .sygnet{flex:none;width:64px;height:64px;border-radius:18px;background:var(--green);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 10px 26px -10px rgba(29,154,72,.7)}
+  .sygnet svg{width:38px;height:38px}
+  .wordmark{font-weight:800;font-size:52px;letter-spacing:-.02em}
+  .wordmark b{font-weight:800;color:var(--green-deep)}
+
+  .headline{position:relative;z-index:2;font-weight:800;letter-spacing:-.03em}
+  body.story  .headline{font-size:58px;line-height:1.14;margin-top:28px}
+  body.feed   .headline{font-size:44px;line-height:1.12;margin-top:28px}
+  body.square .headline{font-size:40px;line-height:1.12;margin-top:18px}
+  .headline .q{background:var(--green);color:#fff;border-radius:14px;padding:0 20px 8px;margin-left:-6px;
+    -webkit-box-decoration-break:clone;box-decoration-break:clone}
+
+  .chat{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:22px 0 0}
+  body.story .m{font-size:20px;padding:11px 18px}
+  body.story .msgs{gap:9px}
+  .phone{width:750px;background:#fff;border-radius:40px;border:1.5px solid var(--line);
+    box-shadow:0 40px 90px -28px rgba(10,21,16,.30),0 12px 30px -12px rgba(10,21,16,.14);
+    overflow:hidden;transform:rotate(-1.4deg)}
+  body.feed .phone{width:700px}
+  .ph-top{display:flex;align-items:center;gap:14px;padding:16px 26px;background:#F8FBF7;border-bottom:1.5px solid #E7EFE5}
+  .ph-top .ava{width:46px;height:46px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:19px}
+  .ph-top b{display:block;font-size:23px;font-weight:800}
+  .ph-top span{display:block;font-size:17px;color:#8AA08E;font-weight:500;margin-top:1px}
+  .msgs{display:flex;flex-direction:column;gap:10px;padding:16px 26px 20px;background:
+    radial-gradient(circle at 20% 10%,#FAFDF9 0%,#F3F8F1 100%)}
+  .m{max-width:82%;border-radius:20px;padding:12px 20px;font-size:21px;line-height:1.32;font-weight:500;position:relative}
+  .in{align-self:flex-start;background:#E9F0E7;color:#26362B;border-bottom-left-radius:8px}
+  .out{align-self:flex-end;background:var(--ink);color:#fff;border-bottom-right-radius:8px}
+  .m small{display:block;font-size:16px;font-weight:500;opacity:.5;margin-top:5px;text-align:right}
+  .in.hl{background:var(--green);color:#fff;font-weight:700}
+
+  .answer{position:relative;background:var(--ink);color:#fff;border-radius:28px;padding:32px 38px;
+    box-shadow:0 30px 70px -22px rgba(10,21,16,.5)}
+  body.story .answer{margin-top:38px}
+  body.feed  .answer{padding:32px 40px;margin-top:24px}
+  .answer h2{font-weight:800;font-size:34px;letter-spacing:-.02em;line-height:1.2}
+  .answer h2 em{font-style:normal;color:var(--green)}
+  .arow{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
+  .achip{display:flex;align-items:center;gap:10px;border:1.5px solid #23422F;background:rgba(255,255,255,.05);
+    border-radius:999px;padding:10px 18px;font-size:21px;font-weight:600;color:#DCEADF}
+  .achip em{font-style:normal;color:var(--green);font-weight:800}
+  .cta-row{display:flex;align-items:center;gap:24px;margin-top:26px}
+  .cta{display:flex;align-items:center;gap:16px;background:var(--green);color:#fff;border-radius:999px;
+    padding:17px 34px;font-size:26px;font-weight:800}
+
+  /* ciasniejszy uklad dla formatu feed 1080x1350 */
+  body.feed .chat{padding:12px 0 8px}
+  body.feed .ph-top{padding:14px 22px}
+  body.feed .ph-top .ava{width:42px;height:42px;font-size:18px}
+  body.feed .ph-top b{font-size:21px}
+  body.feed .ph-top span{font-size:16px}
+  body.feed .msgs{gap:9px;padding:16px 20px 20px}
+  body.feed .m{font-size:19px;padding:10px 16px;border-radius:16px}
+  body.feed .m small{font-size:14px;margin-top:4px}
+  body.feed .answer h2{font-size:33px}
+  body.feed .achip{font-size:21px;padding:10px 18px}
+  body.feed .cta-row{margin-top:22px}
+
+  /* format kwadratowy 1:1 1080x1080 */
+  body.story .sq-hide,body.square .sq-hide{display:none}
+  body.square .chat{padding:14px 0 10px}
+  body.square .phone{width:680px;border-radius:32px}
+  body.square .ph-top{padding:12px 20px}
+  body.square .ph-top .ava{width:38px;height:38px;font-size:16px}
+  body.square .ph-top b{font-size:19px}
+  body.square .ph-top span{font-size:14px}
+  body.square .msgs{gap:8px;padding:14px 18px 18px}
+  body.square .m{font-size:18px;padding:9px 15px;border-radius:14px}
+  body.square .m small{font-size:13px;margin-top:3px}
+  body.square .answer{padding:26px 32px;border-radius:24px}
+  body.square .answer h2{font-size:28px}
+  body.square .arow{margin-top:16px;gap:9px}
+  body.square .achip{font-size:18px;padding:8px 15px}
+  body.square .cta-row{margin-top:18px}
+  body.square .cta{font-size:22px;padding:14px 28px}
+  body.square .wordmark{font-size:42px}
+  body.square .sygnet{width:52px;height:52px;border-radius:15px}
+  body.square .sygnet svg{width:30px;height:30px}
+</style>
+<body class="story">
+<div class="canvas">
+  <div class="slash"></div><div class="slash2"></div>
+
+  <div class="brand">
+    <span class="sygnet"><svg viewBox="0 0 48 48" fill="none"><path d="M27 6 L13 27 h9 L20 42 L35 20 h-10 Z" fill="#fff"/></svg></span>
+    <span class="wordmark">el<b>green</b></span>
+  </div>
+
+  <div class="headline">Inwestujesz w&nbsp;OZE lub ładowarki i&nbsp;toniesz w&nbsp;formalnościach? <span class="q">Dobrze się składa.</span></div>
+
+  <div class="chat">
+    <div class="phone">
+      <div class="ph-top">
+        <span class="ava">eg</span>
+        <span><b>elgreen</b><span>online</span></span>
+      </div>
+      <div class="msgs">
+        <div class="m out">Mamy teren pod instalację PV, ale nie wiemy, czy dostaniemy warunki przyłączenia… 🤔 <small>9:41 ✓✓</small></div>
+        <div class="m in hl">Sprawdzimy to za Was. Przyłącze, projekt i&nbsp;budowa — wszystko po naszej stronie ⚡ <small>9:41</small></div>
+        <div class="m out">A formalności z operatorem sieci? <small>9:42 ✓✓</small></div>
+        <div class="m in">Bierzemy na siebie. Projektujemy i budujemy — od koncepcji po odbiór 📐 <small>9:43</small></div>
+        <div class="m out">To kiedy możemy porozmawiać? 😄 <small>9:44 ✓✓</small></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="answer">
+    <h2>Ty masz plan. <em>Projekt, formalności i&nbsp;budowę</em> bierzemy my — odpowiedź w <em>48&nbsp;h.</em></h2>
+    <div class="arow">
+      <span class="achip"><em>✓</em> 15+ lat w energetyce</span>
+      <span class="achip"><em>✓</em> 3000+ projektów</span>
+      <span class="achip"><em>✓</em> energetyka · OZE · e-mobility</span>
+    </div>
+    <div class="cta-row">
+      <span class="cta">Bezpłatna konsultacja w 48 h →</span>
+    </div>
+  </div>
+</div>
+</body>
