@@ -276,15 +276,16 @@ export async function submitReport(_prev: ReportState, formData: FormData): Prom
       .where(and(eq(learningLogs.userId, user.id), eq(learningLogs.date, date), eq(learningLogs.planId, entry.planId)))
       .limit(1);
 
-    if (!entry.done) {
-      if (existing) await db.delete(learningLogs).where(eq(learningLogs.id, existing.id));
-      continue;
-    }
-
+    /*
+     * Odznaczony blok zapisujemy jako „nie zrobione", a nie kasujemy wpisu.
+     * Kasowanie zrównywało świadome pominięcie z brakiem decyzji — i kasowało
+     * oznaczenie ustawione wcześniej na kafelku, gdy wieczorem szedł raport.
+     * Statystyki liczą tylko wpisy z done = true, więc nic się nie zawyża.
+     */
     const values = {
       skill: entry.skill,
-      done: true,
-      minutes: entry.minutes === null ? null : Math.round(entry.minutes),
+      done: entry.done,
+      minutes: entry.done && entry.minutes !== null ? Math.round(entry.minutes) : null,
       note: entry.note,
     };
 
