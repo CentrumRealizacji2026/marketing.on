@@ -121,11 +121,25 @@ export async function toggleTraining(formData: FormData) {
   refresh();
 }
 
-export async function toggleLearning(formData: FormData) {
+/**
+ * Blok nauki ma trzy stany, nie dwa.
+ *
+ * „Nie zrobione" to co innego niż „jeszcze nie zdecydowałem" — pierwsze zamyka
+ * temat, drugie zostawia go otwartym. Bez tego rozróżnienia blok pominięty
+ * świadomie i blok, o którym się zapomniało, wyglądają na kafelku identycznie.
+ *
+ * Statystyki liczą wyłącznie wpisy z done = true, więc jawne „nie zrobione"
+ * niczego w nich nie zawyża — dokłada tylko informację, że dzień jest domknięty.
+ */
+export type LearningStatus = "zrobione" | "niezrobione" | "brak";
+
+export async function setLearningStatus(formData: FormData) {
   const { user, today } = await currentContext();
   const planId = String(formData.get("planId") ?? "");
   const date = String(formData.get("date") ?? today);
-  const done = formData.get("done") === "1";
+  const surowy = String(formData.get("status") ?? "");
+  const status: LearningStatus =
+    surowy === "zrobione" || surowy === "niezrobione" || surowy === "brak" ? surowy : "brak";
   if (!planId) return;
 
   const [plan] = await db
@@ -141,21 +155,20 @@ export async function toggleLearning(formData: FormData) {
     .where(and(eq(learningLogs.userId, user.id), eq(learningLogs.date, date), eq(learningLogs.planId, planId)))
     .limit(1);
 
-  if (done) {
-    if (existing) {
-      await db.update(learningLogs).set({ done: true }).where(eq(learningLogs.id, existing.id));
-    } else {
-      await db.insert(learningLogs).values({
-        userId: user.id,
-        date,
-        skill: plan.skill,
-        minutes: plan.durationMin,
-        planId,
-        done: true,
-      });
-    }
-  } else if (existing) {
-    await db.delete(learningLogs).where(eq(learningLogs.id, existing.id));
+  if (status === "brak") {
+    if (existing) await db.delete(learningLogs).where(eq(learningLogs.id, existing.id));
+    refresh();
+    return;
+  }
+
+  const zrobione = status === "zrobione";
+  // Minuty tylko przy zrealizowanym bloku — przy pominiętym nie ma czego liczyć.
+  const values = { done: zrobione, minutes: zrobione ? plan.durationMin : null };
+
+  if (existing) {
+    await db.update(learningLogs).set(values).where(eq(learningLogs.id, existing.id));
+  } else {
+    await db.insert(learningLogs).values({ userId: user.id, date, skill: plan.skill, planId, ...values });
   }
 
   refresh();

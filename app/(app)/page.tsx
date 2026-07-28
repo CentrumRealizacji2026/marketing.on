@@ -27,7 +27,8 @@ import { CategoryWeek, WeekTotals } from "@/components/calendar/category-week";
 import { Meter, Sparkline } from "@/components/charts/sparkline";
 import { BandPill } from "@/components/health/mental-panels";
 import { Card, CardHeader, EmptyState, StatTile, StatusPill } from "@/components/ui/card";
-import { addWater, toggleDose, toggleLearning, toggleTask, toggleTraining } from "@/lib/actions/quick";
+import { addWater, toggleDose, toggleTask, toggleTraining } from "@/lib/actions/quick";
+import { LearningBlockStatus } from "@/components/learning/block-status";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { cn, formatTime, formatMoney, formatNumber, pluralPl } from "@/lib/utils";
 import { AGENDA_CATEGORY_LABEL, CATEGORY_COLOR, buildAgenda } from "@/lib/domain/agenda";
@@ -870,8 +871,10 @@ function Nauka({ data, today }: { data: Data; today: string }) {
         <ul className="flex flex-col gap-2">
           {blocks.map(({ block, log }) => (
             <li key={block.planId} className="rounded-lg border border-edge p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+              {/* flex-wrap: przy wąskim kafelku przyciski schodzą do własnego wiersza,
+                  zamiast ściskać nazwę przedmiotu do wielokropka. */}
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-[11rem] flex-1">
                   <p className="flex items-baseline gap-2">
                     {block.startTime ? (
                       <span className="tabular text-lg font-semibold text-ink">{formatTime(block.startTime)}</span>
@@ -888,19 +891,7 @@ function Nauka({ data, today }: { data: Data; today: string }) {
                   ) : null}
                   {block.target ? <p className="mt-0.5 text-xs text-muted">Cel: {block.target}</p> : null}
                 </div>
-                <form action={toggleLearning} className="shrink-0">
-                  <input type="hidden" name="planId" value={block.planId} />
-                  <input type="hidden" name="date" value={today} />
-                  <input type="hidden" name="done" value={log?.done ? "0" : "1"} />
-                  <button
-                    type="submit"
-                    className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
-                      log?.done ? "border-good bg-good/10 text-ink" : "border-edge text-ink-2 hover:bg-surface-2"
-                    }`}
-                  >
-                    {log?.done ? "Zrobione" : "Odhacz"}
-                  </button>
-                </form>
+                <LearningBlockStatus planId={block.planId} date={today} done={log ? log.done : null} />
               </div>
             </li>
           ))}
