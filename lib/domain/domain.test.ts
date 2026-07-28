@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { agendaSortKey, buildAgenda } from "./agenda";
+import {
+  agendaSortKey,
+  agendaTemporalState,
+  agendaWindow,
+  annotateAgenda,
+  buildAgenda,
+  nowLineIndex,
+  selectSpotlight,
+} from "./agenda";
 import {
   addDays,
   addMonths,
@@ -8,6 +16,8 @@ import {
   lastNDays,
   monthGridDates,
   orderedWeekdays,
+  formatMinutes,
+  minutesNowInTz,
   startOfWeek,
   todayInTz,
 } from "./dates";
@@ -136,6 +146,41 @@ describe("agenda dnia", () => {
       "hiszpański", // 20:00
       "Zadzwonić do klientów", // bez pory — na końcu
     ]);
+
+    // Każda pozycja niesie surowe identyfikatory do odhaczenia wprost z agendy.
+    expect(agenda.find((i) => i.title === "interwały")?.action).toEqual({
+      type: "training",
+      planId: "t1",
+      done: false,
+    });
+    expect(agenda.find((i) => i.title === "Magnez")?.action).toEqual({
+      type: "dose",
+      medicationId: "m-Magnez",
+      slot: "wieczór",
+      taken: false,
+    });
+    expect(agenda.find((i) => i.title === "hiszpański")?.action).toEqual({
+      type: "learning",
+      planId: "l1",
+      done: false,
+    });
+    expect(agenda.find((i) => i.title === "Zadzwonić do klientów")?.action).toEqual({
+      type: "task",
+      taskId: "z1",
+      done: false,
+    });
+    expect(agenda.find((i) => i.title === "interwały")?.durationMin).toBe(60);
+  });
+
+  it("nauka bez decyzji nie liczy się jako zrobiona, ale niesie tri-state w akcji", () => {
+    const agenda = buildAgenda({
+      doses: [],
+      training: [],
+      learning: [{ id: "l1", skill: "hiszpański", startTime: "20:00:00", durationMin: 45, focus: null, done: null }],
+      tasks: [],
+    });
+    expect(agenda[0].done).toBe(false);
+    expect(agenda[0].action).toEqual({ type: "learning", planId: "l1", done: null });
   });
 
   it("przenosi pozycje bez godziny na koniec, nawet gdy są pierwsze na wejściu", () => {
@@ -162,6 +207,114 @@ describe("agenda dnia", () => {
     expect(agenda.find((i) => i.title === "Magnez")?.category).toBe("zdrowie");
     expect(agenda.find((i) => i.title === "bieg")?.category).toBe("trening");
     expect(agenda.every((item) => item.done)).toBe(true);
+  });
+});
+
+describe("stan czasowy agendy", () => {
+  it("nazwane pory mają okna, nie punkty — rano trwa cały poranek", () => {
+    expect(agendaWindow("rano", null)).toEqual({ start: 360, end: 660 });
+    expect(agendaWindow("poludnie", null)).toEqual({ start: 660, end: 840 }); // wariant bez ogonków
+    expect(agendaWindow("wieczór", null)).toEqual({ start: 1080, end: 1320 });
+  });
+
+  it("pozycja z godziną trwa tyle, ile plan — a bez planu godzinę", () => {
+    expect(agendaWindow("18:30", 45)).toEqual({ start: 1110, end: 1155 });
+    expect(agendaWindow("18:30", null)).toEqual({ start: 1110, end: 1170 });
+    expect(agendaWindow(null, 60)).toBeNull();
+    expect(agendaWindow("cośdziwnego", 60)).toBeNull();
+  });
+
+  it("rozstrzyga granice stanów bez dziur", () => {
+    // Trening 18:30–19:15 (1110–1155).
+    expect(agendaTemporalState("18:30", 45, 1110)).toBe("teraz"); // dokładnie start
+    expect(agendaTemporalState("18:30", 45, 1154)).toBe("teraz"); // ostatnia minuta
+    expect(agendaTemporalState("18:30", 45, 1155)).toBe("przeszle"); // dokładnie koniec
+    expect(agendaTemporalState("18:30", 45, 1110 - 90)).toBe("wkrotce"); // równo 90 min przed
+    expect(agendaTemporalState("18:30", 45, 1110 - 91)).toBe("pozniej");
+    expect(agendaTemporalState(null, null, 720)).toBeNull();
+  });
+
+  it("suplement na rano świeci rano i gaśnie po poranku", () => {
+    expect(agendaTemporalState("rano", null, 8 * 60)).toBe("teraz");
+    expect(agendaTemporalState("rano", null, 12 * 60)).toBe("przeszle");
+    expect(agendaTemporalState("rano", null, 5 * 60)).toBe("wkrotce"); // 5:00 — godzina do startu
+  });
+
+  it("noc o 2:00 w nocy to dzisiejsza przyszłość, nie wczorajsza przeszłość", () => {
+    expect(agendaTemporalState("noc", null, 2 * 60)).toBe("pozniej");
+  });
+
+  const timed = (key: string, when: string | null, done = false, durationMin: number | null = 60) =>
+    ({
+      key,
+      category: "trening" as const,
+      when,
+      durationMin,
+      title: key,
+      detail: null,
+      done,
+      href: "/trening",
+      action: { type: "training" as const, planId: key, done },
+    });
+
+  it("spotlight bierze nieodhaczone „teraz”, dopełnia nadchodzącymi i nie wskrzesza przeszłych", () => {
+    const items = annotateAgenda(
+      [
+        timed("przeszly", "06:00"),
+        timed("biezacy", "11:30"),
+        timed("zrobiony-biezacy", "11:00", true),
+        timed("wkrotce", "13:00"),
+        timed("pozniej", "20:00"),
+      ],
+      12 * 60,
+    );
+
+    expect(selectSpotlight(items).map((i) => i.key)).toEqual(["biezacy", "wkrotce", "pozniej"]);
+    expect(selectSpotlight(items, 1).map((i) => i.key)).toEqual(["biezacy"]);
+  });
+
+  it("spotlight jest pusty, gdy wszystko odhaczone albo minęło", () => {
+    const items = annotateAgenda([timed("a", "06:00"), timed("b", "08:00", true)], 12 * 60);
+    expect(selectSpotlight(items)).toEqual([]);
+  });
+
+  it("linia „teraz” staje między tym, co się zaczęło, a tym, co dopiero będzie", () => {
+    const items = annotateAgenda([timed("a", "07:00"), timed("b", "12:00"), timed("c", "19:00")], 12 * 60 + 30);
+    expect(nowLineIndex(items, 12 * 60 + 30)).toBe(2); // a i b już wystartowały
+    expect(nowLineIndex(items, 6 * 60)).toBe(0); // przed całym dniem
+    expect(nowLineIndex(items, 23 * 60)).toBe(3); // po całym dniu
+  });
+
+  it("linia „teraz” idzie po kluczu sortowania — nie wskakuje pod pozycję z późniejszą godziną", () => {
+    // Oś sortuje „wieczór" jako 19:00; o 18:05 lek wieczorny (okno od 18:00) jest już
+    // „teraz", ale linia zostaje nad nim i nad treningiem 18:35 — spójnie z kolejnością osi.
+    const items = annotateAgenda([timed("trening", "18:35"), timed("lek", "wieczór")], 18 * 60 + 5);
+    expect(items.map((i) => i.key)).toEqual(["trening", "lek"]); // kolejność osi
+    expect(items.find((i) => i.key === "lek")?.state).toBe("teraz"); // okno trwa
+    expect(nowLineIndex(items, 18 * 60 + 5)).toBe(0); // linia nad oboma
+  });
+});
+
+describe("czas w strefie użytkownika", () => {
+  it("liczy minuty od północy w strefie użytkownika, nie serwera", () => {
+    const moment = new Date("2026-07-28T10:30:00Z"); // lato: Warszawa = UTC+2
+    expect(minutesNowInTz("Europe/Warsaw", moment)).toBe(12 * 60 + 30);
+    expect(minutesNowInTz("UTC", moment)).toBe(10 * 60 + 30);
+  });
+
+  it("północ to 0 minut, nie 1440", () => {
+    expect(minutesNowInTz("UTC", new Date("2026-07-28T00:05:00Z"))).toBe(5);
+  });
+
+  it("zła strefa spada na domyślną zamiast wybuchać", () => {
+    expect(() => minutesNowInTz("Nie/Istnieje", new Date("2026-07-28T10:30:00Z"))).not.toThrow();
+    expect(minutesNowInTz("Nie/Istnieje", new Date("2026-07-28T10:30:00Z"))).toBe(12 * 60 + 30);
+  });
+
+  it("formatuje minuty jako GG:MM", () => {
+    expect(formatMinutes(750)).toBe("12:30");
+    expect(formatMinutes(5)).toBe("00:05");
+    expect(formatMinutes(1439)).toBe("23:59");
   });
 });
 

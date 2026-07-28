@@ -12,7 +12,6 @@ import {
   Heart,
   HeartPulse,
   Hourglass,
-  ListChecks,
   ListTodo,
   PiggyBank,
   Scale,
@@ -25,16 +24,17 @@ import {
 
 import { CategoryWeek, WeekTotals } from "@/components/calendar/category-week";
 import { Meter, Sparkline } from "@/components/charts/sparkline";
+import { TodayHero } from "@/components/agenda/today-hero";
 import { BandPill } from "@/components/health/mental-panels";
 import { Card, CardHeader, EmptyState, StatTile, StatusPill } from "@/components/ui/card";
 import { addWater, toggleDose, toggleTask, toggleTraining } from "@/lib/actions/quick";
 import { LearningBlockStatus } from "@/components/learning/block-status";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { cn, formatTime, formatMoney, formatNumber, pluralPl } from "@/lib/utils";
-import { AGENDA_CATEGORY_LABEL, CATEGORY_COLOR, buildAgenda } from "@/lib/domain/agenda";
+import { buildAgenda } from "@/lib/domain/agenda";
 import { describeCountdown } from "@/lib/domain/countdown";
 import { describeFamilyDate } from "@/lib/domain/family";
-import { addDays, diffDays, startOfWeek, todayInTz } from "@/lib/domain/dates";
+import { addDays, diffDays, minutesNowInTz, startOfWeek, todayInTz } from "@/lib/domain/dates";
 import { formatDose, groupDosesBySlot } from "@/lib/domain/medication";
 import { dueLabel } from "@/lib/domain/obligations";
 import { formatRecordValue } from "@/lib/domain/records";
@@ -63,6 +63,9 @@ export default async function DashboardPage({
     searchParams,
   ]);
 
+  // Chwila „teraz" w strefie użytkownika — akcenty czasowe planu dnia.
+  const nowMin = minutesNowInTz(settings.timezone);
+
   return (
     // items-start: krótki kafelek nie rozciąga się do wysokości najwyższego w rzędzie.
     <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-6">
@@ -71,13 +74,14 @@ export default async function DashboardPage({
           Raport z dnia {params.zapisano} zapisany.
         </p>
       ) : null}
+      {/* Plan dnia otwiera stronę — najpierw „co mam robić teraz", potem liczby. */}
+      <TodayHero items={buildAgendaItems(data)} today={today} nowMin={nowMin} />
       <Finanse data={data} currency={settings.currency} />
       <Sprzedaz data={data} settings={settings} currency={settings.currency} />
       <Oszczednosci data={data} currency={settings.currency} />
       <Platnosci data={data} today={today} currency={settings.currency} />
       <Odliczanie data={data} />
       <Rodzina data={data} />
-      <PlanDnia data={data} />
       <Leki data={data} today={today} />
       <Priorytety data={data} />
       <Trening data={data} today={today} />
@@ -566,11 +570,11 @@ function Sprzedaz({ data, settings, currency }: { data: Data; settings: Ustawien
 /* --------------------------------------------------------- plan na dziś */
 
 /**
- * Jedna oś czasu dnia złożona ze wszystkich kategorii — żeby po wejściu na stronę
- * główną było widać cały plan, a nie trzeba go składać z osobnych kafelków.
+ * Mapowanie danych dashboardu na wejście agendy — zostaje tutaj, żeby TodayHero
+ * nie znał typu Data. Nauka przekazuje tri-state (null = brak decyzji).
  */
-function PlanDnia({ data }: { data: Data }) {
-  const agenda = buildAgenda({
+function buildAgendaItems(data: Data) {
+  return buildAgenda({
     doses: data.zdrowie.doses,
     training: data.trening.planned.map(({ plan, log }) => ({
       id: plan.id,
@@ -586,66 +590,10 @@ function PlanDnia({ data }: { data: Data }) {
       startTime: block.startTime,
       durationMin: block.durationMin,
       focus: block.focus,
-      done: Boolean(log?.done),
+      done: log ? log.done : null,
     })),
     tasks: [...data.zadania.priorytety, ...data.zadania.side],
   });
-
-  const done = agenda.filter((item) => item.done).length;
-
-  return (
-    <Card className="xl:col-span-2">
-      <CardHeader
-        title="Plan na dziś"
-        subtitle={agenda.length > 0 ? `Zrobione ${done} z ${agenda.length}` : undefined}
-        icon={ListChecks}
-        action={
-          <Link href="/kalendarz" className="text-muted hover:text-ink">
-            Kalendarz
-          </Link>
-        }
-      />
-
-      {agenda.length === 0 ? (
-        <EmptyState
-          message="Na dziś nic nie jest zaplanowane — ani leków, ani treningu, ani nauki, ani zadań."
-          href="/raport"
-          cta="Wypełnij raport"
-        />
-      ) : (
-        <>
-          <Meter value={done} max={agenda.length} tone="var(--good)" label="Realizacja planu dnia" />
-          <ul className="mt-3 flex flex-col gap-0.5">
-            {agenda.map((item) => (
-              <li key={item.key}>
-                <Link
-                  href={item.href}
-                  className="flex items-baseline gap-2.5 rounded-lg px-2 py-1.5 hover:bg-surface-2"
-                >
-                  <span className="tabular w-14 shrink-0 text-xs text-muted">{item.when ?? "—"}</span>
-                  <span
-                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                    style={{ background: CATEGORY_COLOR[item.category] }}
-                    aria-hidden
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className={cn("block truncate text-sm", item.done ? "text-muted line-through" : "text-ink")}>
-                      {item.title}
-                    </span>
-                    <span className="block truncate text-xs text-muted">
-                      {AGENDA_CATEGORY_LABEL[item.category]}
-                      {item.detail ? ` · ${item.detail}` : ""}
-                    </span>
-                  </span>
-                  {item.done ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-good" /> : null}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </Card>
-  );
 }
 
 /* ------------------------------------------------------ leki i suplementy */

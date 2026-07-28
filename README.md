@@ -12,7 +12,7 @@ je później w panelu zarządzania.
 
 | Obszar | Co robi |
 |---|---|
-| **Dashboard `/`** | Podsumowanie z każdej kategorii: stan środków, sprzedaż z konwersjami, leki i suplementy do odhaczenia, 3 priorytety i side questy, trening, blok nauki, nawodnienie z oceną, waga, rekordy, projekty, rekomendacje mentora. Do tego **plan na dziś** — jedna oś czasu złożona ze wszystkich kategorii — i **pasek tygodnia** z kategoriami w wierszach i dniami w kolumnach |
+| **Dashboard `/`** | Podsumowanie z każdej kategorii: stan środków, sprzedaż z konwersjami, leki i suplementy do odhaczenia, 3 priorytety i side questy, trening, blok nauki, nawodnienie z oceną, waga, rekordy, projekty, rekomendacje mentora. Stronę otwiera **plan na dziś**: jedna oś czasu ze wszystkich kategorii z akcentem czasowym — przeszłe wyciszone, „teraz” świeci kolorem kategorii, linia „teraz GG:MM” stoi na osi, sekcja **Teraz / Następne** wyróżnia najbliższe pozycje, a każdą odhacza się wprost z planu. W nagłówku **zegar** z datą i godziną na żywo w strefie użytkownika; podświetlenie odświeża się samo co minutę. Do tego **pasek tygodnia** z kategoriami w wierszach i dniami w kolumnach |
 | **Kalendarz `/kalendarz`** | Siatka miesiąca z kropkami kategorii przy każdym dniu, tydzień wybranego dnia w układzie kategorie × dni i szczegóły dnia z podziałem na kategorie. Dni w przód pokazują plan, dni wstecz — plan i realizację |
 | **Kreator `/start`** | 15 kroków konfiguracji. Leki, trening, rekordy, nauka i projekty to listy dynamiczne — „+ dodaj” dokłada wiersz, a nazwy dyscyplin i dziedzin wpisujesz własnymi słowami |
 | **Panel `/ustawienia`** | Te same formularze bezterminowo. Wyłączenie pozycji zachowuje historię zamiast ją kasować |
