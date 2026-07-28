@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ListChecks } from "lucide-react";
+import { AlertTriangle, ListChecks } from "lucide-react";
 
 import { AgendaCheck } from "@/components/agenda/agenda-check";
 import { AgendaRefresh } from "@/components/agenda/agenda-refresh";
@@ -8,7 +8,9 @@ import { Card, CardHeader, EmptyState } from "@/components/ui/card";
 import {
   AGENDA_CATEGORY_LABEL,
   CATEGORY_COLOR,
+  DAY_END_MIN,
   annotateAgenda,
+  dayLoad,
   nowLineIndex,
   selectSpotlight,
   type AgendaItem,
@@ -39,6 +41,14 @@ export function TodayHero({ items, today, nowMin }: { items: AgendaItem[]; today
   const total = annotated.length;
   const left = total - done;
 
+  // Budżet dnia: minuty planu vs czas do 22:00 — sygnał „coś przełóż", zanim wieczór to obnaży.
+  const load = dayLoad(annotated, nowMin);
+  const godziny = (min: number) => {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return h > 0 ? `${h} h${m > 0 ? ` ${m} min` : ""}` : `${m} min`;
+  };
+
   return (
     <Card id="plan-dnia" className="md:col-span-2 xl:col-span-6">
       <AgendaRefresh />
@@ -67,6 +77,17 @@ export function TodayHero({ items, today, nowMin }: { items: AgendaItem[]; today
         />
       ) : (
         <>
+          {load.overloaded ? (
+            <p
+              data-overload
+              className="mb-3 flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-ink"
+            >
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning" />
+              Plan wymaga jeszcze {godziny(load.plannedMin)}, a do {formatMinutes(DAY_END_MIN)} zostało{" "}
+              {godziny(load.leftMin)} — coś przełóż albo skróć.
+            </p>
+          ) : null}
+
           <Meter value={done} max={total} tone="var(--good)" label="Realizacja planu dnia" />
 
           <div className="mt-4 flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-8">

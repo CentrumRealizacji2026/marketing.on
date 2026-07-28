@@ -4,7 +4,7 @@ import { CheckCircle2, ListTodo } from "lucide-react";
 
 import { Meter } from "@/components/charts/sparkline";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
-import { toggleTask } from "@/lib/actions/quick";
+import { carryOverTasks, toggleTask } from "@/lib/actions/quick";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { tasks } from "@/lib/db/schema";
@@ -127,8 +127,18 @@ export default async function TasksPage() {
           subtitle="Niedokończone z ostatnich 30 dni"
           action={
             overdue.length > 0 ? (
-              <span className="text-muted">
-                {overdue.length} {pluralPl(overdue.length, "zadanie", "zadania", "zadań")}
+              <span className="flex items-center gap-3">
+                <span className="text-muted">
+                  {overdue.length} {pluralPl(overdue.length, "zadanie", "zadania", "zadań")}
+                </span>
+                <form action={carryOverTasks}>
+                  <button
+                    type="submit"
+                    className="inline-flex h-8 items-center rounded-lg bg-series-1 px-3 text-xs font-medium text-white hover:brightness-110"
+                  >
+                    Przenieś na dziś
+                  </button>
+                </form>
               </span>
             ) : null
           }

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import { CategoryWeek, WeekTotals } from "@/components/calendar/category-week";
+import { StreakBadge } from "@/components/charts/habit-heatmap";
 import { Meter, Sparkline } from "@/components/charts/sparkline";
 import { TodayHero } from "@/components/agenda/today-hero";
 import { BandPill } from "@/components/health/mental-panels";
@@ -39,6 +40,7 @@ import { formatDose, groupDosesBySlot } from "@/lib/domain/medication";
 import { dueLabel } from "@/lib/domain/obligations";
 import { formatRecordValue } from "@/lib/domain/records";
 import { conversionRates, formatPercent, goalProgress } from "@/lib/domain/sales";
+import { currentStreak, habitDaysFromCalendar } from "@/lib/domain/habits";
 import { WATER_STATUS_LABEL, waterPercent, waterStatus } from "@/lib/domain/water";
 import { WEIGHT_STATUS_LABEL, describeWeightProgress, weightPlanProgress } from "@/lib/domain/weight";
 import { getCalendarRange } from "@/lib/queries/calendar";
@@ -55,13 +57,27 @@ export default async function DashboardPage({
   const settings = await getUserSettings(user.id);
   const today = todayInTz(settings.timezone);
   const weekStart = startOfWeek(today, settings.weekStartsOn);
-  const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  const [data, weekDays, params] = await Promise.all([
+  // Jeden zakres kalendarza: 8 pełnych tygodni wstecz + bieżący — końcówka
+  // zasila kartę „Ten tydzień", całość liczy serie nawyków.
+  const heatStart = startOfWeek(addDays(today, -55), settings.weekStartsOn);
+  const heatCount = diffDays(heatStart, addDays(weekStart, 6)) + 1;
+  const heatDates = Array.from({ length: heatCount }, (_, i) => addDays(heatStart, i));
+
+  const [data, calendarDays, params] = await Promise.all([
     getDashboardData(user.id, settings, today),
-    getCalendarRange(user.id, settings, weekDates),
+    getCalendarRange(user.id, settings, heatDates),
     searchParams,
   ]);
+
+  const weekDays = calendarDays.slice(-7);
+  const habitDays = habitDaysFromCalendar(calendarDays.filter((day) => day.date <= today));
+  const serie = {
+    leki: currentStreak(habitDays.leki, today).length,
+    woda: currentStreak(habitDays.woda, today).length,
+    trening: currentStreak(habitDays.trening, today).length,
+    nauka: currentStreak(habitDays.nauka, today).length,
+  };
 
   // Chwila „teraz" w strefie użytkownika — akcenty czasowe planu dnia.
   const nowMin = minutesNowInTz(settings.timezone);
@@ -82,11 +98,11 @@ export default async function DashboardPage({
       <Platnosci data={data} today={today} currency={settings.currency} />
       <Odliczanie data={data} />
       <Rodzina data={data} />
-      <Leki data={data} today={today} />
+      <Leki data={data} today={today} streak={serie.leki} />
       <Priorytety data={data} />
-      <Trening data={data} today={today} />
-      <Nauka data={data} today={today} />
-      <Nawodnienie data={data} settings={settings} today={today} />
+      <Trening data={data} today={today} streak={serie.trening} />
+      <Nauka data={data} today={today} streak={serie.nauka} />
+      <Nawodnienie data={data} settings={settings} today={today} streak={serie.woda} />
       <Waga data={data} settings={settings} today={today} />
       <Psychika data={data} />
       <Rekordy data={data} />
@@ -599,7 +615,7 @@ function buildAgendaItems(data: Data) {
 
 /* ------------------------------------------------------ leki i suplementy */
 
-function Leki({ data, today }: { data: Data; today: string }) {
+function Leki({ data, today, streak }: { data: Data; today: string; streak: number }) {
   const { doses, hasMedications } = data.zdrowie;
   const taken = doses.filter((dose) => dose.taken).length;
 
@@ -609,6 +625,7 @@ function Leki({ data, today }: { data: Data; today: string }) {
         title="Leki i suplementy"
         subtitle={doses.length > 0 ? `Przyjęte ${taken} z ${doses.length}` : undefined}
         icon={HeartPulse}
+        action={<StreakBadge length={streak} label="Leki" />}
       />
 
       {doses.length === 0 ? (
@@ -748,12 +765,23 @@ function Priorytety({ data }: { data: Data }) {
 
 /* --------------------------------------------------------------- trening */
 
-function Trening({ data, today }: { data: Data; today: string }) {
+function Trening({ data, today, streak }: { data: Data; today: string; streak: number }) {
   const { planned, extra, hasPlan } = data.trening;
 
   return (
     <Card className="xl:col-span-2">
-      <CardHeader title="Trening dziś" icon={Dumbbell} action={<Link href="/trening" className="text-muted hover:text-ink">Plan</Link>} />
+      <CardHeader
+        title="Trening dziś"
+        icon={Dumbbell}
+        action={
+          <span className="flex items-center gap-2">
+            <StreakBadge length={streak} label="Trening" />
+            <Link href="/trening" className="text-muted hover:text-ink">
+              Plan
+            </Link>
+          </span>
+        }
+      />
 
       {planned.length === 0 ? (
         <EmptyState
@@ -804,12 +832,23 @@ function Trening({ data, today }: { data: Data; today: string }) {
 
 /* ----------------------------------------------------------------- nauka */
 
-function Nauka({ data, today }: { data: Data; today: string }) {
+function Nauka({ data, today, streak }: { data: Data; today: string; streak: number }) {
   const { blocks, hasPlan } = data.nauka;
 
   return (
     <Card className="xl:col-span-2">
-      <CardHeader title="Blok nauki" icon={GraduationCap} action={<Link href="/nauka" className="text-muted hover:text-ink">Plan</Link>} />
+      <CardHeader
+        title="Blok nauki"
+        icon={GraduationCap}
+        action={
+          <span className="flex items-center gap-2">
+            <StreakBadge length={streak} label="Nauka" />
+            <Link href="/nauka" className="text-muted hover:text-ink">
+              Plan
+            </Link>
+          </span>
+        }
+      />
 
       {blocks.length === 0 ? (
         <EmptyState
@@ -856,7 +895,17 @@ const WATER_TONE = { dobrze: "var(--good)", norma: "var(--warning)", zle: "var(-
 const WATER_PILL = { dobrze: "good", norma: "warning", zle: "critical" } as const;
 const WATER_ICON = { dobrze: CheckCircle2, norma: AlertTriangle, zle: XCircle } as const;
 
-function Nawodnienie({ data, settings, today }: { data: Data; settings: Ustawienia; today: string }) {
+function Nawodnienie({
+  data,
+  settings,
+  today,
+  streak,
+}: {
+  data: Data;
+  settings: Ustawienia;
+  today: string;
+  streak: number;
+}) {
   const { water } = data.zdrowie;
   const goal = settings.waterGoalMl;
   const avgStatus = waterStatus(water.weekAverage, goal, settings.waterGoodPct, settings.waterOkPct);
@@ -864,7 +913,7 @@ function Nawodnienie({ data, settings, today }: { data: Data; settings: Ustawien
 
   return (
     <Card className="xl:col-span-2">
-      <CardHeader title="Nawodnienie" icon={Droplets} />
+      <CardHeader title="Nawodnienie" icon={Droplets} action={<StreakBadge length={streak} label="Woda" />} />
 
       {!goal ? (
         <EmptyState message="Nie masz ustawionego dziennego celu picia wody." href="/ustawienia/cele" />
@@ -1259,9 +1308,14 @@ function Tydzien({
         subtitle="Wszystkie kategorie naraz — plan w przód, realizacja wstecz."
         icon={CalendarDays}
         action={
-          <Link href="/kalendarz" className="text-muted hover:text-ink">
-            Pełny kalendarz
-          </Link>
+          <span className="flex items-center gap-3">
+            <Link href="/tydzien" className="text-muted hover:text-ink">
+              Przegląd tygodnia
+            </Link>
+            <Link href="/kalendarz" className="text-muted hover:text-ink">
+              Pełny kalendarz
+            </Link>
+          </span>
         }
       />
       <CategoryWeek days={days} today={today} currency={currency} />

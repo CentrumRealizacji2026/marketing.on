@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import { and, asc, desc, eq, gte } from "drizzle-orm";
 import { Dumbbell, Trophy } from "lucide-react";
 
+import { HabitHeatmap, StreakBadge } from "@/components/charts/habit-heatmap";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { toggleTraining } from "@/lib/actions/quick";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { personalRecords, trainingLogs, trainingPlans } from "@/lib/db/schema";
-import { WEEKDAYS, addDays, isoWeekday, todayInTz } from "@/lib/domain/dates";
+import { WEEKDAYS, addDays, isoWeekday, startOfWeek, todayInTz } from "@/lib/domain/dates";
+import { currentStreak, trainingDayStatus, type HabitDay } from "@/lib/domain/habits";
 import { currentRecords, formatRecordValue } from "@/lib/domain/records";
 import { formatNumber, formatTime } from "@/lib/utils";
 
@@ -18,8 +20,10 @@ export default async function TrainingPage() {
   const user = await requireOnboardedUser();
   const settings = await getUserSettings(user.id);
   const today = todayInTz(settings.timezone);
-  const from = addDays(today, -30);
   const weekday = isoWeekday(today);
+
+  // Dziennik pokazuje 30 dni, ale heatmapa serii sięga 8 pełnych tygodni.
+  const heatStart = startOfWeek(addDays(today, -55), settings.weekStartsOn);
 
   const [plans, logs, records] = await Promise.all([
     db
@@ -30,13 +34,22 @@ export default async function TrainingPage() {
     db
       .select()
       .from(trainingLogs)
-      .where(and(eq(trainingLogs.userId, user.id), gte(trainingLogs.date, from)))
+      .where(and(eq(trainingLogs.userId, user.id), gte(trainingLogs.date, heatStart)))
       .orderBy(desc(trainingLogs.date)),
     db.select().from(personalRecords).where(eq(personalRecords.userId, user.id)),
   ]);
 
   const todayLogs = logs.filter((log) => log.date === today);
   const groups = currentRecords(records);
+
+  // Seria treningowa: dzień liczy się względem planu na ten dzień tygodnia.
+  const treningDni: HabitDay[] = [];
+  for (let date = heatStart; date <= today; date = addDays(date, 1)) {
+    const planned = plans.filter((plan) => plan.weekday === isoWeekday(date)).length;
+    const done = logs.filter((log) => log.date === date && log.done).length;
+    treningDni.push({ date, status: trainingDayStatus(planned, done) });
+  }
+  const seria = currentStreak(treningDni, today);
 
   return (
     <div className="flex flex-col gap-3">
@@ -99,6 +112,21 @@ export default async function TrainingPage() {
             })}
           </div>
         )}
+      </Card>
+
+      <Card id="serie">
+        <CardHeader
+          title="Seria treningowa"
+          subtitle="Ostatnie 8 tygodni — dni bez planu nie przerywają serii"
+          icon={Dumbbell}
+          action={<StreakBadge length={seria.length} label="Trening" />}
+        />
+        <HabitHeatmap
+          days={treningDni}
+          weekStartsOn={settings.weekStartsOn}
+          label="Regularność treningów, 8 tygodni"
+          tone="var(--series-2)"
+        />
       </Card>
 
       <Card id="rekordy">

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Check, ListTodo, Plus, TrendingDown, TrendingUp, X } from "lucide-react";
 
-import { CashForm, TaskForm } from "@/components/layout/quick-forms";
+import { CashForm, SmartForm, TaskForm } from "@/components/layout/quick-forms";
 import { cn } from "@/lib/utils";
 
 type View = "koszt" | "zysk" | "zadanie";
@@ -25,12 +25,15 @@ export function QuickAdd() {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View | null>(null);
   const [potwierdzenie, setPotwierdzenie] = useState<string | null>(null);
+  // Remount formularzy po zapisie — czyści pola bez ręcznego zerowania stanu.
+  const [runda, setRunda] = useState(0);
 
   // Po zapisie wracamy do menu i zostawiamy potwierdzenie — pusty formularz
   // wyglądałby jak formularz, który się nie wysłał.
   const poZapisie = useCallback((komunikat: string) => {
     setPotwierdzenie(komunikat);
     setView(null);
+    setRunda((value) => value + 1);
   }, []);
 
   function otworzWidok(id: View) {
@@ -102,6 +105,12 @@ export function QuickAdd() {
                 <Check className="h-3.5 w-3.5 shrink-0 text-good" />
                 {potwierdzenie}
               </p>
+            ) : null}
+
+            {active === null ? (
+              <div key={runda} className="mb-2 border-b border-line pb-2">
+                <SmartForm onSaved={poZapisie} />
+              </div>
             ) : null}
 
             {active === null ? (
