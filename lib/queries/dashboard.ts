@@ -163,6 +163,14 @@ export async function getDashboardData(userId: string, settings: Settings, today
   const trendDates = lastNDays(today, TREND_DAYS);
   const weekDates = lastNDays(today, 7);
 
+  // Poranny rytuał: intencja i nastrój na start z dzisiejszego wiersza dnia.
+  const todayLog = byDate.get(today);
+  const poranek = {
+    intention: todayLog?.morningIntention ?? null,
+    mood: todayLog?.morningMood ?? null,
+    filled: Boolean(todayLog?.morningAt),
+  };
+
   /* ------------------------------------------------------------- finanse */
 
   // Saldo na żywo: ostatni wpisany stan + przepływy po nim (też z szybkiego dodawania).
@@ -234,6 +242,7 @@ export async function getDashboardData(userId: string, settings: Settings, today
     today,
     weekStart,
     monthStart,
+    poranek,
 
     finanse: {
       live: cashLive,

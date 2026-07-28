@@ -163,6 +163,8 @@ export const dealSchema = z.object({
   expectedDate: optionalDate,
   stage: z.enum(["do-podpisania", "podpisana", "przepadla"]).default("do-podpisania"),
   note: optionalText,
+  nextAction: optionalText,
+  nextActionDate: optionalDate,
 });
 
 /* ------------------------------------------------------------------ rodzina */

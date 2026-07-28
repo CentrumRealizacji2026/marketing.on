@@ -5,15 +5,15 @@
  */
 
 export function pearson(
-  a: Array<number | null | undefined>,
-  b: Array<number | null | undefined>,
+  a: ReadonlyArray<number | string | null | undefined>,
+  b: ReadonlyArray<number | string | null | undefined>,
 ): { r: number; n: number } | null {
   const pairs: Array<[number, number]> = [];
   const len = Math.min(a.length, b.length);
   for (let i = 0; i < len; i += 1) {
     const x = a[i];
     const y = b[i];
-    if (x === null || x === undefined || y === null || y === undefined) continue;
+    if (typeof x !== "number" || typeof y !== "number") continue;
     pairs.push([x, y]);
   }
 
@@ -68,7 +68,7 @@ function strengthOf(r: number): CorrelationInsight["strength"] {
 }
 
 export function correlationInsights(
-  serie: Record<string, Array<number | null | undefined>>,
+  serie: Record<string, ReadonlyArray<number | string | null | undefined>>,
 ): CorrelationInsight[] {
   const insights: CorrelationInsight[] = [];
 

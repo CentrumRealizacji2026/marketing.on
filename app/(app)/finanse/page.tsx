@@ -2,17 +2,18 @@ import type { Metadata } from "next";
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
 import { CalendarClock, CheckCircle2, Globe, PiggyBank, Wallet } from "lucide-react";
 
+import { ForecastChart } from "@/components/charts/forecast-chart";
 import { BarRow, Meter, Sparkline } from "@/components/charts/sparkline";
 import { Card, CardHeader, EmptyState, StatTile } from "@/components/ui/card";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { contracts, dailyLogs } from "@/lib/db/schema";
 import { addDays, formatDatePl, lastNDays, startOfMonth, todayInTz } from "@/lib/domain/dates";
-import { dayCashFlow, liveBalance, liveBalanceSeries, sumExpenses, sumIncome } from "@/lib/domain/finance";
+import { dayCashFlow, liveBalance, liveBalanceSeries, projectBalance, sumExpenses, sumIncome } from "@/lib/domain/finance";
 import { PLN_PER_PPP_USD, describeRank, formatTopPct, incomeRank } from "@/lib/domain/income-rank";
-import { dueLabel } from "@/lib/domain/obligations";
+import { dueLabel, upcomingPaymentAlert } from "@/lib/domain/obligations";
 import { getBalanceRowsBefore } from "@/lib/queries/finance";
-import { getObligationsOverview } from "@/lib/queries/obligations";
+import { getObligationsOverview, getPaymentsInRange } from "@/lib/queries/obligations";
 import { getRecentContributions, getSavingsOverview } from "@/lib/queries/savings";
 import { cn, formatDays, formatMoney, formatNumber, pluralPl } from "@/lib/utils";
 
@@ -28,7 +29,7 @@ export default async function FinancePage() {
   const from = addDays(today, -(RANGE - 1));
   const monthStart = startOfMonth(today);
 
-  const [logs, preRows, contractRows, savings, contributions, bills] = await Promise.all([
+  const [logs, preRows, contractRows, savings, contributions, bills, futurePayments] = await Promise.all([
     db
       .select()
       .from(dailyLogs)
@@ -44,6 +45,7 @@ export default async function FinancePage() {
     getSavingsOverview(user.id, today),
     getRecentContributions(user.id, 8),
     getObligationsOverview(user.id, today),
+    getPaymentsInRange(user.id, today, addDays(today, 90), today),
   ]);
 
   const dates = lastNDays(today, RANGE);
@@ -96,8 +98,24 @@ export default async function FinancePage() {
   const signedMonth = contractRows.filter((row) => row.signedOn >= monthStart && row.status === "podpisana");
   const pipeline = contractRows.filter((row) => row.status === "negocjacje");
 
+  // Prognoza 90 dni: nieopłacone płatności schodzą w dniu terminu; alert łapie najbliższą.
+  const forecastEvents = futurePayments
+    .filter((payment) => payment.status === "do-zaplaty")
+    .map((payment) => ({ name: payment.name, amountPln: payment.amountPln, dueDate: payment.dueDate }));
+  const forecast =
+    live !== null ? projectBalance(live.valuePln, avgDaily, forecastEvents, today, 90) : [];
+  const paymentAlert = upcomingPaymentAlert(futurePayments, today);
+
   return (
     <div className="flex flex-col gap-3">
+      {paymentAlert ? (
+        <p className="flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-ink">
+          <CalendarClock className="h-4 w-4 shrink-0 text-warning" />
+          {paymentAlert.dueDate === today ? "Dziś" : dueLabel(paymentAlert.dueDate, today)} schodzi{" "}
+          {paymentAlert.name} — {formatMoney(paymentAlert.amountPln, settings.currency)}.
+        </p>
+      ) : null}
+
       <Card id="stan">
         <CardHeader title="Stan środków" subtitle={`Ostatnie ${RANGE} dni`} icon={Wallet} />
         {live === null ? (
@@ -198,6 +216,10 @@ export default async function FinancePage() {
           {avgDaily === null || live === null ? (
             <EmptyState message="Potrzeba salda i przynajmniej dnia przepływów po nim." />
           ) : (
+            <>
+            <div className="mb-4">
+              <ForecastChart history={{ values: series }} forecast={forecast} currency={settings.currency} />
+            </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <StatTile
                 label="Średnia zmiana dzienna"
@@ -220,6 +242,7 @@ export default async function FinancePage() {
                 />
               ) : null}
             </div>
+            </>
           )}
         </Card>
       </div>

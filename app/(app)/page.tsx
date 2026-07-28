@@ -22,6 +22,7 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { MorningCard } from "@/components/agenda/morning-card";
 import { CategoryWeek, WeekTotals } from "@/components/calendar/category-week";
 import { StreakBadge } from "@/components/charts/habit-heatmap";
 import { Meter, Sparkline } from "@/components/charts/sparkline";
@@ -37,10 +38,11 @@ import { describeCountdown } from "@/lib/domain/countdown";
 import { describeFamilyDate } from "@/lib/domain/family";
 import { addDays, diffDays, formatDatePl, minutesNowInTz, startOfWeek, todayInTz } from "@/lib/domain/dates";
 import { formatDose, groupDosesBySlot } from "@/lib/domain/medication";
-import { dueLabel } from "@/lib/domain/obligations";
+import { dueLabel, upcomingPaymentAlert } from "@/lib/domain/obligations";
 import { formatRecordValue } from "@/lib/domain/records";
 import { conversionRates, formatPercent, goalProgress } from "@/lib/domain/sales";
 import { currentStreak, habitDaysFromCalendar } from "@/lib/domain/habits";
+import { morningState } from "@/lib/domain/morning";
 import { WATER_STATUS_LABEL, waterPercent, waterStatus } from "@/lib/domain/water";
 import { WEIGHT_STATUS_LABEL, describeWeightProgress, weightPlanProgress } from "@/lib/domain/weight";
 import { getCalendarRange } from "@/lib/queries/calendar";
@@ -90,6 +92,12 @@ export default async function DashboardPage({
           Raport z dnia {params.zapisano} zapisany.
         </p>
       ) : null}
+      {/* Poranek nad planem dnia: intencja otwiera dzień, wieczorny raport go domyka. */}
+      <MorningCard
+        state={morningState(data.poranek.filled, nowMin)}
+        intention={data.poranek.intention}
+        mood={data.poranek.mood}
+      />
       {/* Plan dnia otwiera stronę — najpierw „co mam robić teraz", potem liczby. */}
       <TodayHero items={buildAgendaItems(data)} today={today} nowMin={nowMin} />
       <Finanse data={data} currency={settings.currency} />
@@ -417,6 +425,8 @@ function Odliczanie({ data }: { data: Data }) {
 function Platnosci({ data, today, currency }: { data: Data; today: string; currency: string }) {
   const { summary, upcoming, overdue, obligations } = data.platnosci;
   const next = [...overdue, ...upcoming].slice(0, 5);
+  // „Za N dni schodzi rata" — wyprzedzający sygnał, zanim termin zaskoczy saldo.
+  const alert = upcomingPaymentAlert(upcoming, today);
 
   return (
     <Card className="xl:col-span-3">
@@ -449,6 +459,14 @@ function Platnosci({ data, today, currency }: { data: Data; today: string; curre
                 overdue.reduce((sum, payment) => sum + payment.amountPln, 0),
                 currency,
               )}
+            </p>
+          ) : null}
+
+          {alert ? (
+            <p className="mb-2 flex items-center gap-1.5 rounded-lg bg-warning/10 px-2.5 py-1.5 text-xs text-ink">
+              <CalendarClock className="h-3.5 w-3.5 shrink-0 text-warning" />
+              {alert.dueDate === today ? "Dziś" : dueLabel(alert.dueDate, today)} schodzi {alert.name} —{" "}
+              {formatMoney(alert.amountPln, currency)}
             </p>
           ) : null}
 

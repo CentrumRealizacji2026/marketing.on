@@ -17,6 +17,10 @@ type Row = {
   valuePln: string;
   expectedDate: string;
   stage: string;
+  nextAction: string;
+  nextActionDate: string;
+  /** Wyliczone na serwerze z zapisanego stanu — edycja w polach tego nie odświeża. */
+  stale: boolean;
 };
 
 export type DealRow = {
@@ -25,10 +29,22 @@ export type DealRow = {
   valuePln: number;
   expectedDate: string | null;
   stage: string;
+  nextAction: string | null;
+  nextActionDate: string | null;
+  stale: boolean;
 };
 
 function emptyRow(index: number): Row {
-  return { key: `new-${index}-${Math.random().toString(36).slice(2, 8)}`, clientName: "", valuePln: "", expectedDate: "", stage: "do-podpisania" };
+  return {
+    key: `new-${index}-${Math.random().toString(36).slice(2, 8)}`,
+    clientName: "",
+    valuePln: "",
+    expectedDate: "",
+    stage: "do-podpisania",
+    nextAction: "",
+    nextActionDate: "",
+    stale: false,
+  };
 }
 
 function SubmitButton() {
@@ -64,6 +80,9 @@ export function DealsTable({
       valuePln: String(row.valuePln),
       expectedDate: row.expectedDate ?? "",
       stage: row.stage,
+      nextAction: row.nextAction ?? "",
+      nextActionDate: row.nextActionDate ?? "",
+      stale: row.stale,
     }));
     // Na start dziesięć miejsc; przy uzupełnionej tabeli dokładamy jeden wolny wiersz.
     const blanks = existing.length === 0 ? DEALS_STARTING_ROWS : 1;
@@ -92,18 +111,22 @@ export function DealsTable({
             valuePln: row.valuePln,
             expectedDate: row.expectedDate,
             stage: row.stage,
+            nextAction: row.nextAction,
+            nextActionDate: row.nextActionDate,
           })),
         )}
       />
       <FormError>{state?.error}</FormError>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[40rem] text-sm">
+        <table className="w-full min-w-[58rem] text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs text-muted">
               <th className="pb-2 font-medium">Klient / firma</th>
               <th className="pb-2 font-medium">Szacowana kwota</th>
               <th className="pb-2 font-medium">Spodziewany podpis</th>
+              <th className="pb-2 font-medium">Następna akcja</th>
+              <th className="pb-2 font-medium">Termin akcji</th>
               <th className="pb-2 font-medium">Status</th>
               <th className="pb-2" />
             </tr>
@@ -112,12 +135,22 @@ export function DealsTable({
             {rows.map((row, index) => (
               <tr key={row.key} className="border-b border-line last:border-0">
                 <td className="py-1.5 pr-2">
-                  <Input
-                    type="text"
-                    placeholder={`Klient ${index + 1}`}
-                    value={row.clientName}
-                    onChange={(e) => update(index, { clientName: e.target.value })}
-                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      placeholder={`Klient ${index + 1}`}
+                      value={row.clientName}
+                      onChange={(e) => update(index, { clientName: e.target.value })}
+                    />
+                    {row.stale && row.stage === "do-podpisania" ? (
+                      <span
+                        title="Bez ruchu od ponad 5 dni albo termin akcji minął"
+                        className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-ink"
+                      >
+                        stygnie
+                      </span>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="py-1.5 pr-2">
                   <NumberInput
@@ -133,6 +166,21 @@ export function DealsTable({
                     type="date"
                     value={row.expectedDate}
                     onChange={(e) => update(index, { expectedDate: e.target.value })}
+                  />
+                </td>
+                <td className="py-1.5 pr-2">
+                  <Input
+                    type="text"
+                    placeholder="np. zadzwonić z ofertą"
+                    value={row.nextAction}
+                    onChange={(e) => update(index, { nextAction: e.target.value })}
+                  />
+                </td>
+                <td className="py-1.5 pr-2">
+                  <Input
+                    type="date"
+                    value={row.nextActionDate}
+                    onChange={(e) => update(index, { nextActionDate: e.target.value })}
                   />
                 </td>
                 <td className="py-1.5 pr-2">

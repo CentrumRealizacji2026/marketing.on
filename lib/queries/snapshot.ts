@@ -21,7 +21,7 @@ import {
   type Settings,
 } from "@/lib/db/schema";
 import { addDays, isoWeekday, lastNDays } from "@/lib/domain/dates";
-import { summarizeDeals, type DealInput } from "@/lib/domain/deals";
+import { isDealStale, summarizeDeals, type DealInput } from "@/lib/domain/deals";
 import { dayCashFlow, liveBalance, liveBalanceSeries, sumExpenses, sumIncome } from "@/lib/domain/finance";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
@@ -183,9 +183,31 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
     minutesBySkill.set(log.skill, (minutesBySkill.get(log.skill) ?? 0) + (log.minutes ?? 0));
   }
 
+  // Dzienne serie 30 dni pod korelacje — porównywalne pozycjami, null = brak wpisu.
+  const salesByDate = new Map(salesRows.map((row) => [row.date, row]));
+  const serie30 = {
+    dni: days30,
+    nastroj: days30.map((d) => byDate.get(d)?.mood ?? null),
+    energia: days30.map((d) => byDate.get(d)?.energy ?? null),
+    stres: days30.map((d) => byDate.get(d)?.stress ?? null),
+    senH: days30.map((d) => byDate.get(d)?.sleepH ?? null),
+    wodaMl: days30.map((d) => byDate.get(d)?.waterMl ?? null),
+    treningZrobiony: days30.map((d) => (trainingLogRows.some((log) => log.date === d && log.done) ? 1 : 0)),
+    rozmowy: days30.map((d) => salesByDate.get(d)?.calls ?? null),
+    wynikDnia: days30.map((d) => {
+      const log = byDate.get(d);
+      return log ? dayCashFlow(log).netPln : null;
+    }),
+    priorytetyDomkniete: days30.map(
+      (d) => taskRows.filter((task) => task.date === d && task.kind === "priorytet" && task.done).length,
+    ),
+  };
+
   return {
     data: today,
     waluta: settings.currency,
+
+    serie30,
 
     cele: {
       rozmowyDziennie: settings.goalCallsPerDay,
@@ -248,7 +270,15 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
       ...summarizeDeals(dealRows as DealInput[]),
       pozycje: dealRows
         .filter((row) => row.stage === "do-podpisania")
-        .map((row) => ({ klient: row.clientName, kwota: row.valuePln, spodziewanyPodpis: row.expectedDate })),
+        .map((row) => ({
+          klient: row.clientName,
+          kwota: row.valuePln,
+          spodziewanyPodpis: row.expectedDate,
+          nastepnaAkcja: row.nextAction,
+          terminAkcji: row.nextActionDate,
+          stygnie: isDealStale(row, today),
+        })),
+      stygnacych: dealRows.filter((row) => isDealStale(row, today)).length,
     },
 
     sprzedaz: {
@@ -285,6 +315,10 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
       : null,
 
     zdrowiePsychiczne: {
+      poranek: {
+        intencjaDzis: byDate.get(today)?.morningIntention ?? null,
+        nastrojPoranny: byDate.get(today)?.morningMood ?? null,
+      },
       // Testy przesiewowe niosą ocenę stanu; średnie 1–5 poniżej to tylko puls dnia.
       testy: wellbeing.states.map((state) => ({
         test: MENTAL_TESTS[state.testId].name,

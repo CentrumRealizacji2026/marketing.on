@@ -23,10 +23,10 @@ import {
   todayInTz,
 } from "./dates";
 import { countdownFor, describeCountdown, formatDaysPl, sortCountdowns } from "./countdown";
-import { summarizeDeals } from "./deals";
+import { isDealStale, pipelineForecast, summarizeDeals } from "./deals";
 import { familyDatesInRange, nextAnnualOccurrence, occurrencesInRange, upcomingFamilyDates } from "./family";
 import { GESTURES, planGesturesForWeek, seedFromId } from "./gestures";
-import { dayCashFlow, liveBalance, liveBalanceSeries, sumExpenses, sumIncome } from "./finance";
+import { dayCashFlow, liveBalance, liveBalanceSeries, projectBalance, sumExpenses, sumIncome } from "./finance";
 import type { BalanceRow } from "./finance";
 import {
   bestStreak,
@@ -39,6 +39,8 @@ import {
 } from "./habits";
 import type { HabitDay } from "./habits";
 import { parseQuickEntry } from "./quick-parse";
+import { morningState } from "./morning";
+import { correlationInsights, pearson } from "./stats";
 import { summarizeWeek, weekRatio, type WeekSourceDay } from "./week";
 import { describeRank, formatTopPct, incomeRank } from "./income-rank";
 import { learningBlocksForDate } from "./learning";
@@ -49,6 +51,7 @@ import {
   obligationOccurrences,
   paymentsInRange,
   summarizeObligations,
+  upcomingPaymentAlert,
 } from "./obligations";
 import {
   LIMIT_EMAIL,
@@ -569,6 +572,151 @@ describe("stan środków na żywo", () => {
       ["2026-07-01", "2026-07-02"],
     );
     expect(seria).toEqual([1100, 1100]);
+  });
+});
+
+describe("prognoza salda", () => {
+  it("bez rat rośnie liniowo o średnią dzienną", () => {
+    const punkty = projectBalance(1000, 10, [], "2026-07-01", 3);
+    expect(punkty.map((p) => p.valuePln)).toEqual([1010, 1020, 1030]);
+    expect(punkty[0].date).toBe("2026-07-02");
+  });
+
+  it("rata obniża prognozę od dnia terminu", () => {
+    const punkty = projectBalance(1000, 0, [{ name: "Rata", amountPln: 300, dueDate: "2026-07-03" }], "2026-07-01", 4);
+    expect(punkty.map((p) => p.valuePln)).toEqual([1000, 700, 700, 700]);
+  });
+
+  it("wydarzenia wiszą na właściwym dniu", () => {
+    const punkty = projectBalance(1000, 0, [{ name: "Rata", amountPln: 300, dueDate: "2026-07-03" }], "2026-07-01", 3);
+    expect(punkty[1].events).toHaveLength(1);
+    expect(punkty[0].events).toHaveLength(0);
+  });
+
+  it("bez średniej linia jest płaska z samymi ratami", () => {
+    const punkty = projectBalance(500, null, [{ name: "Rata", amountPln: 100, dueDate: "2026-07-02" }], "2026-07-01", 2);
+    expect(punkty.map((p) => p.valuePln)).toEqual([400, 400]);
+  });
+
+  it("alert wskazuje najbliższą nieopłaconą ratę w 3 dniach", () => {
+    const platnosc = (dueDate: string, status: "do-zaplaty" | "zaplacone") => ({
+      obligationId: "o1",
+      name: "Rata",
+      category: null,
+      dueDate,
+      amountPln: 100,
+      status,
+      paidOn: null,
+      cadence: "miesiecznie" as const,
+    });
+    const alert = upcomingPaymentAlert(
+      [platnosc("2026-07-05", "do-zaplaty"), platnosc("2026-07-03", "do-zaplaty")],
+      "2026-07-02",
+    );
+    expect(alert?.dueDate).toBe("2026-07-03");
+    expect(upcomingPaymentAlert([platnosc("2026-07-03", "zaplacone")], "2026-07-02")).toBeNull();
+    expect(upcomingPaymentAlert([platnosc("2026-07-10", "do-zaplaty")], "2026-07-02")).toBeNull();
+  });
+});
+
+describe("stygnące szanse i prognoza lejka", () => {
+  const szansa = (nadpisz: Record<string, unknown> = {}) => ({
+    stage: "do-podpisania" as const,
+    nextActionDate: null,
+    touchedAt: null,
+    createdAt: "2026-07-20",
+    ...nadpisz,
+  });
+
+  it("szansa stygnie po pięciu dniach ciszy", () => {
+    expect(isDealStale(szansa({ touchedAt: "2026-07-20" }), "2026-07-26")).toBe(true);
+    expect(isDealStale(szansa({ touchedAt: "2026-07-22" }), "2026-07-26")).toBe(false);
+  });
+
+  it("przyszła zaplanowana akcja chroni przed stygnięciem", () => {
+    expect(isDealStale(szansa({ touchedAt: "2026-07-01", nextActionDate: "2026-07-30" }), "2026-07-26")).toBe(false);
+  });
+
+  it("przeterminowana akcja stygnie od razu", () => {
+    expect(isDealStale(szansa({ touchedAt: "2026-07-25", nextActionDate: "2026-07-25" }), "2026-07-26")).toBe(true);
+  });
+
+  it("podpisana i przepadła nie stygną", () => {
+    expect(isDealStale(szansa({ stage: "podpisana", touchedAt: "2026-07-01" }), "2026-07-26")).toBe(false);
+    expect(isDealStale(szansa({ stage: "przepadla", touchedAt: "2026-07-01" }), "2026-07-26")).toBe(false);
+  });
+
+  it("bez touchedAt liczy od createdAt", () => {
+    expect(isDealStale(szansa({ createdAt: "2026-07-10" }), "2026-07-26")).toBe(true);
+  });
+
+  it("prognoza bierze winRate przed konwersją i normalizuje do ułamka", () => {
+    const summary = { open: 2, openPln: 10000, won: 3, wonPln: 0, lost: 1, lostPln: 0, winRate: 75 };
+    const wynik = pipelineForecast(summary, 0.2);
+    expect(wynik).toEqual({ expectedPln: 7500, rate: 0.75, source: "winRate" });
+  });
+
+  it("bez historii bierze konwersję ze spotkań, a bez niczego 50%", () => {
+    const summary = { open: 1, openPln: 1000, won: 0, wonPln: 0, lost: 0, lostPln: 0, winRate: null };
+    expect(pipelineForecast(summary, 0.3)).toEqual({ expectedPln: 300, rate: 0.3, source: "konwersja" });
+    expect(pipelineForecast(summary, null)).toEqual({ expectedPln: 500, rate: 0.5, source: "domyslna" });
+  });
+});
+
+describe("poranny rytuał", () => {
+  it("przed 12 bez wpisu prosi o intencję", () => {
+    expect(morningState(false, 9 * 60)).toBe("prosi");
+  });
+
+  it("wypełniony pokazuje kompakt niezależnie od pory", () => {
+    expect(morningState(true, 9 * 60)).toBe("wypelniony");
+    expect(morningState(true, 20 * 60)).toBe("wypelniony");
+  });
+
+  it("po 12 bez wpisu zwija się, ale nie znika", () => {
+    expect(morningState(false, 15 * 60)).toBe("zwiniety");
+  });
+});
+
+describe("korelacje", () => {
+  it("pearson liczy na parach bez braków", () => {
+    const wynik = pearson([1, 2, 3, 4, 5, 6, 7, null], [2, 4, 6, 8, 10, 12, 14, 100]);
+    expect(wynik?.n).toBe(7);
+    expect(wynik?.r).toBeCloseTo(1, 5);
+  });
+
+  it("mniej niż siedem par daje null", () => {
+    expect(pearson([1, 2, 3], [1, 2, 3])).toBeNull();
+  });
+
+  it("stała seria daje null", () => {
+    expect(pearson([1, 1, 1, 1, 1, 1, 1], [1, 2, 3, 4, 5, 6, 7])).toBeNull();
+  });
+
+  it("insighty sortują się po sile i mówią kierunek po polsku", () => {
+    const rosnace = [1, 2, 3, 4, 5, 3, 2, 4, 1, 5];
+    const spadajace = rosnace.map((v) => 6 - v);
+    const insights = correlationInsights({
+      treningZrobiony: rosnace,
+      nastroj: rosnace,
+      stres: spadajace,
+    });
+    expect(insights[0].description).toContain("Więcej treningu → lepszy nastrój");
+    const stresInsight = insights.find((i) => i.aKey === "stres");
+    expect(stresInsight?.description).toContain("Wyższy stres → gorszy nastrój");
+    expect(stresInsight?.r).toBeLessThan(0);
+  });
+
+  it("pary spoza listy nie wchodzą", () => {
+    const insights = correlationInsights({ cokolwiek: [1, 2, 3, 4, 5, 6, 7], inne: [1, 2, 3, 4, 5, 6, 7] });
+    expect(insights).toEqual([]);
+  });
+
+  it("słabe związki poniżej progu znikają", () => {
+    const a = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2];
+    const b = [3, 1, 4, 1, 5, 2, 3, 5, 2, 4, 1, 3];
+    const insights = correlationInsights({ senH: a, energia: b });
+    for (const insight of insights) expect(Math.abs(insight.r)).toBeGreaterThanOrEqual(0.25);
   });
 });
 
