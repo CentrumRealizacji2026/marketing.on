@@ -76,3 +76,106 @@ export function sumIncome(flows: DayCashFlow[]): { totalPln: number; days: numbe
     days: reported.length,
   };
 }
+
+/* ------------------------------------------------------ stan środków na żywo */
+
+/** Dzienny wiersz w zakresie potrzebnym do wyliczenia salda na żywo. */
+export type BalanceRow = {
+  date: string;
+  /** Ręcznie wpisany stan środków (raport / kreator) albo null. */
+  cashBalancePln: number | null;
+  /** Wynik dnia w chwili wpisu stanu; null w starych wpisach = wpis sprzed przepływów. */
+  cashBalanceNetPln: number | null;
+  incomePln: number | null;
+  expensesPln: number | null;
+};
+
+export type LiveBalance = {
+  /** Stan na teraz: ostatni wpis + przepływy, które doszły po nim. */
+  valuePln: number;
+  anchorDate: string;
+  anchorBalancePln: number;
+  /** Suma doliczonych przepływów: valuePln − anchorBalancePln. */
+  flowNetPln: number;
+  /** Ile dni dołożyło przepływy po wpisie stanu. */
+  flowDays: number;
+};
+
+/**
+ * Wynik dnia z WPISANYCH kwot — celowo bez fallbacku na różnicę sald,
+ * bo różnice sald nie mogą napędzać salda wyliczanego z tych samych sald.
+ */
+function typedDayNet(row: BalanceRow): number | null {
+  return dayCashFlow({ expensesPln: row.expensesPln, incomePln: row.incomePln }).netPln;
+}
+
+/** Sumy groszy w zmiennym przecinku dryfują — zaokrąglamy jak parser szybkiego dodawania. */
+function roundGrosze(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+const byDateAsc = (a: BalanceRow, b: BalanceRow) => a.date.localeCompare(b.date);
+
+/**
+ * Stan środków na żywo: ostatni wpisany stan (kotwica) plus przepływy, które
+ * doszły po nim. Z dnia kotwicy liczy się tylko nadwyżka ponad netto zapisane
+ * w chwili wpisu — to, co użytkownik dodał już PO podaniu stanu.
+ */
+export function liveBalance(rows: BalanceRow[]): LiveBalance | null {
+  const sorted = [...rows].sort(byDateAsc);
+
+  let anchorIndex = -1;
+  for (let i = sorted.length - 1; i >= 0; i -= 1) {
+    if (sorted[i].cashBalancePln !== null) {
+      anchorIndex = i;
+      break;
+    }
+  }
+  if (anchorIndex === -1) return null;
+
+  const anchor = sorted[anchorIndex];
+  const anchorAdjustment = (typedDayNet(anchor) ?? 0) - (anchor.cashBalanceNetPln ?? 0);
+
+  const after = sorted.slice(anchorIndex + 1);
+  const flowNet = anchorAdjustment + after.reduce((sum, row) => sum + (typedDayNet(row) ?? 0), 0);
+  const flowDays = after.filter((row) => typedDayNet(row) !== null).length + (anchorAdjustment !== 0 ? 1 : 0);
+
+  return {
+    valuePln: roundGrosze(anchor.cashBalancePln! + flowNet),
+    anchorDate: anchor.date,
+    anchorBalancePln: anchor.cashBalancePln!,
+    flowNetPln: roundGrosze(flowNet),
+    flowDays,
+  };
+}
+
+/**
+ * Dzienna seria salda na żywo pod wykres: przed pierwszym wpisem null, dzień
+ * wpisu resetuje bieg do podanego stanu (plus to, co doszło po wpisie), kolejne
+ * dni dziedziczą wartość powiększoną o swoje przepływy. `rows` mogą zaczynać się
+ * przed `dates[0]` — najpierw ustalają wartość na starcie okna.
+ */
+export function liveBalanceSeries(rows: BalanceRow[], dates: string[]): Array<number | null> {
+  const sorted = [...rows].sort(byDateAsc);
+  const byDate = new Map(sorted.map((row) => [row.date, row]));
+
+  let running: number | null = null;
+  const apply = (row: BalanceRow) => {
+    if (row.cashBalancePln !== null) {
+      running = row.cashBalancePln + ((typedDayNet(row) ?? 0) - (row.cashBalanceNetPln ?? 0));
+    } else if (running !== null) {
+      running += typedDayNet(row) ?? 0;
+    }
+  };
+
+  const windowStart = dates[0] ?? "";
+  for (const row of sorted) {
+    if (row.date < windowStart) apply(row);
+  }
+
+  return dates.map((date) => {
+    const row = byDate.get(date);
+    if (row) apply(row);
+    return running === null ? null : roundGrosze(running);
+  });
+}

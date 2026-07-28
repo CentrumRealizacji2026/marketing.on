@@ -149,6 +149,11 @@ Sam stan środków mówi tylko, ile zostało. Żeby było widać, ile wychodzi, 
 dzień, w którym wydałeś 300 zł i tyle samo wpłynęło, nie wygląda na dzień bez wydatków, choć
 saldo się nie zmieniło.
 
+Wyświetlany **stan środków liczy się na żywo**: ostatni ręcznie wpisany stan (kreator albo
+raport) plus wszystkie przepływy, które doszły po tym wpisie — także z szybkiego dodawania.
+Przy wpisie stanu zapamiętywane jest netto dnia w tej chwili, więc nic nie liczy się podwójnie,
+a raport dzienny podpowiada wyliczoną kwotę do potwierdzenia.
+
 Gdy kwot nie podasz, aplikacja nadal pokazuje wynik dnia, ale wylicza go z różnicy między
 kolejnymi wpisami stanu środków — to gorsze źródło i tak jest opisane w podpowiedziach. Wpisane
 kwoty zawsze mają pierwszeństwo. Sumy i średnie liczą się wyłącznie z dni z wpisem: brak raportu

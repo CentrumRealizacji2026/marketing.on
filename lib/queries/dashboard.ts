@@ -22,13 +22,14 @@ import {
   type Settings,
 } from "@/lib/db/schema";
 import { addDays, isoWeekday, lastNDays, startOfMonth, startOfWeek } from "@/lib/domain/dates";
-import { dayCashFlow, sumExpenses, sumIncome } from "@/lib/domain/finance";
+import { dayCashFlow, liveBalance, liveBalanceSeries, sumExpenses, sumIncome } from "@/lib/domain/finance";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
 import { countdownFor, sortCountdowns } from "@/lib/domain/countdown";
 import { currentRecords } from "@/lib/domain/records";
 import { sumSales, type SalesTotals } from "@/lib/domain/sales";
 import { averageOfReportedDays } from "@/lib/domain/water";
+import { getBalanceRowsBefore } from "@/lib/queries/finance";
 import { getObligationsOverview } from "@/lib/queries/obligations";
 import { getFamilyOverview } from "@/lib/queries/family";
 import { getWellbeingSummary } from "@/lib/queries/mental";
@@ -132,6 +133,8 @@ export async function getDashboardData(userId: string, settings: Settings, today
       .from(countdowns)
       .where(and(eq(countdowns.userId, userId), eq(countdowns.active, true)))
       .orderBy(asc(countdowns.targetDate)),
+
+    getBalanceRowsBefore(userId, trendStart),
   ]);
 
   const [
@@ -151,6 +154,7 @@ export async function getDashboardData(userId: string, settings: Settings, today
       recommendationRows,
       projectRows,
       countdownRows,
+      preBalanceRows,
     ],
     [savings, bills, family, wellbeing],
   ] = await Promise.all([wiersze, przeglady]);
@@ -161,10 +165,9 @@ export async function getDashboardData(userId: string, settings: Settings, today
 
   /* ------------------------------------------------------------- finanse */
 
-  const cashSeries = trendDates.map((date) => byDate.get(date)?.cashBalancePln ?? null);
-  const cashReported = logs.filter((log) => log.cashBalancePln !== null);
-  const currentCash = cashReported.at(-1) ?? null;
-  const previousCash = cashReported.at(-2) ?? null;
+  // Saldo na żywo: ostatni wpisany stan + przepływy po nim (też z szybkiego dodawania).
+  const cashLive = liveBalance([...preBalanceRows, ...logs]);
+  const cashSeries = liveBalanceSeries([...preBalanceRows, ...logs], trendDates);
 
   const todayFlow = dayCashFlow({
     expensesPln: byDate.get(today)?.expensesPln,
@@ -233,8 +236,7 @@ export async function getDashboardData(userId: string, settings: Settings, today
     monthStart,
 
     finanse: {
-      current: currentCash,
-      previous: previousCash,
+      live: cashLive,
       series: cashSeries,
       dates: trendDates,
       todayFlow,

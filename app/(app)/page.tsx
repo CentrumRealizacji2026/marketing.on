@@ -34,7 +34,7 @@ import { cn, formatTime, formatMoney, formatNumber, pluralPl } from "@/lib/utils
 import { buildAgenda } from "@/lib/domain/agenda";
 import { describeCountdown } from "@/lib/domain/countdown";
 import { describeFamilyDate } from "@/lib/domain/family";
-import { addDays, diffDays, minutesNowInTz, startOfWeek, todayInTz } from "@/lib/domain/dates";
+import { addDays, diffDays, formatDatePl, minutesNowInTz, startOfWeek, todayInTz } from "@/lib/domain/dates";
 import { formatDose, groupDosesBySlot } from "@/lib/domain/medication";
 import { dueLabel } from "@/lib/domain/obligations";
 import { formatRecordValue } from "@/lib/domain/records";
@@ -103,9 +103,10 @@ type Ustawienia = Awaited<ReturnType<typeof getUserSettings>>;
 /* --------------------------------------------------------------- finanse */
 
 function Finanse({ data, currency }: { data: Data; currency: string }) {
-  const { current, previous, series, todayFlow, weekSpentPln, weekEarnedPln } = data.finanse;
-  const delta = current && previous ? current.cashBalancePln! - previous.cashBalancePln! : null;
-  const hasBalance = current?.cashBalancePln !== undefined && current?.cashBalancePln !== null;
+  const { live, series, todayFlow, weekSpentPln, weekEarnedPln } = data.finanse;
+  // Delta = przepływy doliczone od ostatniego wpisu stanu — saldo liczy się na żywo.
+  const delta = live && live.flowNetPln !== 0 ? live.flowNetPln : null;
+  const hasBalance = live !== null;
   const hasFlow = todayFlow.expensesPln !== null || todayFlow.incomePln !== null;
 
   // Przepływy dnia i tygodnia: wydatki zawsze z minusem, wpływy z plusem.
@@ -143,7 +144,7 @@ function Finanse({ data, currency }: { data: Data; currency: string }) {
     <Card className="xl:col-span-2">
       <CardHeader
         title="Stan środków"
-        subtitle={current ? `Ostatni wpis: ${current.date}` : undefined}
+        subtitle={live ? `Wpis z ${formatDatePl(live.anchorDate)} + przepływy po nim` : undefined}
         icon={Wallet}
         action={
           <Link href="/finanse" className="text-muted hover:text-ink">
@@ -156,7 +157,7 @@ function Finanse({ data, currency }: { data: Data; currency: string }) {
           {/* Jedna liczba wiodąca na całym widoku. */}
           {hasBalance ? (
             <p className="text-[2.75rem] leading-none font-semibold text-ink">
-              {formatMoney(current!.cashBalancePln!, currency)}
+              {formatMoney(live!.valuePln, currency)}
             </p>
           ) : (
             <p className="text-sm text-muted">Brak wpisu o stanie środków — poniżej same przepływy.</p>
@@ -164,7 +165,7 @@ function Finanse({ data, currency }: { data: Data; currency: string }) {
           {delta !== null ? (
             <p className={`mt-1.5 text-xs ${delta >= 0 ? "text-[var(--delta-up)]" : "text-critical"}`}>
               {delta >= 0 ? "▲" : "▼"} {formatMoney(Math.abs(delta), currency)}
-              <span className="text-muted"> od poprzedniego wpisu</span>
+              <span className="text-muted"> przepływów od wpisu z {formatDatePl(live!.anchorDate)}</span>
             </p>
           ) : null}
 

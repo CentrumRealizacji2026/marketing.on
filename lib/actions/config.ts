@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, inArray, notInArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import type { z } from "zod";
 
 import { db } from "@/lib/db";
@@ -705,10 +705,16 @@ export async function saveFinanceStart(_prev: FormState, formData: FormData): Pr
   if (parsed.data.cashBalancePln !== null) {
     await db
       .insert(dailyLogs)
-      .values({ userId: user.id, date: today, cashBalancePln: parsed.data.cashBalancePln })
+      .values({ userId: user.id, date: today, cashBalancePln: parsed.data.cashBalancePln, cashBalanceNetPln: 0 })
       .onConflictDoUpdate({
         target: [dailyLogs.userId, dailyLogs.date],
-        set: { cashBalancePln: parsed.data.cashBalancePln, updatedAt: new Date() },
+        set: {
+          cashBalancePln: parsed.data.cashBalancePln,
+          // Podany stan obejmuje wszystko, co już dziś wpłynęło i wyszło — zapamiętujemy
+          // netto dnia z istniejącego wiersza, żeby saldo na żywo nie liczyło go drugi raz.
+          cashBalanceNetPln: sql`coalesce(${dailyLogs.incomePln}, 0) - coalesce(${dailyLogs.expensesPln}, 0)`,
+          updatedAt: new Date(),
+        },
       });
   }
 
