@@ -8,9 +8,10 @@ import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { contracts, dailyLogs } from "@/lib/db/schema";
 import { addDays, formatDatePl, lastNDays, startOfMonth, todayInTz } from "@/lib/domain/dates";
-import { dayCashFlow, sumExpenses, sumIncome } from "@/lib/domain/finance";
+import { dayCashFlow, liveBalance, liveBalanceSeries, sumExpenses, sumIncome } from "@/lib/domain/finance";
 import { PLN_PER_PPP_USD, describeRank, formatTopPct, incomeRank } from "@/lib/domain/income-rank";
 import { dueLabel } from "@/lib/domain/obligations";
+import { getBalanceRowsBefore } from "@/lib/queries/finance";
 import { getObligationsOverview } from "@/lib/queries/obligations";
 import { getRecentContributions, getSavingsOverview } from "@/lib/queries/savings";
 import { cn, formatDays, formatMoney, formatNumber, pluralPl } from "@/lib/utils";
@@ -27,12 +28,13 @@ export default async function FinancePage() {
   const from = addDays(today, -(RANGE - 1));
   const monthStart = startOfMonth(today);
 
-  const [logs, contractRows, savings, contributions, bills] = await Promise.all([
+  const [logs, preRows, contractRows, savings, contributions, bills] = await Promise.all([
     db
       .select()
       .from(dailyLogs)
       .where(and(eq(dailyLogs.userId, user.id), gte(dailyLogs.date, from), lte(dailyLogs.date, today)))
       .orderBy(asc(dailyLogs.date)),
+    getBalanceRowsBefore(user.id, from),
     db
       .select()
       .from(contracts)
@@ -44,14 +46,17 @@ export default async function FinancePage() {
     getObligationsOverview(user.id, today),
   ]);
 
-  const byDate = new Map(logs.map((log) => [log.date, log]));
   const dates = lastNDays(today, RANGE);
-  const series = dates.map((date) => byDate.get(date)?.cashBalancePln ?? null);
+
+  // Saldo na żywo: ostatni wpisany stan + przepływy, które doszły po nim
+  // (także z szybkiego dodawania). Wiersze sprzed okna domykają rachunek.
+  const live = liveBalance([...preRows, ...logs]);
+  const series = liveBalanceSeries([...preRows, ...logs], dates);
+
+  const firstIdx = series.findIndex((value) => value !== null);
+  const change = firstIdx !== -1 && firstIdx < series.length - 1 ? series.at(-1)! - series[firstIdx]! : null;
 
   const reported = logs.filter((log) => log.cashBalancePln !== null);
-  const current = reported.at(-1)?.cashBalancePln ?? null;
-  const first = reported[0]?.cashBalancePln ?? null;
-  const change = current !== null && first !== null ? current - first : null;
 
   // Zmiana salda między kolejnymi wpisami — używana tam, gdzie nie ma wpisanych kwot.
   const balanceChange = new Map<string, number>();
@@ -76,10 +81,8 @@ export default async function FinancePage() {
   const spent = sumExpenses(periodFlows);
   const earned = sumIncome(periodFlows);
 
-  const avgDaily =
-    change !== null && reported.length > 1
-      ? change / Math.max(reported.length - 1, 1)
-      : null;
+  // Średnie tempo z dziennej serii salda — dzielone przez dni kalendarzowe.
+  const avgDaily = change !== null ? change / (series.length - 1 - firstIdx) : null;
 
   // Pozycja zarobkowa liczona z ostatnich 30 dni — pełny miesiąc danych, niezależnie
   // od tego, w którym dniu kalendarzowego miesiąca akurat jesteśmy.
@@ -97,11 +100,17 @@ export default async function FinancePage() {
     <div className="flex flex-col gap-3">
       <Card id="stan">
         <CardHeader title="Stan środków" subtitle={`Ostatnie ${RANGE} dni`} icon={Wallet} />
-        {current === null ? (
+        {live === null ? (
           <EmptyState message="Brak wpisów o stanie środków." href="/raport" cta="Wypełnij raport" />
         ) : (
           <>
-            <p className="text-4xl leading-none font-semibold text-ink">{formatMoney(current, settings.currency)}</p>
+            <p className="text-4xl leading-none font-semibold text-ink">{formatMoney(live.valuePln, settings.currency)}</p>
+            <p className="mt-1.5 text-xs text-muted">
+              wpis {formatMoney(live.anchorBalancePln, settings.currency)} z {formatDatePl(live.anchorDate)}
+              {live.flowNetPln !== 0
+                ? ` ${live.flowNetPln > 0 ? "+" : "−"} ${formatMoney(Math.abs(live.flowNetPln), settings.currency)} przepływów`
+                : ", bez późniejszych przepływów"}
+            </p>
             {change !== null ? (
               <p className={`mt-1.5 text-xs ${change >= 0 ? "text-[var(--delta-up)]" : "text-critical"}`}>
                 {change >= 0 ? "▲" : "▼"} {formatMoney(Math.abs(change), settings.currency)}
@@ -117,7 +126,7 @@ export default async function FinancePage() {
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Card id="przeplywy">
-          <CardHeader title="Przepływy" subtitle="Wpłynęło i wydane z raportów dziennych" />
+          <CardHeader title="Przepływy" subtitle="Wpłynęło i wydane z raportów dziennych i szybkiego dodawania" />
           {flows.length === 0 ? (
             <EmptyState message="Brak danych o przepływach. Uzupełnij w raporcie, ile wydałeś i ile wpłynęło." href="/raport" cta="Wypełnij raport" />
           ) : (
@@ -186,18 +195,18 @@ export default async function FinancePage() {
 
         <Card id="prognoza">
           <CardHeader title="Prognoza" subtitle="Prosta ekstrapolacja średniej dziennej zmiany" />
-          {avgDaily === null || current === null ? (
-            <EmptyState message="Potrzeba co najmniej dwóch wpisów o stanie środków." />
+          {avgDaily === null || live === null ? (
+            <EmptyState message="Potrzeba salda i przynajmniej dnia przepływów po nim." />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <StatTile
                 label="Średnia zmiana dzienna"
                 value={formatMoney(avgDaily, settings.currency)}
-                footer="Liczona z dni, w których zapisałeś stan środków."
+                footer="Liczona z dziennych zmian salda w tym okresie."
               />
               <StatTile
                 label="Za 30 dni przy tym tempie"
-                value={formatMoney(current + avgDaily * 30, settings.currency)}
+                value={formatMoney(live.valuePln + avgDaily * 30, settings.currency)}
                 footer="To ekstrapolacja, nie plan finansowy."
               />
               {settings.monthlyRevenueGoalPln ? (

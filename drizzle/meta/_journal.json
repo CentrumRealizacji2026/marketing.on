@@ -71,6 +71,13 @@
       "when": 1785169870175,
       "tag": "0009_blokada_logowania",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785258345095,
+      "tag": "0010_stan_srodkow_netto",
+      "breakpoints": true
     }
   ]
 }

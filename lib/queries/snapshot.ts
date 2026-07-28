@@ -22,7 +22,7 @@ import {
 } from "@/lib/db/schema";
 import { addDays, isoWeekday, lastNDays } from "@/lib/domain/dates";
 import { summarizeDeals, type DealInput } from "@/lib/domain/deals";
-import { dayCashFlow, sumExpenses, sumIncome } from "@/lib/domain/finance";
+import { dayCashFlow, liveBalance, liveBalanceSeries, sumExpenses, sumIncome } from "@/lib/domain/finance";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
 import { MENTAL_TESTS } from "@/lib/domain/mental-tests";
@@ -30,6 +30,7 @@ import { currentRecords } from "@/lib/domain/records";
 import { conversionRates, sumSales } from "@/lib/domain/sales";
 import { averageOfReportedDays, waterStatus } from "@/lib/domain/water";
 import { weightPlanProgress } from "@/lib/domain/weight";
+import { getBalanceRowsBefore } from "@/lib/queries/finance";
 import { getWellbeingSummary } from "@/lib/queries/mental";
 import { getObligationsOverview } from "@/lib/queries/obligations";
 import { getSavingsOverview } from "@/lib/queries/savings";
@@ -53,7 +54,7 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
   const start30 = addDays(today, -29);
   const start7 = addDays(today, -6);
 
-  const [logs, salesRows, contractRows, medRows, medLogRows, taskRows, planRows, trainingLogRows, weekPlans, yearPlans, learningLogRows, recordRows, projectRows, dealRows] =
+  const [logs, salesRows, contractRows, medRows, medLogRows, taskRows, planRows, trainingLogRows, weekPlans, yearPlans, learningLogRows, recordRows, projectRows, dealRows, preBalanceRows] =
     await Promise.all([
       db
         .select()
@@ -91,6 +92,7 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
       db.select().from(personalRecords).where(eq(personalRecords.userId, userId)),
       db.select().from(projects).where(and(eq(projects.userId, userId), eq(projects.status, "aktywny"))),
       db.select().from(deals).where(eq(deals.userId, userId)),
+      getBalanceRowsBefore(userId, start30),
     ]);
 
   // Cele i rachunki mają własne zapytania — mentor dostaje wyliczony stan, nie surowe wiersze.
@@ -107,7 +109,12 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
   /* ------------------------------------------------------------- finanse */
 
   const cashReported = logs.filter((log) => log.cashBalancePln !== null);
-  const cash7 = cashReported.filter((log) => log.date >= start7);
+
+  // Saldo na żywo w serii dziennej — mentor porównuje jedną semantykę
+  // (wpis + przepływy po nim), a nie surowe wpisy z różnych dni.
+  const cashLive = liveBalance([...preBalanceRows, ...logs]);
+  const cashSeries30 = liveBalanceSeries([...preBalanceRows, ...logs], days30);
+  const cashSeriesReported = cashSeries30.filter((value): value is number => value !== null);
 
   const flows30 = logs.map((log) => dayCashFlow(log));
   const flows7 = logs.filter((log) => log.date >= start7).map((log) => dayCashFlow(log));
@@ -191,9 +198,9 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
     },
 
     finanse: {
-      stanObecny: cashReported.at(-1)?.cashBalancePln ?? null,
-      stanTydzienTemu: cash7[0]?.cashBalancePln ?? null,
-      stanMiesiacTemu: cashReported[0]?.cashBalancePln ?? null,
+      stanObecny: cashLive?.valuePln ?? null,
+      stanTydzienTemu: cashSeries30.at(-7) ?? null,
+      stanMiesiacTemu: cashSeriesReported[0] ?? null,
       liczbaWpisow: cashReported.length,
       // Wydatki i wpływy są liczone tylko z dni, w których użytkownik je podał —
       // dzień bez wpisu nie jest dniem bez wydatków.

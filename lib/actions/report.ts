@@ -55,6 +55,10 @@ export async function submitReport(_prev: ReportState, formData: FormData): Prom
 
   const dailyValues = {
     cashBalancePln: report.cashBalancePln,
+    // Netto dnia w chwili wpisu stanu — raport zastępuje cały dzień, więc to netto
+    // z tego samego payloadu; saldo na żywo doliczy tylko późniejsze przepływy.
+    cashBalanceNetPln:
+      report.cashBalancePln === null ? null : (report.incomePln ?? 0) - (report.expensesPln ?? 0),
     expensesPln: report.expensesPln,
     incomePln: report.incomePln,
     weightKg: report.weightKg,

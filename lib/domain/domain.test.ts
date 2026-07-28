@@ -25,7 +25,8 @@ import { countdownFor, describeCountdown, formatDaysPl, sortCountdowns } from ".
 import { summarizeDeals } from "./deals";
 import { familyDatesInRange, nextAnnualOccurrence, occurrencesInRange, upcomingFamilyDates } from "./family";
 import { GESTURES, planGesturesForWeek, seedFromId } from "./gestures";
-import { dayCashFlow, sumExpenses, sumIncome } from "./finance";
+import { dayCashFlow, liveBalance, liveBalanceSeries, sumExpenses, sumIncome } from "./finance";
+import type { BalanceRow } from "./finance";
 import { describeRank, formatTopPct, incomeRank } from "./income-rank";
 import { learningBlocksForDate } from "./learning";
 import { medicationScheduleForDate, slotSortKey } from "./medication";
@@ -428,6 +429,133 @@ describe("przepływy finansowe", () => {
     ];
     expect(sumExpenses(flows)).toEqual({ totalPln: 150, days: 2 });
     expect(sumIncome(flows)).toEqual({ totalPln: 200, days: 1 });
+  });
+});
+
+describe("stan środków na żywo", () => {
+  const dzien = (date: string, wartosci: Partial<BalanceRow> = {}): BalanceRow => ({
+    date,
+    cashBalancePln: null,
+    cashBalanceNetPln: null,
+    incomePln: null,
+    expensesPln: null,
+    ...wartosci,
+  });
+
+  it("bez wpisu stanu nie zgaduje", () => {
+    expect(liveBalance([dzien("2026-07-01", { incomePln: 500 })])).toBeNull();
+    expect(liveBalance([])).toBeNull();
+  });
+
+  it("dolicza przepływy po ostatnim wpisie stanu", () => {
+    const wynik = liveBalance([
+      dzien("2026-07-01", { cashBalancePln: 1000, cashBalanceNetPln: 0 }),
+      dzien("2026-07-02", { incomePln: 200 }),
+      dzien("2026-07-03", { expensesPln: 50 }),
+    ]);
+    expect(wynik).toEqual({
+      valuePln: 1150,
+      anchorDate: "2026-07-01",
+      anchorBalancePln: 1000,
+      flowNetPln: 150,
+      flowDays: 2,
+    });
+  });
+
+  it("nie liczy podwójnie przepływów sprzed wpisu z tego samego dnia", () => {
+    const wynik = liveBalance([
+      dzien("2026-07-01", { cashBalancePln: 1000, cashBalanceNetPln: 200, incomePln: 300, expensesPln: 100 }),
+    ]);
+    expect(wynik?.valuePln).toBe(1000);
+    expect(wynik?.flowDays).toBe(0);
+  });
+
+  it("dolicza to, co doszło w dniu wpisu po jego zapisaniu", () => {
+    const wynik = liveBalance([
+      dzien("2026-07-01", { cashBalancePln: 1000, cashBalanceNetPln: 200, incomePln: 500 }),
+    ]);
+    expect(wynik?.valuePln).toBe(1300);
+    expect(wynik?.flowNetPln).toBe(300);
+    expect(wynik?.flowDays).toBe(1);
+  });
+
+  it("stary wpis bez zapisanego netto traktuje jak sprzed przepływów dnia", () => {
+    const wynik = liveBalance([dzien("2026-07-01", { cashBalancePln: 1000, incomePln: 150 })]);
+    expect(wynik?.valuePln).toBe(1150);
+  });
+
+  it("nowszy wpis stanu zastępuje wcześniejsze doliczenia", () => {
+    const wynik = liveBalance([
+      dzien("2026-07-01", { cashBalancePln: 1000, cashBalanceNetPln: 0 }),
+      dzien("2026-07-02", { incomePln: 700 }),
+      dzien("2026-07-03", { cashBalancePln: 2000, cashBalanceNetPln: 0 }),
+      dzien("2026-07-04", { expensesPln: 100 }),
+    ]);
+    expect(wynik?.valuePln).toBe(1900);
+    expect(wynik?.anchorDate).toBe("2026-07-03");
+  });
+
+  it("ignoruje przepływy sprzed dnia wpisu", () => {
+    const wynik = liveBalance([
+      dzien("2026-07-01", { incomePln: 999 }),
+      dzien("2026-07-02", { cashBalancePln: 500, cashBalanceNetPln: 0 }),
+    ]);
+    expect(wynik?.valuePln).toBe(500);
+  });
+
+  it("wpis z kreatora plus szybkie dodania dają aktualny stan", () => {
+    // Scenariusz z produkcji: stan z kreatora, potem szybkie dodania tego samego
+    // dnia (stary wpis bez netto) i wydatek dzień później.
+    const wynik = liveBalance([
+      dzien("2026-07-27", { cashBalancePln: 6796, incomePln: 14725 }),
+      dzien("2026-07-28", { expensesPln: 140 }),
+    ]);
+    expect(wynik?.valuePln).toBe(21381);
+    expect(wynik?.flowNetPln).toBe(14585);
+  });
+
+  it("zaokrągla wynik do groszy", () => {
+    const wynik = liveBalance([
+      dzien("2026-07-01", { cashBalancePln: 100, cashBalanceNetPln: 0 }),
+      dzien("2026-07-02", { incomePln: 0.1 }),
+      dzien("2026-07-03", { incomePln: 0.2 }),
+    ]);
+    expect(wynik?.valuePln).toBe(100.3);
+  });
+
+  it("seria dzienna roluje stan naprzód od pierwszego wpisu", () => {
+    const seria = liveBalanceSeries(
+      [
+        dzien("2026-07-02", { cashBalancePln: 1000, cashBalanceNetPln: 0 }),
+        dzien("2026-07-03", { incomePln: 200 }),
+        dzien("2026-07-05", { expensesPln: 50 }),
+      ],
+      ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04", "2026-07-05"],
+    );
+    expect(seria).toEqual([null, 1000, 1200, 1200, 1150]);
+  });
+
+  it("kolejny wpis stanu resetuje serię do podanej kwoty", () => {
+    const seria = liveBalanceSeries(
+      [
+        dzien("2026-07-01", { cashBalancePln: 1000, cashBalanceNetPln: 0 }),
+        dzien("2026-07-02", { incomePln: 700 }),
+        dzien("2026-07-03", { cashBalancePln: 900, cashBalanceNetPln: 0 }),
+      ],
+      ["2026-07-01", "2026-07-02", "2026-07-03"],
+    );
+    expect(seria).toEqual([1000, 1700, 900]);
+  });
+
+  it("wiersze sprzed okna ustalają wartość na jego starcie", () => {
+    const seria = liveBalanceSeries(
+      [
+        dzien("2026-06-20", { cashBalancePln: 1000, cashBalanceNetPln: 0 }),
+        dzien("2026-06-25", { incomePln: 100 }),
+      ],
+      ["2026-07-01", "2026-07-02"],
+    );
+    expect(seria).toEqual([1100, 1100]);
   });
 });
 

@@ -1,0 +1,1 @@
+ALTER TABLE "daily_logs" ADD COLUMN "cash_balance_net_pln" numeric(12, 2);

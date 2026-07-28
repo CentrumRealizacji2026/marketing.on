@@ -40,6 +40,7 @@ export function ReportForm({
   currency,
   waterGoalMl,
   dueTests,
+  cashSuggestionPln,
 }: {
   data: ReportFormData;
   today: string;
@@ -47,11 +48,13 @@ export function ReportForm({
   waterGoalMl: number | null;
   /** Testy przesiewowe, których termin już minął — raport o nich przypomina. */
   dueTests: Array<{ id: string; name: string }>;
+  /** Saldo na żywo (ostatni wpis + przepływy) — podpowiedź dla dzisiejszego raportu. */
+  cashSuggestionPln: number | null;
 }) {
   const router = useRouter();
   const [state, formAction] = useActionState<ReportState, FormData>(submitReport, undefined);
 
-  const [cash, setCash] = useState(numberValue(data.daily?.cashBalancePln));
+  const [cash, setCash] = useState(numberValue(cashSuggestionPln ?? data.daily?.cashBalancePln));
   const [expenses, setExpenses] = useState(numberValue(data.daily?.expensesPln));
   const [income, setIncome] = useState(numberValue(data.daily?.incomePln));
   const [calls, setCalls] = useState(numberValue(data.sales?.calls ?? 0));
@@ -217,7 +220,15 @@ export function ReportForm({
       <Card>
         <CardHeader title="Finanse" subtitle="Kwoty wpisujesz bez minusa — kierunek wynika z pola." />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Field label={`Stan środków na dziś (${currency})`} htmlFor="cash">
+          <Field
+            label={`Stan środków na dziś (${currency})`}
+            htmlFor="cash"
+            hint={
+              cashSuggestionPln !== null
+                ? "Podpowiedź z ostatniego wpisu i późniejszych przepływów — popraw, jeśli masz inną kwotę."
+                : undefined
+            }
+          >
             <NumberInput id="cash" step="0.01" value={cash} onChange={(e) => setCash(e.target.value)} />
           </Field>
           <Field label={`Wydane dziś (${currency})`} htmlFor="expenses" hint="Ile środków wyszło.">

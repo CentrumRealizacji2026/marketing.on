@@ -139,6 +139,12 @@ export const dailyLogs = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     date: date("date", { mode: "string" }).notNull(),
     cashBalancePln: numeric("cash_balance_pln", { precision: 12, scale: 2, mode: "number" }),
+    /**
+     * Wynik dnia (wpływy − wydatki) w chwili zapisania stanu środków. Dzięki temu
+     * saldo „na żywo" dolicza tylko przepływy, które doszły PO wpisie — także
+     * z tego samego dnia. NULL (stare wpisy) = wpis sprzed przepływów dnia.
+     */
+    cashBalanceNetPln: numeric("cash_balance_net_pln", { precision: 12, scale: 2, mode: "number" }),
     /** Ile tego dnia wyszło — zawsze liczba dodatnia, znak dokłada widok. */
     expensesPln: numeric("expenses_pln", { precision: 12, scale: 2, mode: "number" }),
     /** Ile tego dnia wpłynęło — zawsze liczba dodatnia. */
