@@ -5,14 +5,17 @@ import { and, eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import {
+  contracts,
   dailyLogs,
   learningLogs,
   learningPlanWeek,
   medicationLogs,
   medications,
+  salesDaily,
   tasks,
   trainingLogs,
   trainingPlans,
+  type ContractStatus,
 } from "@/lib/db/schema";
 import { getUserSettings, requireUser } from "@/lib/auth/session";
 import { todayInTz } from "@/lib/domain/dates";
@@ -32,6 +35,7 @@ async function currentContext() {
 function refresh() {
   revalidatePath("/");
   revalidatePath("/finanse");
+  revalidatePath("/sprzedaz");
   revalidatePath("/kalendarz");
   revalidatePath("/zdrowie");
   revalidatePath("/zadania");
@@ -287,5 +291,71 @@ export async function addQuickTask(_prev: QuickState, formData: FormData): Promi
   if (asPriority) return { ok: `Dodano priorytet ${priorities + 1} z 3.` };
   return {
     ok: wantsPriority ? "Masz już 3 priorytety — zapisane jako side quest." : "Dodano side quest.",
+  };
+}
+
+/* --------------------------------------------------------------- sprzedaż */
+
+function parseCount(value: FormDataEntryValue | null): number {
+  const parsed = Number(String(value ?? "").trim());
+  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 999) : 0;
+}
+
+/**
+ * Rozmowy i spotkania dopisane z paska kategorii — liczniki dnia rosną od ręki,
+ * bez otwierania raportu. Raport nadal zastępuje dzień w całości: formularz
+ * wczytuje aktualne liczby, więc to, co widać, jest tym, co zostanie zapisane.
+ */
+export async function addSalesActivity(_prev: QuickState, formData: FormData): Promise<QuickState> {
+  const { user, today } = await currentContext();
+  const calls = parseCount(formData.get("calls"));
+  const scheduled = parseCount(formData.get("scheduled"));
+  const held = parseCount(formData.get("held"));
+
+  if (calls + scheduled + held === 0) return { error: "Nie ma czego dopisać." };
+
+  await db
+    .insert(salesDaily)
+    .values({ userId: user.id, date: today, calls, meetingsScheduled: scheduled, meetingsHeld: held })
+    .onConflictDoUpdate({
+      target: [salesDaily.userId, salesDaily.date],
+      set: {
+        calls: sql`${salesDaily.calls} + ${calls}`,
+        meetingsScheduled: sql`${salesDaily.meetingsScheduled} + ${scheduled}`,
+        meetingsHeld: sql`${salesDaily.meetingsHeld} + ${held}`,
+        updatedAt: new Date(),
+      },
+    });
+
+  refresh();
+  const czesci = [
+    calls > 0 ? `rozmowy +${calls}` : null,
+    scheduled > 0 ? `umówione +${scheduled}` : null,
+    held > 0 ? `odbyte +${held}` : null,
+  ].filter(Boolean);
+  return { ok: `Dopisane do dziś: ${czesci.join(", ")}.` };
+}
+
+/**
+ * Pojedyncza umowa bez otwierania raportu. Uwaga na wspólną zasadę dnia:
+ * raport zastępuje umowy z danej daty tym, co widać w formularzu — świeżo
+ * dodana umowa pojawi się tam po wczytaniu strony raportu.
+ */
+export async function addContract(_prev: QuickState, formData: FormData): Promise<QuickState> {
+  const { user, settings, today } = await currentContext();
+  const clientName = String(formData.get("clientName") ?? "").trim().slice(0, 120);
+  const valuePln = parseAmount(formData.get("valuePln"));
+  const status: ContractStatus = formData.get("status") === "negocjacje" ? "negocjacje" : "podpisana";
+
+  if (!clientName) return { error: "Wpisz nazwę klienta." };
+  if (valuePln === null) return { error: "Podaj wartość umowy większą od zera." };
+
+  await db.insert(contracts).values({ userId: user.id, signedOn: today, clientName, valuePln, status });
+
+  refresh();
+  return {
+    ok: `Zapisano umowę ${clientName} na ${formatMoney(valuePln, settings.currency)}${
+      status === "negocjacje" ? " (negocjacje)" : ""
+    }.`,
   };
 }
