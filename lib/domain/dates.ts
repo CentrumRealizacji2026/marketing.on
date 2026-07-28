@@ -40,6 +40,40 @@ export function todayInTz(timezone: string = DEFAULT_TIMEZONE, now: Date = new D
   }
 }
 
+/**
+ * Minuty od północy „teraz" w strefie użytkownika (0–1439).
+ *
+ * Liczone w strefie z ustawień, nie serwera ani urządzenia — akcent „teraz"
+ * na planie dnia ma dotyczyć dnia użytkownika. formatToParts z hourCycle h23,
+ * bo samo format() potrafi o północy zwrócić „24:xx".
+ */
+export function minutesNowInTz(timezone: string = DEFAULT_TIMEZONE, now: Date = new Date()): number {
+  const read = (tz: string) => {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(now);
+    const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+    const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+    return hour * 60 + minute;
+  };
+
+  try {
+    return read(timezone);
+  } catch {
+    return read(DEFAULT_TIMEZONE);
+  }
+}
+
+/** Minuty od północy jako „GG:MM" — etykieta linii „teraz" na osi dnia. */
+export function formatMinutes(min: number): string {
+  const hour = Math.floor(min / 60) % 24;
+  const minute = min % 60;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
 /** Dzień tygodnia w standardzie ISO: 1 = poniedziałek … 7 = niedziela. */
 export function isoWeekday(dateStr: string): number {
   const day = new Date(`${dateStr}T00:00:00Z`).getUTCDay();

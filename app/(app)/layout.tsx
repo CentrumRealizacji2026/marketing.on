@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ClipboardList, LogOut } from "lucide-react";
 
 import { CategoryRail } from "@/components/layout/category-rail";
+import { Clock } from "@/components/layout/clock";
 import { QuickAdd } from "@/components/layout/quick-add";
 import { PwaRegister } from "@/components/pwa-register";
 import { logout } from "@/lib/auth/actions";
@@ -24,7 +25,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <p className="truncate text-xs text-muted">{formatFullDatePl(today)}</p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-3">
+            <Clock timezone={settings.timezone} />
             <Link
               href="/raport"
               className="inline-flex h-9 items-center gap-2 rounded-lg bg-series-1 px-3 text-sm font-medium text-white hover:brightness-110"
