@@ -215,6 +215,34 @@ export function dueLabel(dueDate: string, today: string): string {
   return `${Math.abs(diff)} dni po terminie`;
 }
 
+/**
+ * Najbliższa NIEOPŁACONA płatność w horyzoncie kilku dni — pod alert
+ * „za 3 dni schodzi rata", zanim termin zaskoczy saldo.
+ */
+export function upcomingPaymentAlert(
+  payments: PaymentOccurrence[],
+  today: string,
+  horizonDays = 3,
+): PaymentOccurrence | null {
+  const candidates = payments
+    .filter((payment) => payment.status === "do-zaplaty" && payment.dueDate >= today)
+    .filter((payment) => {
+      const diff = Math.round(
+        (Date.UTC(
+          Number(payment.dueDate.slice(0, 4)),
+          Number(payment.dueDate.slice(5, 7)) - 1,
+          Number(payment.dueDate.slice(8, 10)),
+        ) -
+          Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1, Number(today.slice(8, 10)))) /
+          86_400_000,
+      );
+      return diff >= 0 && diff <= horizonDays;
+    })
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+  return candidates[0] ?? null;
+}
+
 /** Pomocnicze przy podpowiadaniu dnia miesiąca — używane w opisach zobowiązań. */
 export function cadenceDescription(obligation: ObligationInput): string {
   const day = Number(obligation.firstDueDate.slice(8, 10));

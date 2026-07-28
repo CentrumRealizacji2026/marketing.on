@@ -78,6 +78,13 @@
       "when": 1785258345095,
       "tag": "0010_stan_srodkow_netto",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785267033851,
+      "tag": "0011_sprzedaz_akcje_i_poranny_rytual",
+      "breakpoints": true
     }
   ]
 }

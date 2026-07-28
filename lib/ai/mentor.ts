@@ -124,6 +124,9 @@ export async function generateMentorAdvice({
   mode?: MentorMode;
 }): Promise<{ runId: string; advice: MentorAdvice }> {
   const snapshot = await buildSnapshot(userId, settings, today);
+  // serie30 to surowe tablice pod wykresy korelacji — do promptu idą agregaty,
+  // nie 300 liczb; wnioski z korelacji użytkownik widzi na stronie mentora.
+  const snapshotDlaModelu = { ...snapshot, serie30: undefined };
   const [user] = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
 
   const response = await client().messages.parse({
@@ -142,7 +145,7 @@ export async function generateMentorAdvice({
           "Poniżej dane z ostatnich 7 i 30 dni. Przeanalizuj je i podaj rekomendacje.",
           "Wartość null oznacza brak danych, a nie zero.",
           "",
-          JSON.stringify(snapshot, null, 2),
+          JSON.stringify(snapshotDlaModelu, null, 2),
         ]
           .filter(Boolean)
           .join("\n"),

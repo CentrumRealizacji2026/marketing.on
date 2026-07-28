@@ -446,6 +446,11 @@ export async function saveDeals(_prev: FormState, formData: FormData): Promise<F
   const rows = parsed.data;
   const keepIds = rows.map((row) => row.id).filter((value): value is string => Boolean(value));
 
+  // Stygnięcie szans liczy się z touchedAt, więc pieczątka idzie TYLKO na wiersze
+  // realnie zmienione — sam zapis tabeli (albo zmiana kolejności) nie odmładza szansy.
+  const existing = await db.select().from(deals).where(eq(deals.userId, user.id));
+  const byId = new Map(existing.map((row) => [row.id, row]));
+
   await db
     .delete(deals)
     .where(and(eq(deals.userId, user.id), keepIds.length > 0 ? notInArray(deals.id, keepIds) : undefined));
@@ -457,13 +462,29 @@ export async function saveDeals(_prev: FormState, formData: FormData): Promise<F
       expectedDate: row.expectedDate,
       stage: row.stage,
       note: row.note,
+      nextAction: row.nextAction,
+      nextActionDate: row.nextActionDate,
       position: index,
     };
 
     if (row.id) {
-      await db.update(deals).set(values).where(and(eq(deals.id, row.id), eq(deals.userId, user.id)));
+      const before = byId.get(row.id);
+      const changed =
+        !before ||
+        before.clientName !== values.clientName ||
+        before.valuePln !== values.valuePln ||
+        (before.expectedDate ?? null) !== (values.expectedDate ?? null) ||
+        before.stage !== values.stage ||
+        (before.note ?? null) !== (values.note ?? null) ||
+        (before.nextAction ?? null) !== (values.nextAction ?? null) ||
+        (before.nextActionDate ?? null) !== (values.nextActionDate ?? null);
+
+      await db
+        .update(deals)
+        .set(changed ? { ...values, touchedAt: new Date() } : values)
+        .where(and(eq(deals.id, row.id), eq(deals.userId, user.id)));
     } else {
-      await db.insert(deals).values({ ...values, userId: user.id });
+      await db.insert(deals).values({ ...values, userId: user.id, touchedAt: new Date() });
     }
   }
 

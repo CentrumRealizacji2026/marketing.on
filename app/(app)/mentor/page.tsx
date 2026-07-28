@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { desc, eq } from "drizzle-orm";
-import { Brain, Target } from "lucide-react";
+import { Brain, Sparkles, Target } from "lucide-react";
 
 import { MentorRunner } from "./mentor-runner";
+import { BarRow } from "@/components/charts/sparkline";
 import { Card, CardHeader, EmptyState, StatusPill } from "@/components/ui/card";
 import { setRecommendationStatus } from "@/lib/actions/mentor";
 import { mentorConfigured } from "@/lib/ai/mentor";
@@ -10,6 +11,7 @@ import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { mentorRuns, recommendations, type RecommendationStatus } from "@/lib/db/schema";
 import { formatDatePl, todayInTz } from "@/lib/domain/dates";
+import { correlationInsights } from "@/lib/domain/stats";
 import { formatMoney, formatNumber } from "@/lib/utils";
 import { buildSnapshot } from "@/lib/queries/snapshot";
 
@@ -53,6 +55,7 @@ export default async function MentorPage() {
   const latest = runs[0] ?? null;
   const active = recs.filter((rec) => rec.status === "nowa" || rec.status === "przyjeta");
   const closed = recs.filter((rec) => rec.status === "zrobiona" || rec.status === "odrzucona");
+  const insights = correlationInsights(snapshot.serie30);
 
   return (
     <div className="flex flex-col gap-3">
@@ -161,6 +164,37 @@ export default async function MentorPage() {
             }
           />
         </dl>
+      </Card>
+
+      <Card id="korelacje">
+        <CardHeader
+          title="Korelacje"
+          subtitle="Związki między obszarami życia z ostatnich 30 dni — im dłuższy pasek, tym silniejszy związek."
+          icon={Sparkles}
+        />
+        {insights.length === 0 ? (
+          <p className="text-xs text-muted">
+            Za mało danych na wiarygodne związki — potrzeba co najmniej 7 dni z wpisami w obu porównywanych
+            obszarach. Wypełniaj wieczorny raport, a korelacje pojawią się same.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {insights.slice(0, 5).map((insight) => (
+              <BarRow
+                key={`${insight.aKey}-${insight.bKey}`}
+                label={insight.description}
+                value={Math.round(Math.abs(insight.r) * 100)}
+                max={100}
+                display={insight.strength}
+                tone={insight.r > 0 ? "var(--good)" : "var(--critical)"}
+              />
+            ))}
+            <p className="mt-1 text-xs text-muted">
+              Korelacja to współwystępowanie, nie dowód przyczyny — ale przy powtarzalnym wzorcu warto
+              zapytać siebie, co tu od czego zależy.
+            </p>
+          </div>
+        )}
       </Card>
 
       <Card id="cele">

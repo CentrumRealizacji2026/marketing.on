@@ -1,3 +1,5 @@
+import { addDays } from "./dates";
+
 /**
  * Skąd wiadomo, ile tego dnia ubyło albo przybyło środków.
  *
@@ -147,6 +149,44 @@ export function liveBalance(rows: BalanceRow[]): LiveBalance | null {
     flowNetPln: roundGrosze(flowNet),
     flowDays,
   };
+}
+
+/* ------------------------------------------------------- prognoza salda */
+
+export type ForecastEvent = { name: string; amountPln: number; dueDate: string };
+export type ForecastPoint = { date: string; valuePln: number; events: ForecastEvent[] };
+
+/**
+ * Prognoza salda w przód: od dzisiejszego stanu, dzień po dniu, średnia dzienna
+ * zmiana plus zaplanowane, jeszcze NIEOPŁACONE płatności w dniu ich terminu
+ * (opłacone siedzą już w saldzie). Bez średniej linia jest płaska — schodzą ją
+ * tylko raty, co uczciwie pokazuje sam kalendarz zobowiązań.
+ */
+export function projectBalance(
+  startPln: number,
+  avgDailyPln: number | null,
+  payments: ForecastEvent[],
+  startDate: string,
+  days: number,
+): ForecastPoint[] {
+  const byDate = new Map<string, ForecastEvent[]>();
+  for (const payment of payments) {
+    const list = byDate.get(payment.dueDate) ?? [];
+    list.push(payment);
+    byDate.set(payment.dueDate, list);
+  }
+
+  const points: ForecastPoint[] = [];
+  let running = startPln;
+  let date = startDate;
+  for (let i = 0; i < days; i += 1) {
+    date = addDays(date, 1);
+    running += avgDailyPln ?? 0;
+    const events = byDate.get(date) ?? [];
+    for (const event of events) running -= event.amountPln;
+    points.push({ date, valuePln: Math.round(running * 100) / 100, events });
+  }
+  return points;
 }
 
 /**

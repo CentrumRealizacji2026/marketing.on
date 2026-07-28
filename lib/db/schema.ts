@@ -161,6 +161,10 @@ export const dailyLogs = pgTable(
     /** Co dobrego się dziś wydarzyło. */
     goodThings: text("good_things"),
     notes: text("notes"),
+    /** Poranny rytuał: intencja i nastrój na start dnia — para dla wieczornego raportu. */
+    morningIntention: text("morning_intention"),
+    morningMood: integer("morning_mood"),
+    morningAt: timestamp("morning_at", { withTimezone: true }),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("daily_logs_user_date_key").on(t.userId, t.date)],
@@ -400,6 +404,11 @@ export const deals = pgTable(
     expectedDate: date("expected_date", { mode: "string" }),
     stage: text("stage").$type<DealStage>().notNull().default("do-podpisania"),
     note: text("note"),
+    /** Następny ruch w tej sprawie — lejek ma zawsze wiedzieć, co dalej. */
+    nextAction: text("next_action"),
+    nextActionDate: date("next_action_date", { mode: "string" }),
+    /** Ostatnia realna zmiana wiersza — z tego liczy się „stygnięcie" szansy. */
+    touchedAt: timestamp("touched_at", { withTimezone: true }),
     position: integer("position").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -147,6 +147,7 @@ export const NAV: NavCategory[] = [
     items: [
       { label: "Rekomendacje", href: "/mentor#rekomendacje" },
       { label: "Przegląd tygodnia", href: "/tydzien" },
+      { label: "Korelacje", href: "/mentor#korelacje" },
       { label: "Cele", href: "/mentor#cele" },
     ],
   },

@@ -12,6 +12,7 @@ import { DealsTable } from "@/components/forms/deals-table";
 import { saveDeals } from "@/lib/actions/config";
 import { getDeals } from "@/lib/queries/config";
 import { addDays, formatDateShortPl, lastNDays, startOfWeek, todayInTz } from "@/lib/domain/dates";
+import { isDealStale, pipelineForecast, summarizeDeals } from "@/lib/domain/deals";
 import { conversionRates, formatPercent, goalProgress, sumSales } from "@/lib/domain/sales";
 import { formatMoney, formatNumber } from "@/lib/utils";
 
@@ -61,6 +62,11 @@ export default async function SalesPage() {
 
   const rates = conversionRates(totalsMonth);
   const maxFunnel = Math.max(totalsMonth.calls, 1);
+
+  // Prognoza z lejka i stygnące szanse — liczone z zapisanego stanu tabeli.
+  const dealsSummary = summarizeDeals(dealRows);
+  const forecast = pipelineForecast(dealsSummary, rates.heldToContract);
+  const staleDeals = dealRows.filter((row) => isDealStale(row, today));
 
   const sections = [
     { id: "rozmowy", title: "Rozmowy z klientami", key: "calls" as const, goal: settings.goalCallsPerDay },
@@ -169,6 +175,47 @@ export default async function SalesPage() {
           subtitle="Klienci, z którymi umowa jeszcze nie jest zamknięta, i szacowana wartość"
           icon={FileSignature}
         />
+
+        {dealsSummary.open > 0 ? (
+          <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatTile
+              label="Prognoza z lejka"
+              value={formatMoney(forecast.expectedPln, settings.currency)}
+              footer={`${formatMoney(dealsSummary.openPln, settings.currency)} × ${Math.round(forecast.rate * 100)}% (${
+                forecast.source === "winRate"
+                  ? "Twoja skuteczność zamykania"
+                  : forecast.source === "konwersja"
+                    ? "konwersja spotkanie → umowa"
+                    : "wartość domyślna 50%"
+              })`}
+            />
+            <StatTile
+              label="Do zdobycia"
+              value={formatMoney(dealsSummary.openPln, settings.currency)}
+              footer={`${dealsSummary.open} otwartych pozycji`}
+            />
+            <div
+              className={
+                staleDeals.length > 0 ? "rounded-lg bg-warning/10 p-3" : "rounded-lg border border-edge p-3"
+              }
+            >
+              <p className="text-xs text-muted">Stygnące szanse</p>
+              <p className="tabular mt-0.5 text-xl font-semibold text-ink">{staleDeals.length}</p>
+              {staleDeals.length > 0 ? (
+                <p className="mt-0.5 text-xs text-ink-2">
+                  {staleDeals
+                    .slice(0, 3)
+                    .map((deal) => deal.clientName)
+                    .join(", ")}
+                  {staleDeals.length > 3 ? "…" : ""} — bez ruchu albo po terminie akcji
+                </p>
+              ) : (
+                <p className="mt-0.5 text-xs text-muted">Wszystkie szanse mają świeży ruch.</p>
+              )}
+            </div>
+          </div>
+        ) : null}
+
         <DealsTable
           initial={dealRows.map((row) => ({
             id: row.id,
@@ -176,6 +223,9 @@ export default async function SalesPage() {
             valuePln: row.valuePln,
             expectedDate: row.expectedDate,
             stage: row.stage,
+            nextAction: row.nextAction,
+            nextActionDate: row.nextActionDate,
+            stale: isDealStale(row, today),
           }))}
           action={saveDeals}
           currency={settings.currency}
