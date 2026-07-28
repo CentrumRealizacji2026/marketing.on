@@ -18,6 +18,7 @@ je później w panelu zarządzania.
 | **Panel `/ustawienia`** | Te same formularze bezterminowo. Wyłączenie pozycji zachowuje historię zamiast ją kasować |
 | **Raport `/raport`** | Jeden formularz na cały dzień: finanse (stan środków, wydane, wpłynęło), dopłaty na cele oszczędnościowe, rachunki do odhaczenia, sprzedaż i umowy, leki, waga i woda, zadania, trening z możliwością zgłoszenia rekordu, nauka oraz zdrowie psychiczne (samopoczucie, energia, stres, myśli, co dobrego się wydarzyło) |
 | **Kategorie** | `/finanse` (stan środków, przepływy, oszczędności, płatności, pozycja na tle świata), `/sprzedaz` (lejek „do podpisania”, konwersje, umowy), `/rodzina`, `/zdrowie` (leki, waga, nawodnienie, testy stanu psychicznego), `/zadania`, `/trening`, `/nauka`, `/projekty` |
+| **Przegląd tygodnia `/tydzien`** | Liczby tygodnia z porównaniem do poprzedniego, saldo tygodnia, „wygrane” z wieczornych raportów, heatmapy i serie nawyków (leki, woda, trening, nauka — jeden gorszy dzień nie zeruje serii, dwa z rzędu tak) oraz zaległe zadania z przeniesieniem na dziś jednym kliknięciem |
 | **Mentor `/mentor`** | Trzy tryby (mentor / trener / kierownik projektów). Analizuje agregaty z 7 i 30 dni i zwraca rekomendacje „obserwacja → działanie” ze statusami |
 | **PWA** | Instalowalna na telefonie, ze skrótami do raportu, zadań i mentora |
 

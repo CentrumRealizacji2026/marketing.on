@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 
-import { CashForm, Result, Submit, TaskForm, control } from "@/components/layout/quick-forms";
+import { CashForm, Result, SmartForm, Submit, TaskForm, control } from "@/components/layout/quick-forms";
 import { addContract, addSalesActivity, addWater, type QuickState } from "@/lib/actions/quick";
 import { cn } from "@/lib/utils";
 
@@ -253,9 +253,7 @@ export function HeaderAdd({ currency }: { currency: string }) {
     setFormKey((key) => key + 1);
   }, []);
 
-  if (!action) return null;
-
-  if ("href" in action) {
+  if (action && "href" in action) {
     return (
       <Link href={action.href} className={headerButton}>
         <Plus className="h-4 w-4" />
@@ -263,6 +261,10 @@ export function HeaderAdd({ currency }: { currency: string }) {
       </Link>
     );
   }
+
+  // Ścieżki bez dedykowanego panelu (pulpit, kalendarz, mentor…) dostają
+  // uniwersalny „Szybki wpis" — jedno zdanie zamiast wyboru formularza.
+  const label = action ? action.label : "Szybki wpis";
 
   return (
     <div className="relative">
@@ -282,11 +284,11 @@ export function HeaderAdd({ currency }: { currency: string }) {
           setOpen((value) => !value);
         }}
         aria-expanded={open}
-        aria-label={action.label}
+        aria-label={label}
         className={cn(headerButton, "relative z-50")}
       >
         <Plus className={cn("h-4 w-4 transition-transform", open && "rotate-45")} />
-        <span className="hidden sm:inline">{action.label}</span>
+        <span className="hidden sm:inline">{label}</span>
       </button>
 
       {open ? (
@@ -294,7 +296,7 @@ export function HeaderAdd({ currency }: { currency: string }) {
         // przy przycisku wystawałby poza lewą krawędź; od sm wraca pod przycisk.
         <div className="fixed inset-x-4 top-16 z-50 rounded-xl border border-edge bg-surface p-3 shadow-lg sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-[min(320px,calc(100vw-2rem))]">
           <div className="mb-2 flex items-center gap-2">
-            <p className="flex-1 text-xs font-semibold tracking-wide text-muted uppercase">{action.label}</p>
+            <p className="flex-1 text-xs font-semibold tracking-wide text-muted uppercase">{label}</p>
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -307,10 +309,11 @@ export function HeaderAdd({ currency }: { currency: string }) {
 
           <div key={formKey} className="flex flex-col gap-2">
             <Banner text={banner} />
-            {action.panel === "finanse" ? <FinancePanel onSaved={poZapisie} /> : null}
-            {action.panel === "sprzedaz" ? <SalesPanel currency={currency} /> : null}
-            {action.panel === "zadanie" ? <TaskForm onSaved={poZapisie} /> : null}
-            {action.panel === "woda" ? <WaterPanel /> : null}
+            {action?.panel === "finanse" ? <FinancePanel onSaved={poZapisie} /> : null}
+            {action?.panel === "sprzedaz" ? <SalesPanel currency={currency} /> : null}
+            {action?.panel === "zadanie" ? <TaskForm onSaved={poZapisie} /> : null}
+            {action?.panel === "woda" ? <WaterPanel /> : null}
+            {!action ? <SmartForm onSaved={poZapisie} /> : null}
           </div>
         </div>
       ) : null}

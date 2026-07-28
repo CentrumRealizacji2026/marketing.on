@@ -5,6 +5,7 @@ import {
   agendaWindow,
   annotateAgenda,
   buildAgenda,
+  dayLoad,
   nowLineIndex,
   selectSpotlight,
 } from "./agenda";
@@ -27,6 +28,18 @@ import { familyDatesInRange, nextAnnualOccurrence, occurrencesInRange, upcomingF
 import { GESTURES, planGesturesForWeek, seedFromId } from "./gestures";
 import { dayCashFlow, liveBalance, liveBalanceSeries, sumExpenses, sumIncome } from "./finance";
 import type { BalanceRow } from "./finance";
+import {
+  bestStreak,
+  currentStreak,
+  habitStrength,
+  learningDayStatus,
+  medsDayStatus,
+  trainingDayStatus,
+  waterDayStatus,
+} from "./habits";
+import type { HabitDay } from "./habits";
+import { parseQuickEntry } from "./quick-parse";
+import { summarizeWeek, weekRatio, type WeekSourceDay } from "./week";
 import { describeRank, formatTopPct, incomeRank } from "./income-rank";
 import { learningBlocksForDate } from "./learning";
 import { medicationScheduleForDate, slotSortKey } from "./medication";
@@ -556,6 +569,294 @@ describe("stan środków na żywo", () => {
       ["2026-07-01", "2026-07-02"],
     );
     expect(seria).toEqual([1100, 1100]);
+  });
+});
+
+describe("podsumowanie tygodnia", () => {
+  const dzienTygodnia = (nadpisz: Partial<WeekSourceDay> = {}): WeekSourceDay => ({
+    date: "2026-07-27",
+    sprzedaz: { calls: 0, meetingsHeld: 0, contracts: 0, valuePln: 0 },
+    zdrowie: { dosesPlanned: 0, dosesTaken: 0, waterStatus: null, goodThings: null },
+    zadania: { total: 0, done: 0 },
+    trening: [],
+    nauka: [],
+    ...nadpisz,
+  });
+
+  it("zlicza plan i realizację z dni kalendarza", () => {
+    const stats = summarizeWeek([
+      dzienTygodnia({
+        zdrowie: { dosesPlanned: 4, dosesTaken: 3, waterStatus: "dobrze", goodThings: null },
+        trening: [{ done: true }, { done: false }],
+        nauka: [{ done: true }],
+        zadania: { total: 3, done: 2 },
+        sprzedaz: { calls: 10, meetingsHeld: 2, contracts: 1, valuePln: 5000 },
+      }),
+      dzienTygodnia({
+        date: "2026-07-28",
+        zdrowie: { dosesPlanned: 4, dosesTaken: 4, waterStatus: "norma", goodThings: null },
+      }),
+    ]);
+    expect(stats.dosesPlanned).toBe(8);
+    expect(stats.dosesTaken).toBe(7);
+    expect(stats.trainingPlanned).toBe(2);
+    expect(stats.trainingDone).toBe(1);
+    expect(stats.learningDone).toBe(1);
+    expect(stats.tasksDone).toBe(2);
+    expect(stats.waterDaysOk).toBe(2);
+    expect(stats.calls).toBe(10);
+    expect(stats.contractsValuePln).toBe(5000);
+  });
+
+  it("puste dni nie psują podsumowania", () => {
+    const stats = summarizeWeek([dzienTygodnia(), dzienTygodnia({ date: "2026-07-28" })]);
+    expect(stats.tasksTotal).toBe(0);
+    expect(stats.waterDaysOk).toBe(0);
+    expect(stats.goodThings).toEqual([]);
+  });
+
+  it("wygrane zbierają wpisy coDobrego z datami", () => {
+    const stats = summarizeWeek([
+      dzienTygodnia({ zdrowie: { dosesPlanned: 0, dosesTaken: 0, waterStatus: null, goodThings: "Podpisana umowa" } }),
+    ]);
+    expect(stats.goodThings).toEqual([{ date: "2026-07-27", text: "Podpisana umowa" }]);
+  });
+
+  it("weekRatio odróżnia brak planu od zera", () => {
+    expect(weekRatio(2, 4)).toBe(50);
+    expect(weekRatio(0, 0)).toBeNull();
+  });
+});
+
+describe("szybki wpis językiem naturalnym", () => {
+  // 2026-07-28 to wtorek — stały punkt odniesienia dla dat względnych.
+  const dzisiaj = "2026-07-28";
+
+  it("paliwo 150 to koszt z opisem paliwo", () => {
+    expect(parseQuickEntry("paliwo 150", dzisiaj)).toEqual({
+      type: "koszt",
+      amountPln: 150,
+      description: "paliwo",
+    });
+  });
+
+  it("parsuje kwotę z przecinkiem i spacją tysięcy", () => {
+    expect(parseQuickEntry("zakupy 1 200,50 zł", dzisiaj)).toEqual({
+      type: "koszt",
+      amountPln: 1200.5,
+      description: "zakupy",
+    });
+  });
+
+  it("słowo zysk robi wpływ zamiast kosztu", () => {
+    const wynik = parseQuickEntry("przelew 2000 zysk", dzisiaj);
+    expect(wynik?.type).toBe("zysk");
+  });
+
+  it("faktura to wpływ", () => {
+    expect(parseQuickEntry("faktura Nowak 3500", dzisiaj)).toEqual({
+      type: "zysk",
+      amountPln: 3500,
+      description: "faktura Nowak",
+    });
+  });
+
+  it("plus przed kwotą robi wpływ", () => {
+    expect(parseQuickEntry("+500", dzisiaj)).toEqual({ type: "zysk", amountPln: 500, description: "" });
+  });
+
+  it("wplata bez ogonków też robi wpływ", () => {
+    expect(parseQuickEntry("wplata 300", dzisiaj)?.type).toBe("zysk");
+  });
+
+  it("zł i pln znikają z opisu", () => {
+    expect(parseQuickEntry("kawa 15 pln", dzisiaj)).toEqual({
+      type: "koszt",
+      amountPln: 15,
+      description: "kawa",
+    });
+  });
+
+  it("tekst bez kwoty to zadanie na dziś", () => {
+    expect(parseQuickEntry("umyć samochód", dzisiaj)).toEqual({
+      type: "zadanie",
+      title: "umyć samochód",
+      date: dzisiaj,
+      priority: false,
+    });
+  });
+
+  it("jutro przenosi zadanie na jutro i znika z tytułu", () => {
+    expect(parseQuickEntry("zadzwonić do Nowaka jutro", dzisiaj)).toEqual({
+      type: "zadanie",
+      title: "zadzwonić do Nowaka",
+      date: "2026-07-29",
+      priority: false,
+    });
+  });
+
+  it("pojutrze liczy dwa dni naprzód", () => {
+    expect(parseQuickEntry("pojutrze odebrać buty", dzisiaj)).toMatchObject({ date: "2026-07-30" });
+  });
+
+  it("w poniedziałek wybiera najbliższy poniedziałek i gubi przyimek", () => {
+    expect(parseQuickEntry("oddać auto w poniedziałek", dzisiaj)).toEqual({
+      type: "zadanie",
+      title: "oddać auto",
+      date: "2026-08-03",
+      priority: false,
+    });
+  });
+
+  it("biernik w środę też działa", () => {
+    expect(parseQuickEntry("spotkanie w środę", dzisiaj)).toMatchObject({ date: "2026-07-29" });
+  });
+
+  it("ten sam dzień tygodnia przeskakuje o tydzień", () => {
+    expect(parseQuickEntry("przegląd wtorek", dzisiaj)).toMatchObject({ date: "2026-08-04" });
+  });
+
+  it("priorytet ustawia rodzaj i znika z tytułu", () => {
+    expect(parseQuickEntry("dokończyć ofertę priorytet", dzisiaj)).toEqual({
+      type: "zadanie",
+      title: "dokończyć ofertę",
+      date: dzisiaj,
+      priority: true,
+    });
+  });
+
+  it("wielkość liter zostaje zachowana", () => {
+    expect(parseQuickEntry("Zadzwonić do Pana Nowaka", dzisiaj)).toMatchObject({
+      title: "Zadzwonić do Pana Nowaka",
+    });
+  });
+
+  it("pusty tekst zwraca null", () => {
+    expect(parseQuickEntry("", dzisiaj)).toBeNull();
+    expect(parseQuickEntry("   ", dzisiaj)).toBeNull();
+    expect(parseQuickEntry("jutro", dzisiaj)).toBeNull();
+  });
+});
+
+describe("budżet dnia", () => {
+  const pozycja = (durationMin: number | null, done = false) =>
+    ({
+      key: `k-${Math.abs(durationMin ?? 0)}-${done}`,
+      category: "trening" as const,
+      when: "10:00",
+      durationMin,
+      title: "x",
+      detail: null,
+      done,
+      href: "/trening",
+      action: { type: "training" as const, planId: "p", done },
+    });
+
+  it("sumuje minuty nieodhaczonych pozycji", () => {
+    const load = dayLoad([pozycja(60), pozycja(45)], 10 * 60);
+    expect(load.plannedMin).toBe(105);
+    expect(load.leftMin).toBe(12 * 60);
+    expect(load.overloaded).toBe(false);
+  });
+
+  it("dawki i zadania bez minut nie obciążają dnia", () => {
+    const load = dayLoad([pozycja(null), pozycja(30)], 10 * 60);
+    expect(load.plannedMin).toBe(30);
+  });
+
+  it("zrobione pozycje nie obciążają dnia", () => {
+    const load = dayLoad([pozycja(60, true), pozycja(45)], 10 * 60);
+    expect(load.plannedMin).toBe(45);
+  });
+
+  it("przeciążenie, gdy plan przekracza czas do końca dnia", () => {
+    const load = dayLoad([pozycja(120)], 21 * 60);
+    expect(load.leftMin).toBe(60);
+    expect(load.overloaded).toBe(true);
+  });
+
+  it("po końcu dnia zostaje zero, nie liczby ujemne", () => {
+    const load = dayLoad([pozycja(30)], 23 * 60);
+    expect(load.leftMin).toBe(0);
+    expect(load.overloaded).toBe(true);
+  });
+});
+
+describe("nawyki: seria i siła", () => {
+  const dni = (statusy: Array<HabitDay["status"]>): HabitDay[] =>
+    statusy.map((status, i) => ({
+      date: `2026-07-${String(1 + i).padStart(2, "0")}`,
+      status,
+    }));
+
+  it("ocenia dzień leków progiem 80% dawek", () => {
+    expect(medsDayStatus(5, 4)).toBe("zaliczony");
+    expect(medsDayStatus(5, 2)).toBe("czesciowy");
+    expect(medsDayStatus(5, 0)).toBe("pominiety");
+    expect(medsDayStatus(0, 0)).toBe("brak-danych");
+  });
+
+  it("ocenia dzień wody wprost ze statusu nawodnienia", () => {
+    expect(waterDayStatus("dobrze")).toBe("zaliczony");
+    expect(waterDayStatus("norma")).toBe("czesciowy");
+    expect(waterDayStatus("zle")).toBe("pominiety");
+    expect(waterDayStatus(null)).toBe("brak-danych");
+  });
+
+  it("dzień bez planu treningu i nauki jest przezroczysty", () => {
+    expect(trainingDayStatus(0, 0)).toBe("brak-danych");
+    expect(trainingDayStatus(1, 1)).toBe("zaliczony");
+    expect(trainingDayStatus(2, 1)).toBe("czesciowy");
+    expect(learningDayStatus(1, 0)).toBe("pominiety");
+  });
+
+  it("streak liczy kolejne zaliczone dni", () => {
+    const wynik = currentStreak(dni(["zaliczony", "zaliczony", "zaliczony"]));
+    expect(wynik).toEqual({ length: 3, forgiven: 0 });
+  });
+
+  it("jeden pominięty dzień nie zeruje streaka", () => {
+    const wynik = currentStreak(dni(["zaliczony", "zaliczony", "pominiety", "zaliczony"]));
+    expect(wynik).toEqual({ length: 3, forgiven: 1 });
+  });
+
+  it("dwa pominięte z rzędu zerują streak", () => {
+    const wynik = currentStreak(dni(["zaliczony", "zaliczony", "pominiety", "pominiety", "zaliczony"]));
+    expect(wynik.length).toBe(1);
+  });
+
+  it("dni bez planu są przezroczyste dla streaka", () => {
+    const wynik = currentStreak(dni(["zaliczony", "brak-danych", "brak-danych", "zaliczony"]));
+    expect(wynik.length).toBe(2);
+  });
+
+  it("dzisiejszy nieskończony dzień nie przerywa serii", () => {
+    const wynik = currentStreak(dni(["zaliczony", "zaliczony", "pominiety"]), "2026-07-03");
+    expect(wynik).toEqual({ length: 2, forgiven: 0 });
+  });
+
+  it("częściowy dzień podtrzymuje streak", () => {
+    const wynik = currentStreak(dni(["zaliczony", "czesciowy", "zaliczony"]));
+    expect(wynik.length).toBe(3);
+  });
+
+  it("najlepsza seria przeżywa pojedyncze potknięcia, ale nie podwójne", () => {
+    expect(bestStreak(dni(["zaliczony", "zaliczony", "pominiety", "zaliczony", "zaliczony"]))).toBe(4);
+    expect(bestStreak(dni(["zaliczony", "zaliczony", "pominiety", "pominiety", "zaliczony"]))).toBe(2);
+  });
+
+  it("siła nawyku rośnie po serii i spada po pominięciu", () => {
+    const dlugaSeria = habitStrength(dni(Array.from({ length: 20 }, () => "zaliczony" as const)));
+    expect(dlugaSeria).toBeGreaterThan(90);
+    const poWpadce = habitStrength(dni([...Array.from({ length: 19 }, () => "zaliczony" as const), "pominiety"]));
+    expect(poWpadce).toBeLessThan(dlugaSeria);
+    expect(poWpadce).toBeGreaterThan(70);
+  });
+
+  it("dzień bez danych nie zmienia siły nawyku", () => {
+    const bez = habitStrength(dni(["zaliczony", "zaliczony", "zaliczony"]));
+    const z = habitStrength(dni(["zaliczony", "zaliczony", "brak-danych", "zaliczony"]));
+    expect(z).toBe(bez);
   });
 });
 

@@ -4,6 +4,7 @@ import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { AlertTriangle, CheckCircle2, ClipboardCheck, Droplets, HeartPulse, Scale, Smile, XCircle } from "lucide-react";
 
 import { DayBars } from "@/components/charts/day-bars";
+import { HabitHeatmap, StreakBadge } from "@/components/charts/habit-heatmap";
 import { Meter, Sparkline } from "@/components/charts/sparkline";
 import { CrisisBox, TestScore } from "@/components/health/mental-panels";
 import { Card, CardHeader, EmptyState, StatTile, StatusPill } from "@/components/ui/card";
@@ -11,9 +12,10 @@ import { toggleDose } from "@/lib/actions/quick";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { dailyLogs, medicationLogs, medications } from "@/lib/db/schema";
-import { addDays, formatDatePl, formatDateShortPl, lastNDays, todayInTz } from "@/lib/domain/dates";
+import { addDays, formatDatePl, formatDateShortPl, lastNDays, startOfWeek, todayInTz } from "@/lib/domain/dates";
 import { WEIGHT_STATUS_LABEL, describeWeightProgress, weightPlanProgress } from "@/lib/domain/weight";
 import { formatDose, medicationScheduleForDate, type MedicationRow } from "@/lib/domain/medication";
+import { currentStreak, medsDayStatus, waterDayStatus } from "@/lib/domain/habits";
 import { WATER_STATUS_LABEL, averageOfReportedDays, waterStatus } from "@/lib/domain/water";
 import { getWellbeingSummary } from "@/lib/queries/mental";
 import { formatNumber } from "@/lib/utils";
@@ -30,13 +32,17 @@ export default async function HealthPage() {
   const user = await requireOnboardedUser();
   const settings = await getUserSettings(user.id);
   const today = todayInTz(settings.timezone);
-  const from = addDays(today, -(RANGE - 1));
+  // Heatmapy serii sięgają 8 pełnych tygodni wstecz — dalej niż 30-dniowe karty,
+  // więc zapytania schodzą do początku tego zakresu.
+  const heatStart = startOfWeek(addDays(today, -55), settings.weekStartsOn);
+  const heatDates: string[] = [];
+  for (let date = heatStart; date <= today; date = addDays(date, 1)) heatDates.push(date);
 
   const [logs, medRows, medLogRows, wellbeing] = await Promise.all([
     db
       .select()
       .from(dailyLogs)
-      .where(and(eq(dailyLogs.userId, user.id), gte(dailyLogs.date, from), lte(dailyLogs.date, today)))
+      .where(and(eq(dailyLogs.userId, user.id), gte(dailyLogs.date, heatStart), lte(dailyLogs.date, today)))
       .orderBy(asc(dailyLogs.date)),
     db
       .select()
@@ -46,7 +52,7 @@ export default async function HealthPage() {
     db
       .select()
       .from(medicationLogs)
-      .where(and(eq(medicationLogs.userId, user.id), gte(medicationLogs.date, from))),
+      .where(and(eq(medicationLogs.userId, user.id), gte(medicationLogs.date, heatStart))),
     getWellbeingSummary(user.id, today),
   ]);
 
@@ -81,6 +87,27 @@ export default async function HealthPage() {
   const waterValues = days7.map((date) => byDate.get(date)?.waterMl ?? null);
   const waterAvg = averageOfReportedDays(waterValues);
   const avgStatus = waterStatus(waterAvg, settings.waterGoalMl, settings.waterGoodPct, settings.waterOkPct);
+
+  // Serie nawyków: leki wg planu dawek, woda wg progów użytkownika.
+  const lekiDni = heatDates.map((date) => {
+    const schedule = medicationScheduleForDate(
+      date,
+      medRows as MedicationRow[],
+      medLogRows.filter((entry) => entry.date === date),
+    );
+    return {
+      date,
+      status: medsDayStatus(schedule.length, schedule.filter((dose) => dose.taken).length),
+    };
+  });
+  const wodaDni = heatDates.map((date) => ({
+    date,
+    status: waterDayStatus(
+      waterStatus(byDate.get(date)?.waterMl ?? null, settings.waterGoalMl, settings.waterGoodPct, settings.waterOkPct),
+    ),
+  }));
+  const lekiSeria = currentStreak(lekiDni, today);
+  const wodaSeria = currentStreak(wodaDni, today);
 
   const weightSeries = days30.map((date) => byDate.get(date)?.weightKg ?? null);
   const weightReported = logs.filter((log) => log.weightKg !== null);
@@ -213,6 +240,40 @@ export default async function HealthPage() {
               </p>
             </>
           )}
+        </Card>
+
+        <Card id="serie">
+          <CardHeader
+            title="Serie i regularność"
+            subtitle="Ostatnie 8 tygodni — jeden gorszy dzień nie zeruje serii, dwa z rzędu tak"
+            icon={CheckCircle2}
+          />
+          <div className="flex flex-col gap-5">
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-sm font-medium text-ink">Leki i suplementy</p>
+                <StreakBadge length={lekiSeria.length} label="Leki" />
+              </div>
+              <HabitHeatmap
+                days={lekiDni}
+                weekStartsOn={settings.weekStartsOn}
+                label="Regularność leków, 8 tygodni"
+                tone="var(--good)"
+              />
+            </div>
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-sm font-medium text-ink">Nawodnienie</p>
+                <StreakBadge length={wodaSeria.length} label="Woda" />
+              </div>
+              <HabitHeatmap
+                days={wodaDni}
+                weekStartsOn={settings.weekStartsOn}
+                label="Regularność nawodnienia, 8 tygodni"
+                tone="var(--series-1)"
+              />
+            </div>
+          </div>
         </Card>
 
         <Card id="waga">

@@ -1,3 +1,4 @@
+import { formatDatePl } from "./dates";
 import type { MedicationDose } from "./medication";
 import { slotSortKey } from "./medication";
 
@@ -88,7 +89,15 @@ export function buildAgenda({
     /** null = brak decyzji (tri-state nauki). */
     done: boolean | null;
   }>;
-  tasks: Array<{ id: string; title: string; kind: string; position: number; done: boolean }>;
+  tasks: Array<{
+    id: string;
+    title: string;
+    kind: string;
+    position: number;
+    done: boolean;
+    /** Dzień, z którego zadanie zostało przeniesione — widać drogę zaległości. */
+    carriedFrom?: string | null;
+  }>;
 }): AgendaItem[] {
   const items: AgendaItem[] = [
     ...doses.map((dose) => ({
@@ -133,7 +142,12 @@ export function buildAgenda({
       when: null,
       durationMin: null,
       title: task.title,
-      detail: task.kind === "priorytet" ? `priorytet ${task.position}` : "side quest",
+      detail: [
+        task.kind === "priorytet" ? `priorytet ${task.position}` : "side quest",
+        task.carriedFrom ? `przeniesione z ${formatDatePl(task.carriedFrom)}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
       done: task.done,
       href: "/zadania",
       action: { type: "task" as const, taskId: task.id, done: task.done },
@@ -250,6 +264,28 @@ export function nowLineIndex(items: TimedAgendaItem[], nowMin: number): number {
     if (key !== null && key <= nowMin) index += 1;
   }
   return index;
+}
+
+/* -------------------------------------------------------------- budżet dnia */
+
+/** Umowny koniec dnia roboczego — początek okna „noc" z NAMED_SLOT_WINDOW. */
+export const DAY_END_MIN = 22 * 60;
+
+/**
+ * Obciążenie dnia: suma minut nieodhaczonych pozycji z czasem trwania
+ * (dawki leków i zadania mają durationMin = null — nie obciążają budżetu)
+ * zestawiona z czasem, który został do końca dnia.
+ */
+export function dayLoad(
+  items: AgendaItem[],
+  nowMin: number,
+  dayEndMin = DAY_END_MIN,
+): { plannedMin: number; leftMin: number; overloaded: boolean } {
+  const plannedMin = items
+    .filter((item) => !item.done)
+    .reduce((sum, item) => sum + (item.durationMin ?? 0), 0);
+  const leftMin = Math.max(0, dayEndMin - nowMin);
+  return { plannedMin, leftMin, overloaded: plannedMin > leftMin };
 }
 
 export const AGENDA_CATEGORY_LABEL: Record<AgendaCategory, string> = {

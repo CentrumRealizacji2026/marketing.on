@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import {
@@ -18,7 +18,8 @@ import {
   type ContractStatus,
 } from "@/lib/db/schema";
 import { getUserSettings, requireUser } from "@/lib/auth/session";
-import { todayInTz } from "@/lib/domain/dates";
+import { addDays, formatDatePl, todayInTz } from "@/lib/domain/dates";
+import { parseQuickEntry } from "@/lib/domain/quick-parse";
 import { formatMoney } from "@/lib/utils";
 
 /**
@@ -41,6 +42,7 @@ function refresh() {
   revalidatePath("/zadania");
   revalidatePath("/trening");
   revalidatePath("/nauka");
+  revalidatePath("/tydzien");
 }
 
 export async function toggleDose(formData: FormData) {
@@ -222,7 +224,20 @@ export async function addCashFlow(_prev: QuickState, formData: FormData): Promis
 
   if (amount === null) return { error: "Podaj kwotę większą od zera." };
 
-  const money = formatMoney(amount, settings.currency);
+  const ok = await applyCashFlow(user.id, settings.currency, today, kind, amount, description);
+  return { ok };
+}
+
+/** Rdzeń kosztu/zysku — wspólny dla formularza i szybkiego wpisu zdaniem. */
+async function applyCashFlow(
+  userId: string,
+  currency: string,
+  today: string,
+  kind: "koszt" | "zysk",
+  amount: number,
+  description: string,
+): Promise<string> {
+  const money = formatMoney(amount, currency);
   const line = `${kind === "zysk" ? "+" : "−"}${money}${description ? ` · ${description}` : ""}`;
   // concat_ws pomija NULL, więc pierwsza notatka dnia nie zaczyna się od pustej linii.
   // Rzutowanie na text jest konieczne — bez niego Postgres nie zna typu parametru.
@@ -231,7 +246,7 @@ export async function addCashFlow(_prev: QuickState, formData: FormData): Promis
   if (kind === "zysk") {
     await db
       .insert(dailyLogs)
-      .values({ userId: user.id, date: today, incomePln: amount, notes: line })
+      .values({ userId, date: today, incomePln: amount, notes: line })
       .onConflictDoUpdate({
         target: [dailyLogs.userId, dailyLogs.date],
         set: {
@@ -243,7 +258,7 @@ export async function addCashFlow(_prev: QuickState, formData: FormData): Promis
   } else {
     await db
       .insert(dailyLogs)
-      .values({ userId: user.id, date: today, expensesPln: amount, notes: line })
+      .values({ userId, date: today, expensesPln: amount, notes: line })
       .onConflictDoUpdate({
         target: [dailyLogs.userId, dailyLogs.date],
         set: {
@@ -255,7 +270,7 @@ export async function addCashFlow(_prev: QuickState, formData: FormData): Promis
   }
 
   refresh();
-  return { ok: `Zapisano ${kind === "zysk" ? "zysk" : "koszt"} ${money}.` };
+  return `Zapisano ${kind === "zysk" ? "zysk" : "koszt"} ${money}${description ? ` · ${description}` : ""}.`;
 }
 
 /**
@@ -270,28 +285,115 @@ export async function addQuickTask(_prev: QuickState, formData: FormData): Promi
 
   if (!title) return { error: "Wpisz treść zadania." };
 
+  const ok = await applyQuickTask(user.id, today, today, title, wantsPriority);
+  return { ok };
+}
+
+/** Rdzeń dodawania zadania — data jest parametrem, bo szybki wpis zna „jutro". */
+async function applyQuickTask(
+  userId: string,
+  today: string,
+  date: string,
+  title: string,
+  wantsPriority: boolean,
+): Promise<string> {
   const existing = await db
     .select({ kind: tasks.kind })
     .from(tasks)
-    .where(and(eq(tasks.userId, user.id), eq(tasks.date, today)));
+    .where(and(eq(tasks.userId, userId), eq(tasks.date, date)));
 
   const priorities = existing.filter((task) => task.kind === "priorytet").length;
   const sideQuests = existing.filter((task) => task.kind === "side").length;
   const asPriority = wantsPriority && priorities < 3;
 
   await db.insert(tasks).values({
-    userId: user.id,
-    date: today,
+    userId,
+    date,
     title,
     kind: asPriority ? "priorytet" : "side",
     position: asPriority ? priorities + 1 : sideQuests + 1,
   });
 
   refresh();
-  if (asPriority) return { ok: `Dodano priorytet ${priorities + 1} z 3.` };
-  return {
-    ok: wantsPriority ? "Masz już 3 priorytety — zapisane jako side quest." : "Dodano side quest.",
-  };
+
+  const kiedy =
+    date === today ? "" : date === addDays(today, 1) ? " na jutro" : ` na ${formatDatePl(date)}`;
+  if (asPriority) return `Dodano priorytet ${priorities + 1} z 3${kiedy}.`;
+  if (wantsPriority) return `Masz już 3 priorytety${kiedy ? kiedy : " na dziś"} — zapisane jako side quest.`;
+  return `Dodano side quest${kiedy}.`;
+}
+
+/**
+ * Szybki wpis jednym zdaniem: parser rozpoznaje koszt, zysk albo zadanie
+ * z datą, a komunikat po zapisie zawsze mówi, jak wpis został zrozumiany —
+ * błędna interpretacja jest widoczna od razu, nie po tygodniu.
+ */
+export async function addQuickEntry(_prev: QuickState, formData: FormData): Promise<QuickState> {
+  const { user, settings, today } = await currentContext();
+  const text = String(formData.get("text") ?? "").slice(0, 300);
+
+  const parsed = parseQuickEntry(text, today);
+  if (!parsed) return { error: "Napisz, co dodać — np. „paliwo 150” albo „zadzwonić do Nowaka jutro”." };
+
+  if (parsed.type === "zadanie") {
+    const ok = await applyQuickTask(
+      user.id,
+      today,
+      parsed.date,
+      parsed.title.slice(0, 200),
+      parsed.priority,
+    );
+    return { ok: `${ok.replace(/\.$/, "")}: ${parsed.title.slice(0, 200)}.` };
+  }
+
+  const ok = await applyCashFlow(
+    user.id,
+    settings.currency,
+    today,
+    parsed.type,
+    parsed.amountPln,
+    parsed.description.slice(0, 120),
+  );
+  return { ok };
+}
+
+/**
+ * Zaległe zadania jednym ruchem na dziś. Przenosimy zawsze jako side quest —
+ * trzy miejsca priorytetów to świadomy limit, a nie pula do rozpychania.
+ * `carriedFrom` zapamiętuje pierwotny dzień, żeby na liście było widać drogę.
+ */
+export async function carryOverTasks(): Promise<void> {
+  const { user, today } = await currentContext();
+  const from = addDays(today, -30);
+
+  const overdue = await db
+    .select({ id: tasks.id, date: tasks.date, carriedFrom: tasks.carriedFrom })
+    .from(tasks)
+    .where(
+      and(eq(tasks.userId, user.id), eq(tasks.done, false), lt(tasks.date, today), gte(tasks.date, from)),
+    )
+    .orderBy(asc(tasks.date), asc(tasks.position));
+
+  if (overdue.length === 0) return;
+
+  const [{ existingSide }] = await db
+    .select({ existingSide: sql<number>`count(*)::int` })
+    .from(tasks)
+    .where(and(eq(tasks.userId, user.id), eq(tasks.date, today), eq(tasks.kind, "side")));
+
+  for (const [index, task] of overdue.entries()) {
+    await db
+      .update(tasks)
+      .set({
+        date: today,
+        kind: "side",
+        position: existingSide + index + 1,
+        carriedFrom: task.carriedFrom ?? task.date,
+      })
+      .where(and(eq(tasks.id, task.id), eq(tasks.userId, user.id)));
+  }
+
+  refresh();
 }
 
 /* --------------------------------------------------------------- sprzedaż */

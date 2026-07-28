@@ -4,7 +4,7 @@ import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { Check } from "lucide-react";
 
-import { addCashFlow, addQuickTask, type QuickState } from "@/lib/actions/quick";
+import { addCashFlow, addQuickEntry, addQuickTask, type QuickState } from "@/lib/actions/quick";
 import { cn } from "@/lib/utils";
 
 /**
@@ -45,6 +45,48 @@ export function Result({ state }: { state: QuickState }) {
     );
   }
   return null;
+}
+
+/**
+ * Jedno pole na wszystko: parser rozpoznaje koszt, zysk albo zadanie z datą,
+ * a komunikat po zapisie mówi, jak wpis został zrozumiany.
+ */
+export function SmartForm({ onSaved }: { onSaved: (komunikat: string) => void }) {
+  const [state, formAction] = useActionState<QuickState, FormData>(addQuickEntry, undefined);
+
+  useEffect(() => {
+    if (state?.ok) onSaved(state.ok);
+  }, [state, onSaved]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      {state?.error ? <Result state={state} /> : null}
+      <form action={formAction} className="flex gap-2">
+        <input
+          name="text"
+          type="text"
+          required
+          placeholder="np. paliwo 150 albo zadzwonić do Nowaka jutro"
+          aria-label="Szybki wpis jednym zdaniem"
+          className={control}
+        />
+        <SmartSubmit />
+      </form>
+    </div>
+  );
+}
+
+function SmartSubmit() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex h-[38px] shrink-0 items-center justify-center rounded-lg bg-series-1 px-3 text-sm font-medium text-white hover:brightness-110 disabled:opacity-50"
+    >
+      {pending ? "…" : "Dodaj"}
+    </button>
+  );
 }
 
 /**

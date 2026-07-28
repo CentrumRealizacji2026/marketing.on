@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import { and, asc, desc, eq, gte } from "drizzle-orm";
 import { BookOpen, GraduationCap } from "lucide-react";
 
+import { HabitHeatmap, StreakBadge } from "@/components/charts/habit-heatmap";
 import { Meter } from "@/components/charts/sparkline";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { LearningBlockStatus } from "@/components/learning/block-status";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { learningLogs, learningPlanWeek, learningPlanYear, materials } from "@/lib/db/schema";
-import { WEEKDAYS, addDays, formatDatePl, isoWeekday, todayInTz } from "@/lib/domain/dates";
+import { WEEKDAYS, addDays, formatDatePl, isoWeekday, startOfWeek, todayInTz } from "@/lib/domain/dates";
+import { currentStreak, learningDayStatus, type HabitDay } from "@/lib/domain/habits";
 import { learningBlocksForDate } from "@/lib/domain/learning";
 import { formatTime } from "@/lib/utils";
 
@@ -21,6 +23,9 @@ export default async function LearningPage() {
   const today = todayInTz(settings.timezone);
   const from = addDays(today, -30);
   const weekday = isoWeekday(today);
+
+  // Karta czasu nauki liczy 30 dni, ale heatmapa serii sięga 8 pełnych tygodni.
+  const heatStart = startOfWeek(addDays(today, -55), settings.weekStartsOn);
 
   const [weekPlans, yearPlans, logs, materialRows] = await Promise.all([
     db
@@ -36,7 +41,7 @@ export default async function LearningPage() {
     db
       .select()
       .from(learningLogs)
-      .where(and(eq(learningLogs.userId, user.id), gte(learningLogs.date, from)))
+      .where(and(eq(learningLogs.userId, user.id), gte(learningLogs.date, heatStart)))
       .orderBy(desc(learningLogs.date)),
     db.select().from(materials).where(eq(materials.userId, user.id)).orderBy(asc(materials.position)),
   ]);
@@ -46,12 +51,21 @@ export default async function LearningPage() {
 
   const minutesBySkill = new Map<string, number>();
   for (const log of logs) {
-    if (!log.done) continue;
+    if (!log.done || log.date < from) continue;
     minutesBySkill.set(log.skill, (minutesBySkill.get(log.skill) ?? 0) + (log.minutes ?? 0));
   }
   const maxMinutes = Math.max(...minutesBySkill.values(), 1);
 
   const activePeriods = yearPlans.filter((p) => p.periodStart <= today && today <= p.periodEnd);
+
+  // Seria nauki: dzień liczy się względem bloków zaplanowanych na ten dzień.
+  const naukaDni: HabitDay[] = [];
+  for (let date = heatStart; date <= today; date = addDays(date, 1)) {
+    const planned = learningBlocksForDate(date, weekPlans, yearPlans).length;
+    const done = logs.filter((log) => log.date === date && log.done).length;
+    naukaDni.push({ date, status: learningDayStatus(planned, done) });
+  }
+  const seria = currentStreak(naukaDni, today);
 
   return (
     <div className="flex flex-col gap-3">
@@ -93,6 +107,21 @@ export default async function LearningPage() {
             })}
           </ul>
         )}
+      </Card>
+
+      <Card id="serie">
+        <CardHeader
+          title="Seria nauki"
+          subtitle="Ostatnie 8 tygodni — dni bez planu nie przerywają serii"
+          icon={BookOpen}
+          action={<StreakBadge length={seria.length} label="Nauka" />}
+        />
+        <HabitHeatmap
+          days={naukaDni}
+          weekStartsOn={settings.weekStartsOn}
+          label="Regularność nauki, 8 tygodni"
+          tone="var(--series-3)"
+        />
       </Card>
 
       <Card id="tydzien">

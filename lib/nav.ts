@@ -146,7 +146,7 @@ export const NAV: NavCategory[] = [
     icon: Brain,
     items: [
       { label: "Rekomendacje", href: "/mentor#rekomendacje" },
-      { label: "Przegląd tygodnia", href: "/mentor#tydzien" },
+      { label: "Przegląd tygodnia", href: "/tydzien" },
       { label: "Cele", href: "/mentor#cele" },
     ],
   },
