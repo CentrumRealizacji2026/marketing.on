@@ -19,7 +19,7 @@ import {
   type ContractStatus,
 } from "@/lib/db/schema";
 import { getUserSettings, requireUser } from "@/lib/auth/session";
-import { addDays, formatDatePl, todayInTz } from "@/lib/domain/dates";
+import { addDays, formatDatePl, startOfWeek, todayInTz } from "@/lib/domain/dates";
 import { parseQuickEntry } from "@/lib/domain/quick-parse";
 import { formatMoney } from "@/lib/utils";
 
@@ -88,11 +88,17 @@ export async function toggleTask(formData: FormData) {
 }
 
 export async function toggleTraining(formData: FormData) {
-  const { user, today } = await currentContext();
+  const { user, settings, today } = await currentContext();
   const planId = String(formData.get("planId") ?? "");
   const date = String(formData.get("date") ?? today);
   const done = formData.get("done") === "1";
   if (!planId) return;
+
+  // Odhaczać można wstecz w bieżącym tygodniu (zapomniany poniedziałek),
+  // ale nie w przyszłości i nie w dowolnie starej historii.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > today || date < startOfWeek(today, settings.weekStartsOn)) {
+    return;
+  }
 
   const [plan] = await db
     .select()
