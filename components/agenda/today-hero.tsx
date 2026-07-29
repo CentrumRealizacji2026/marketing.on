@@ -38,8 +38,9 @@ export function TodayHero({ items, today, nowMin }: { items: AgendaItem[]; today
   const lineIndex = nowLineIndex(timed, nowMin);
 
   const done = annotated.filter((item) => item.done).length;
+  const skipped = annotated.filter((item) => !item.done && item.skipped).length;
   const total = annotated.length;
-  const left = total - done;
+  const left = total - done - skipped;
 
   // Budżet dnia: minuty planu vs czas do 22:00 — sygnał „coś przełóż", zanim wieczór to obnaży.
   const load = dayLoad(annotated, nowMin);
@@ -57,8 +58,10 @@ export function TodayHero({ items, today, nowMin }: { items: AgendaItem[]; today
         subtitle={
           total > 0
             ? left === 0
-              ? `Zrobione wszystkie ${total} — dzień domknięty`
-              : `Zrobione ${done} z ${total} · zostało ${left}`
+              ? skipped > 0
+                ? `Dzień domknięty — zrobione ${done}, pominięte ${skipped}`
+                : `Zrobione wszystkie ${total} — dzień domknięty`
+              : `Zrobione ${done} z ${total} · zostało ${left}${skipped > 0 ? ` · pominięte ${skipped}` : ""}`
             : undefined
         }
         icon={ListChecks}
@@ -183,14 +186,15 @@ function AgendaRow({ item, today }: { item: TimedAgendaItem; today: string }) {
   return (
     <li
       data-state={item.state ?? "bez-pory"}
+      data-skipped={item.skipped || undefined}
       className={cn(
         "flex items-center gap-2.5 rounded-lg px-2 py-1.5",
-        item.state === "przeszle" && !item.done && "opacity-55",
-        item.done && "opacity-70",
-        item.state === "wkrotce" && !item.done && "bg-surface-2/60",
+        item.state === "przeszle" && !item.done && !item.skipped && "opacity-55",
+        (item.done || item.skipped) && "opacity-70",
+        item.state === "wkrotce" && !item.done && !item.skipped && "bg-surface-2/60",
       )}
       style={
-        item.state === "teraz" && !item.done
+        item.state === "teraz" && !item.done && !item.skipped
           ? {
               boxShadow: `inset 2px 0 0 ${CATEGORY_COLOR[item.category]}`,
               background: `color-mix(in oklab, ${CATEGORY_COLOR[item.category]} 7%, transparent)`,
@@ -211,13 +215,14 @@ function AgendaRow({ item, today }: { item: TimedAgendaItem; today: string }) {
           <span
             className={cn(
               "block truncate text-sm",
-              item.done ? "text-muted line-through" : "text-ink",
-              item.state === "wkrotce" && !item.done && "font-medium",
+              item.done ? "text-muted line-through" : item.skipped ? "text-muted" : "text-ink",
+              item.state === "wkrotce" && !item.done && !item.skipped && "font-medium",
             )}
           >
             {item.title}
           </span>
           <span className="block truncate text-xs text-muted">
+            {item.skipped ? "pominięte · " : ""}
             {AGENDA_CATEGORY_LABEL[item.category]}
             {item.detail ? ` · ${item.detail}` : ""}
           </span>

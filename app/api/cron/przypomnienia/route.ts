@@ -125,7 +125,10 @@ export async function GET(request: NextRequest) {
 
       const due = dueReminders(
         {
-          doses: schedule.map((dose) => ({ slot: dose.slot, name: dose.name, taken: dose.taken })),
+          // Świadomie pominięta dawka jest zamknięta — nie ma o czym przypominać.
+          doses: schedule
+            .filter((dose) => !dose.skipped)
+            .map((dose) => ({ slot: dose.slot, name: dose.name, taken: dose.taken })),
           payments,
           trainings: planRows.map((plan) => ({
             planId: plan.id,
@@ -133,7 +136,8 @@ export async function GET(request: NextRequest) {
             discipline: plan.discipline,
             startTime: plan.startTime,
             durationMin: plan.durationMin,
-            done: trainingLogRows.some((log) => log.planId === plan.id && log.done),
+            // Każdy wpis dziennika to decyzja (odbyty ALBO odpuszczony) — nie przypominamy.
+            done: trainingLogRows.some((log) => log.planId === plan.id),
           })),
           learning: blocks.map((block) => ({
             planId: block.planId,

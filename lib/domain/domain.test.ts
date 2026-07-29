@@ -127,7 +127,7 @@ describe("kalendarz miesięczny", () => {
 });
 
 describe("agenda dnia", () => {
-  const dose = (name: string, slot: string, taken = false) => ({
+  const dose = (name: string, slot: string, taken = false, skipped = false) => ({
     medicationId: `m-${name}`,
     name,
     kind: "lek" as const,
@@ -135,6 +135,7 @@ describe("agenda dnia", () => {
     doseUnit: "tabletka",
     slot,
     taken,
+    skipped,
     notes: null,
   });
 
@@ -149,7 +150,15 @@ describe("agenda dnia", () => {
     const agenda = buildAgenda({
       doses: [dose("Magnez", "wieczór"), dose("Witamina D", "rano", true)],
       training: [
-        { id: "t1", discipline: "rower", title: "interwały", startTime: "18:00:00", durationMin: 60, done: false },
+        {
+          id: "t1",
+          discipline: "rower",
+          title: "interwały",
+          startTime: "18:00:00",
+          durationMin: 60,
+          done: false,
+          skipped: false,
+        },
       ],
       learning: [
         { id: "l1", skill: "hiszpański", startTime: "20:00:00", durationMin: 45, focus: "czasy przeszłe", done: false },
@@ -170,12 +179,14 @@ describe("agenda dnia", () => {
       type: "training",
       planId: "t1",
       done: false,
+      skipped: false,
     });
     expect(agenda.find((i) => i.title === "Magnez")?.action).toEqual({
       type: "dose",
       medicationId: "m-Magnez",
       slot: "wieczór",
       taken: false,
+      skipped: false,
     });
     expect(agenda.find((i) => i.title === "hiszpański")?.action).toEqual({
       type: "learning",
@@ -215,10 +226,27 @@ describe("agenda dnia", () => {
     expect(agenda).toHaveLength(2);
   });
 
+  it("pominięte niesie trzeci stan: nie jest zrobione, ale jest decyzją", () => {
+    const agenda = buildAgenda({
+      doses: [dose("Waterout", "rano", false, true)],
+      training: [
+        { id: "t1", discipline: "siła", title: null, startTime: null, durationMin: 60, done: false, skipped: true },
+      ],
+      learning: [{ id: "l1", skill: "hiszpański", startTime: null, durationMin: 30, focus: null, done: false }],
+      tasks: [],
+    });
+    expect(agenda.every((item) => !item.done && item.skipped)).toBe(true);
+    // Wzięta dawka ma pierwszeństwo — taken i skipped naraz nie dają „pominiętej".
+    const wzieta = buildAgenda({ doses: [dose("Magnez", "rano", true, true)], training: [], learning: [], tasks: [] });
+    expect(wzieta[0]).toMatchObject({ done: true, skipped: false });
+  });
+
   it("oznacza wykonane pozycje i zachowuje kategorię", () => {
     const agenda = buildAgenda({
       doses: [dose("Magnez", "rano", true)],
-      training: [{ id: "t1", discipline: "bieg", title: null, startTime: null, durationMin: null, done: true }],
+      training: [
+        { id: "t1", discipline: "bieg", title: null, startTime: null, durationMin: null, done: true, skipped: false },
+      ],
       learning: [],
       tasks: [],
     });
@@ -262,7 +290,7 @@ describe("stan czasowy agendy", () => {
     expect(agendaTemporalState("noc", null, 2 * 60)).toBe("pozniej");
   });
 
-  const timed = (key: string, when: string | null, done = false, durationMin: number | null = 60) =>
+  const timed = (key: string, when: string | null, done = false, durationMin: number | null = 60, skipped = false) =>
     ({
       key,
       category: "trening" as const,
@@ -271,8 +299,9 @@ describe("stan czasowy agendy", () => {
       title: key,
       detail: null,
       done,
+      skipped,
       href: "/trening",
-      action: { type: "training" as const, planId: key, done },
+      action: { type: "training" as const, planId: key, done, skipped },
     });
 
   it("spotlight bierze nieodhaczone „teraz”, dopełnia nadchodzącymi i nie wskrzesza przeszłych", () => {
@@ -294,6 +323,14 @@ describe("stan czasowy agendy", () => {
   it("spotlight jest pusty, gdy wszystko odhaczone albo minęło", () => {
     const items = annotateAgenda([timed("a", "06:00"), timed("b", "08:00", true)], 12 * 60);
     expect(selectSpotlight(items)).toEqual([]);
+  });
+
+  it("pominięta pozycja nie świeci w spotlighcie — decyzja zapadła", () => {
+    const items = annotateAgenda(
+      [timed("pominiety", "13:00", false, 60, true), timed("czeka", "14:00")],
+      12 * 60,
+    );
+    expect(selectSpotlight(items).map((i) => i.key)).toEqual(["czeka"]);
   });
 
   it("linia „teraz” staje między tym, co się zaczęło, a tym, co dopiero będzie", () => {
@@ -1079,17 +1116,18 @@ describe("szybki wpis językiem naturalnym", () => {
 });
 
 describe("budżet dnia", () => {
-  const pozycja = (durationMin: number | null, done = false) =>
+  const pozycja = (durationMin: number | null, done = false, skipped = false) =>
     ({
-      key: `k-${Math.abs(durationMin ?? 0)}-${done}`,
+      key: `k-${Math.abs(durationMin ?? 0)}-${done}-${skipped}`,
       category: "trening" as const,
       when: "10:00",
       durationMin,
       title: "x",
       detail: null,
       done,
+      skipped,
       href: "/trening",
-      action: { type: "training" as const, planId: "p", done },
+      action: { type: "training" as const, planId: "p", done, skipped },
     });
 
   it("sumuje minuty nieodhaczonych pozycji", () => {
@@ -1106,6 +1144,11 @@ describe("budżet dnia", () => {
 
   it("zrobione pozycje nie obciążają dnia", () => {
     const load = dayLoad([pozycja(60, true), pozycja(45)], 10 * 60);
+    expect(load.plannedMin).toBe(45);
+  });
+
+  it("pominięte pozycje nie obciążają dnia — świadomie zdjęte z planu", () => {
+    const load = dayLoad([pozycja(60, false, true), pozycja(45)], 10 * 60);
     expect(load.plannedMin).toBe(45);
   });
 

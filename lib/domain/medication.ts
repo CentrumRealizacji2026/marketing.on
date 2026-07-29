@@ -44,6 +44,8 @@ export type MedicationDose = {
   doseUnit: string | null;
   slot: string;
   taken: boolean;
+  /** Świadomie pominięta dziś — zamknięta bez wzięcia. Wzięta ma pierwszeństwo. */
+  skipped: boolean;
   notes: string | null;
 };
 
@@ -73,9 +75,10 @@ function isScheduledOn(med: MedicationRow, date: string): boolean {
 export function medicationScheduleForDate(
   date: string,
   medications: MedicationRow[],
-  logs: Array<{ medicationId: string; slot: string; taken: boolean }> = [],
+  logs: Array<{ medicationId: string; slot: string; taken: boolean; skipped?: boolean }> = [],
 ): MedicationDose[] {
   const takenSet = new Set(logs.filter((l) => l.taken).map((l) => `${l.medicationId}::${l.slot}`));
+  const skippedSet = new Set(logs.filter((l) => !l.taken && l.skipped).map((l) => `${l.medicationId}::${l.slot}`));
 
   const doses = medications.filter((med) => isScheduledOn(med, date)).flatMap((med) =>
     med.timesOfDay.map((slot) => ({
@@ -86,6 +89,7 @@ export function medicationScheduleForDate(
       doseUnit: med.doseUnit,
       slot,
       taken: takenSet.has(`${med.id}::${slot}`),
+      skipped: skippedSet.has(`${med.id}::${slot}`),
       notes: med.notes,
     })),
   );

@@ -51,7 +51,12 @@ export async function toggleDose(formData: FormData) {
   const medicationId = String(formData.get("medicationId") ?? "");
   const slot = String(formData.get("slot") ?? "");
   const date = String(formData.get("date") ?? today);
-  const taken = formData.get("taken") === "1";
+
+  // Trzy stany: wzięte / pominięte („dziś nie biorę") / bez decyzji.
+  // Pole `skip` przełącza pominięcie, w jego braku `taken` działa jak dotąd.
+  const skipRaw = formData.get("skip");
+  const skipped = skipRaw !== null && skipRaw === "1";
+  const taken = skipRaw === null && formData.get("taken") === "1";
 
   if (!medicationId || !slot) return;
 
@@ -65,10 +70,10 @@ export async function toggleDose(formData: FormData) {
 
   await db
     .insert(medicationLogs)
-    .values({ userId: user.id, medicationId, date, slot, taken, takenAt: taken ? new Date() : null })
+    .values({ userId: user.id, medicationId, date, slot, taken, skipped, takenAt: taken ? new Date() : null })
     .onConflictDoUpdate({
       target: [medicationLogs.medicationId, medicationLogs.date, medicationLogs.slot],
-      set: { taken, takenAt: taken ? new Date() : null },
+      set: { taken, skipped, takenAt: taken ? new Date() : null },
     });
 
   refresh();
@@ -91,6 +96,11 @@ export async function toggleTraining(formData: FormData) {
   const { user, settings, today } = await currentContext();
   const planId = String(formData.get("planId") ?? "");
   const date = String(formData.get("date") ?? today);
+
+  // Trzeci stan: wpis done=false w dzienniku znaczy „świadomie odpuszczone".
+  // Raport takich wpisów nie tworzy (niezaznaczone kasuje), więc kolizji nie ma.
+  const skipRaw = formData.get("skip");
+  const skip = skipRaw !== null ? skipRaw === "1" : null;
   const done = formData.get("done") === "1";
   if (!planId) return;
 
@@ -113,22 +123,23 @@ export async function toggleTraining(formData: FormData) {
     .where(and(eq(trainingLogs.userId, user.id), eq(trainingLogs.date, date), eq(trainingLogs.planId, planId)))
     .limit(1);
 
-  if (done) {
-    if (existing) {
-      await db.update(trainingLogs).set({ done: true }).where(eq(trainingLogs.id, existing.id));
-    } else {
-      await db.insert(trainingLogs).values({
-        userId: user.id,
-        date,
-        discipline: plan.discipline,
-        title: plan.title,
-        durationMin: plan.durationMin,
-        planId,
-        done: true,
-      });
-    }
+  const wanted = skip !== null ? (skip ? false : null) : done ? true : null;
+
+  if (wanted === null) {
+    // Cofnięcie decyzji (odhaczenia albo pominięcia) — wpis znika.
+    if (existing) await db.delete(trainingLogs).where(eq(trainingLogs.id, existing.id));
   } else if (existing) {
-    await db.delete(trainingLogs).where(eq(trainingLogs.id, existing.id));
+    await db.update(trainingLogs).set({ done: wanted }).where(eq(trainingLogs.id, existing.id));
+  } else {
+    await db.insert(trainingLogs).values({
+      userId: user.id,
+      date,
+      discipline: plan.discipline,
+      title: plan.title,
+      durationMin: plan.durationMin,
+      planId,
+      done: wanted,
+    });
   }
 
   refresh();

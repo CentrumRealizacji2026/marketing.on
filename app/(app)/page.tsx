@@ -630,6 +630,8 @@ function buildAgendaItems(data: Data) {
       startTime: plan.startTime,
       durationMin: plan.durationMin,
       done: Boolean(log?.done),
+      // Wpis done=false w dzienniku = świadomie odpuszczone dziś.
+      skipped: Boolean(log && !log.done),
     })),
     learning: data.nauka.blocks.map(({ block, log }) => ({
       id: block.planId,
