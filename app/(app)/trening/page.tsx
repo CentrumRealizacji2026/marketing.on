@@ -8,7 +8,7 @@ import { toggleTraining } from "@/lib/actions/quick";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { personalRecords, trainingLogs, trainingPlans } from "@/lib/db/schema";
-import { WEEKDAYS, addDays, isoWeekday, startOfWeek, todayInTz } from "@/lib/domain/dates";
+import { WEEKDAYS, addDays, formatDateShortPl, isoWeekday, startOfWeek, todayInTz } from "@/lib/domain/dates";
 import { currentStreak, trainingDayStatus, type HabitDay } from "@/lib/domain/habits";
 import { currentRecords, formatRecordValue } from "@/lib/domain/records";
 import { formatNumber, formatTime } from "@/lib/utils";
@@ -39,8 +39,14 @@ export default async function TrainingPage() {
     db.select().from(personalRecords).where(eq(personalRecords.userId, user.id)),
   ]);
 
-  const todayLogs = logs.filter((log) => log.date === today);
   const groups = currentRecords(records);
+
+  // Data każdego dnia tygodnia w BIEŻĄCYM tygodniu — dni do dziś włącznie da się
+  // odhaczyć wstecz (zapomniany poniedziałek nie przepada), przyszłych nie.
+  const weekStart = startOfWeek(today, settings.weekStartsOn);
+  const datyTygodnia = new Map(
+    Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((date) => [isoWeekday(date), date]),
+  );
 
   // Seria treningowa: dzień liczy się względem planu na ten dzień tygodnia.
   const treningDni: HabitDay[] = [];
@@ -62,6 +68,8 @@ export default async function TrainingPage() {
             {WEEKDAYS.map((day) => {
               const dayPlans = plans.filter((plan) => plan.weekday === day.value);
               const isToday = day.value === weekday;
+              const dayDate = datyTygodnia.get(day.value)!;
+              const editable = dayDate <= today;
               return (
                 <div
                   key={day.value}
@@ -69,14 +77,16 @@ export default async function TrainingPage() {
                 >
                   <p className="mb-1.5 text-xs font-semibold tracking-wide text-muted uppercase">
                     {day.label}
-                    {isToday ? " · dziś" : ""}
+                    {isToday ? " · dziś" : ` · ${formatDateShortPl(dayDate)}`}
                   </p>
                   {dayPlans.length === 0 ? (
                     <p className="text-xs text-muted">wolne</p>
                   ) : (
                     <ul className="flex flex-col gap-2">
                       {dayPlans.map((plan) => {
-                        const log = isToday ? todayLogs.find((entry) => entry.planId === plan.id) : null;
+                        const log = editable
+                          ? logs.find((entry) => entry.date === dayDate && entry.planId === plan.id)
+                          : null;
                         return (
                           <li key={plan.id}>
                             <p className="text-sm text-ink">{plan.title || plan.discipline}</p>
@@ -85,10 +95,10 @@ export default async function TrainingPage() {
                               {plan.startTime ? ` · ${formatTime(plan.startTime)}` : ""}
                               {plan.durationMin ? ` · ${plan.durationMin} min` : ""}
                             </p>
-                            {isToday ? (
+                            {editable ? (
                               <form action={toggleTraining} className="mt-1.5">
                                 <input type="hidden" name="planId" value={plan.id} />
-                                <input type="hidden" name="date" value={today} />
+                                <input type="hidden" name="date" value={dayDate} />
                                 <input type="hidden" name="done" value={log?.done ? "0" : "1"} />
                                 <button
                                   type="submit"

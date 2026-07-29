@@ -104,71 +104,6 @@ export default async function SalesPage() {
         </div>
       </Card>
 
-      {sections.map((section) => {
-        const values = dates.map((date) => byDate.get(date)?.[section.key] ?? 0);
-        const todayValue = byDate.get(today)?.[section.key] ?? 0;
-        const progress = goalProgress(todayValue, section.goal);
-
-        return (
-          <Card key={section.id} id={section.id}>
-            <CardHeader
-              title={section.title}
-              subtitle="Ostatnie 14 dni"
-              action={progress ? <span className="text-muted">dziś {progress.pct}% celu</span> : null}
-            />
-            {progress ? (
-              <div className="mb-3">
-                <Meter
-                  value={progress.actual}
-                  max={progress.goal}
-                  tone={progress.pct >= 100 ? "var(--good)" : "var(--series-1)"}
-                  label={`${section.title} dziś`}
-                />
-              </div>
-            ) : null}
-            <DayBars
-              bars={dates.map((date, index) => ({
-                date,
-                value: values[index],
-                label: formatDateShortPl(date),
-              }))}
-              today={today}
-              goal={section.goal}
-            />
-          </Card>
-        );
-      })}
-
-      <Card id="lejek">
-        <CardHeader title="Lejek" subtitle="Ostatnie 30 dni" />
-        <div className="flex flex-col gap-3">
-          <BarRow label="Rozmowy" value={totalsMonth.calls} max={maxFunnel} display={formatNumber(totalsMonth.calls)} />
-          <BarRow
-            label="Spotkania umówione"
-            value={totalsMonth.meetingsScheduled}
-            max={maxFunnel}
-            display={`${formatNumber(totalsMonth.meetingsScheduled)} · ${formatPercent(rates.callToScheduled)}`}
-          />
-          <BarRow
-            label="Spotkania odbyte"
-            value={totalsMonth.meetingsHeld}
-            max={maxFunnel}
-            display={`${formatNumber(totalsMonth.meetingsHeld)} · ${formatPercent(rates.scheduledToHeld)}`}
-          />
-          <BarRow
-            label="Umowy"
-            value={totalsMonth.contracts}
-            max={maxFunnel}
-            display={`${formatNumber(totalsMonth.contracts)} · ${formatPercent(rates.heldToContract)}`}
-            tone="var(--good)"
-          />
-        </div>
-        <p className="mt-3 text-xs text-muted">
-          Procent przy każdym etapie to konwersja z etapu poprzedniego. Od rozmowy do umowy:{" "}
-          {formatPercent(rates.callToContract)}.
-        </p>
-      </Card>
-
       <Card id="do-podpisania">
         <CardHeader
           title="Do podpisania"
@@ -238,6 +173,71 @@ export default async function SalesPage() {
           action={saveDeals}
           currency={settings.currency}
         />
+      </Card>
+
+      {sections.map((section) => {
+        const values = dates.map((date) => byDate.get(date)?.[section.key] ?? 0);
+        const todayValue = byDate.get(today)?.[section.key] ?? 0;
+        const progress = goalProgress(todayValue, section.goal);
+
+        return (
+          <Card key={section.id} id={section.id}>
+            <CardHeader
+              title={section.title}
+              subtitle="Ostatnie 14 dni"
+              action={progress ? <span className="text-muted">dziś {progress.pct}% celu</span> : null}
+            />
+            {progress ? (
+              <div className="mb-3">
+                <Meter
+                  value={progress.actual}
+                  max={progress.goal}
+                  tone={progress.pct >= 100 ? "var(--good)" : "var(--series-1)"}
+                  label={`${section.title} dziś`}
+                />
+              </div>
+            ) : null}
+            <DayBars
+              bars={dates.map((date, index) => ({
+                date,
+                value: values[index],
+                label: formatDateShortPl(date),
+              }))}
+              today={today}
+              goal={section.goal}
+            />
+          </Card>
+        );
+      })}
+
+      <Card id="lejek">
+        <CardHeader title="Lejek" subtitle="Ostatnie 30 dni" />
+        <div className="flex flex-col gap-3">
+          <BarRow label="Rozmowy" value={totalsMonth.calls} max={maxFunnel} display={formatNumber(totalsMonth.calls)} />
+          <BarRow
+            label="Spotkania umówione"
+            value={totalsMonth.meetingsScheduled}
+            max={maxFunnel}
+            display={`${formatNumber(totalsMonth.meetingsScheduled)} · ${formatPercent(rates.callToScheduled)}`}
+          />
+          <BarRow
+            label="Spotkania odbyte"
+            value={totalsMonth.meetingsHeld}
+            max={maxFunnel}
+            display={`${formatNumber(totalsMonth.meetingsHeld)} · ${formatPercent(rates.scheduledToHeld)}`}
+          />
+          <BarRow
+            label="Umowy"
+            value={totalsMonth.contracts}
+            max={maxFunnel}
+            display={`${formatNumber(totalsMonth.contracts)} · ${formatPercent(rates.heldToContract)}`}
+            tone="var(--good)"
+          />
+        </div>
+        <p className="mt-3 text-xs text-muted">
+          Procent przy każdym etapie to konwersja z etapu poprzedniego. Od rozmowy do umowy:{" "}
+          {formatPercent(rates.callToContract)}.
+        </p>
       </Card>
 
       <Card id="umowy">
