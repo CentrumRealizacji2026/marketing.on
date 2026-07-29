@@ -77,6 +77,46 @@ export const sessions = pgTable(
 );
 
 /**
+ * Subskrypcje powiadomień push — jedna na urządzenie/przeglądarkę.
+ * Endpoint jest unikalny globalnie (nadaje go przeglądarka), więc ponowna
+ * subskrypcja tego samego urządzenia nadpisuje wpis zamiast go dublować.
+ */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("push_subscriptions_endpoint_key").on(t.endpoint), index("push_subscriptions_user_idx").on(t.userId)],
+);
+
+/**
+ * Rejestr wysłanych przypomnień — dedupe między tickami harmonogramu.
+ * refKey zawiera datę (np. „2026-07-28|rano"), więc unikalność (user, kind,
+ * refKey) gwarantuje najwyżej jedno powiadomienie na zdarzenie dziennie.
+ */
+export const pushSends = pgTable(
+  "push_sends",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    refKey: text("ref_key").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("push_sends_dedupe_key").on(t.userId, t.kind, t.refKey)],
+);
+
+/**
  * Nieudane próby logowania. Publiczny adres znaczy, że hasło może zgadywać
  * każdy, kto zna URL — a bez licznika może to robić bez końca.
  *
@@ -124,6 +164,14 @@ export const settings = pgTable("settings", {
   goalMeetingsHeldPerDay: integer("goal_meetings_held_per_day"),
   goalContractsPerWeek: integer("goal_contracts_per_week"),
   monthlyRevenueGoalPln: numeric("monthly_revenue_goal_pln", { precision: 12, scale: 2, mode: "number" }),
+
+  // Powiadomienia push — kategorie włączone domyślnie; wyłącza się w ustawieniach.
+  pushMeds: boolean("push_meds").notNull().default(true),
+  pushBills: boolean("push_bills").notNull().default(true),
+  pushTraining: boolean("push_training").notNull().default(true),
+  pushLearning: boolean("push_learning").notNull().default(true),
+  pushMorning: boolean("push_morning").notNull().default(true),
+  pushEvening: boolean("push_evening").notNull().default(true),
 
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

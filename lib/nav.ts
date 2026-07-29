@@ -175,6 +175,7 @@ export const NAV: NavCategory[] = [
       { label: "Plan nauki", href: "/ustawienia/nauka" },
       { label: "Projekty", href: "/ustawienia/projekty" },
       { label: "Materiały", href: "/ustawienia/materialy" },
+      { label: "Powiadomienia", href: "/ustawienia/powiadomienia" },
       { label: "Konto", href: "/ustawienia/konto" },
     ],
   },

@@ -40,6 +40,7 @@ import {
 import type { HabitDay } from "./habits";
 import { parseQuickEntry } from "./quick-parse";
 import { morningState } from "./morning";
+import { dueReminders } from "./reminders";
 import { correlationInsights, pearson } from "./stats";
 import { summarizeWeek, weekRatio, type WeekSourceDay } from "./week";
 import { describeRank, formatTopPct, incomeRank } from "./income-rank";
@@ -660,6 +661,119 @@ describe("stygnące szanse i prognoza lejka", () => {
     const summary = { open: 1, openPln: 1000, won: 0, wonPln: 0, lost: 0, lostPln: 0, winRate: null };
     expect(pipelineForecast(summary, 0.3)).toEqual({ expectedPln: 300, rate: 0.3, source: "konwersja" });
     expect(pipelineForecast(summary, null)).toEqual({ expectedPln: 500, rate: 0.5, source: "domyslna" });
+  });
+});
+
+describe("przypomnienia push", () => {
+  const prefs = { leki: true, raty: true, trening: true, nauka: true, poranek: true, wieczor: true };
+  const pusty = {
+    doses: [],
+    payments: [],
+    trainings: [],
+    learning: [],
+    morningFilled: true,
+    reportSubmitted: true,
+    currency: "PLN",
+    prefs,
+  };
+  const dzis = "2026-07-28";
+
+  it("lek przypomina w oknie pory tylko gdy nie wzięty", () => {
+    const wejscie = {
+      ...pusty,
+      doses: [
+        { slot: "rano", name: "Witamina D", taken: false },
+        { slot: "rano", name: "Omega-3", taken: true },
+      ],
+    };
+    const oOsmej = dueReminders(wejscie, dzis, 8 * 60);
+    expect(oOsmej).toHaveLength(1);
+    expect(oOsmej[0]).toMatchObject({ kind: "leki", refKey: "2026-07-28|rano", body: "Witamina D" });
+    expect(dueReminders(wejscie, dzis, 12 * 60)).toHaveLength(0);
+  });
+
+  it("dawki tego samego slotu łączą się w jedno przypomnienie", () => {
+    const wynik = dueReminders(
+      {
+        ...pusty,
+        doses: [
+          { slot: "wieczór", name: "Magnez", taken: false },
+          { slot: "wieczór", name: "Melatonina", taken: false },
+        ],
+      },
+      dzis,
+      19 * 60,
+    );
+    expect(wynik).toHaveLength(1);
+    expect(wynik[0].body).toBe("Magnez, Melatonina");
+  });
+
+  it("trening przypomina od 90 minut przed startem do końca bloku", () => {
+    const wejscie = {
+      ...pusty,
+      trainings: [
+        { planId: "p1", title: "Siłownia", discipline: "siła", startTime: "13:00:00", durationMin: 60, done: false },
+      ],
+    };
+    expect(dueReminders(wejscie, dzis, 11 * 60 + 29)).toHaveLength(0);
+    expect(dueReminders(wejscie, dzis, 11 * 60 + 31)).toHaveLength(1);
+    expect(dueReminders(wejscie, dzis, 13 * 60 + 30)).toHaveLength(1);
+    expect(dueReminders(wejscie, dzis, 14 * 60 + 1)).toHaveLength(0);
+  });
+
+  it("zrobiony trening i nauka milczą", () => {
+    const wynik = dueReminders(
+      {
+        ...pusty,
+        trainings: [{ planId: "p1", title: null, discipline: "bieg", startTime: "13:00:00", durationMin: 60, done: true }],
+        learning: [{ planId: "n1", skill: "angielski", startTime: "18:00:00", durationMin: 30, done: true }],
+      },
+      dzis,
+      13 * 60,
+    );
+    expect(wynik).toHaveLength(0);
+  });
+
+  it("rata przypomina trzy dni przed i w dniu terminu, po ósmej", () => {
+    const wejscie = {
+      ...pusty,
+      payments: [
+        { obligationId: "o1", name: "Rata auta", amountPln: 800, dueDate: "2026-07-28", status: "do-zaplaty" },
+        { obligationId: "o2", name: "Netflix", amountPln: 43, dueDate: "2026-07-31", status: "do-zaplaty" },
+        { obligationId: "o3", name: "Prąd", amountPln: 200, dueDate: "2026-07-30", status: "do-zaplaty" },
+        { obligationId: "o4", name: "Opłacona", amountPln: 99, dueDate: "2026-07-28", status: "zaplacone" },
+      ],
+    };
+    const rano = dueReminders(wejscie, dzis, 9 * 60);
+    expect(rano.map((r) => r.refKey).sort()).toEqual(["2026-07-28|o1|T0", "2026-07-28|o2|T3"]);
+    expect(dueReminders(wejscie, dzis, 7 * 60)).toHaveLength(0);
+  });
+
+  it("poranek i wieczór przypominają w swoich oknach, gdy nic nie wypełniono", () => {
+    const wejscie = { ...pusty, morningFilled: false, reportSubmitted: false };
+    expect(dueReminders(wejscie, dzis, 8 * 60).map((r) => r.kind)).toEqual(["poranek"]);
+    expect(dueReminders(wejscie, dzis, 21 * 60).map((r) => r.kind)).toEqual(["wieczor"]);
+    expect(dueReminders(wejscie, dzis, 15 * 60)).toHaveLength(0);
+  });
+
+  it("wyłączona kategoria milczy", () => {
+    const wynik = dueReminders(
+      {
+        ...pusty,
+        morningFilled: false,
+        prefs: { ...prefs, poranek: false },
+      },
+      dzis,
+      8 * 60,
+    );
+    expect(wynik).toHaveLength(0);
+  });
+
+  it("refKey jest stabilny między tickami", () => {
+    const wejscie = { ...pusty, doses: [{ slot: "rano", name: "Witamina D", taken: false }] };
+    const pierwszy = dueReminders(wejscie, dzis, 7 * 60)[0];
+    const drugi = dueReminders(wejscie, dzis, 9 * 60)[0];
+    expect(pierwszy.refKey).toBe(drugi.refKey);
   });
 });
 

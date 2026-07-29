@@ -22,8 +22,11 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { eq, sql } from "drizzle-orm";
+
 import { MorningCard } from "@/components/agenda/morning-card";
 import { CategoryWeek, WeekTotals } from "@/components/calendar/category-week";
+import { PushBanner } from "@/components/push/push-banner";
 import { StreakBadge } from "@/components/charts/habit-heatmap";
 import { Meter, Sparkline } from "@/components/charts/sparkline";
 import { TodayHero } from "@/components/agenda/today-hero";
@@ -45,6 +48,9 @@ import { currentStreak, habitDaysFromCalendar } from "@/lib/domain/habits";
 import { morningState } from "@/lib/domain/morning";
 import { WATER_STATUS_LABEL, waterPercent, waterStatus } from "@/lib/domain/water";
 import { WEIGHT_STATUS_LABEL, describeWeightProgress, weightPlanProgress } from "@/lib/domain/weight";
+import { db } from "@/lib/db";
+import { pushSubscriptions } from "@/lib/db/schema";
+import { pushConfigured } from "@/lib/push/send";
 import { getCalendarRange } from "@/lib/queries/calendar";
 import { getDashboardData } from "@/lib/queries/dashboard";
 
@@ -66,11 +72,16 @@ export default async function DashboardPage({
   const heatCount = diffDays(heatStart, addDays(weekStart, 6)) + 1;
   const heatDates = Array.from({ length: heatCount }, (_, i) => addDays(heatStart, i));
 
-  const [data, calendarDays, params] = await Promise.all([
+  const [data, calendarDays, params, pushDevices] = await Promise.all([
     getDashboardData(user.id, settings, today),
     getCalendarRange(user.id, settings, heatDates),
     searchParams,
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.userId, user.id)),
   ]);
+  const zachetaPush = pushConfigured() && (pushDevices[0]?.n ?? 0) === 0;
 
   const weekDays = calendarDays.slice(-7);
   const habitDays = habitDaysFromCalendar(calendarDays.filter((day) => day.date <= today));
@@ -92,6 +103,7 @@ export default async function DashboardPage({
           Raport z dnia {params.zapisano} zapisany.
         </p>
       ) : null}
+      {zachetaPush ? <PushBanner /> : null}
       {/* Poranek nad planem dnia: intencja otwiera dzień, wieczorny raport go domyka. */}
       <MorningCard
         state={morningState(data.poranek.filled, nowMin)}

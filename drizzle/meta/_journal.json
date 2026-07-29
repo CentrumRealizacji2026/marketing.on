@@ -85,6 +85,13 @@
       "when": 1785267033851,
       "tag": "0011_sprzedaz_akcje_i_poranny_rytual",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785268155996,
+      "tag": "0012_powiadomienia_push",
+      "breakpoints": true
     }
   ]
 }
