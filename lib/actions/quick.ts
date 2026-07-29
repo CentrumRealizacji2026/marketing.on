@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import {
   contracts,
   dailyLogs,
+  deals,
   learningLogs,
   learningPlanWeek,
   medicationLogs,
@@ -460,4 +461,47 @@ export async function addContract(_prev: QuickState, formData: FormData): Promis
       status === "negocjacje" ? " (negocjacje)" : ""
     }.`,
   };
+}
+
+/**
+ * Potencjalny klient prosto do lejka „Do podpisania" — bez otwierania tabeli.
+ * Kwota może być zerowa (doszacujesz później), szansa jest opcjonalna:
+ * bez niej prognoza liczy pozycję stawką globalną.
+ */
+export async function addDeal(_prev: QuickState, formData: FormData): Promise<QuickState> {
+  const { user, settings } = await currentContext();
+  const clientName = String(formData.get("clientName") ?? "").trim().slice(0, 120);
+  const valuePln = parseAmount(formData.get("valuePln")) ?? 0;
+  const rawProbability = String(formData.get("probability") ?? "").trim();
+  const parsedProbability = Number(rawProbability);
+  const probability =
+    rawProbability !== "" && Number.isInteger(parsedProbability) && parsedProbability >= 0 && parsedProbability <= 100
+      ? parsedProbability
+      : null;
+
+  if (!clientName) return { error: "Wpisz nazwę klienta." };
+
+  const [last] = await db
+    .select({ position: deals.position })
+    .from(deals)
+    .where(eq(deals.userId, user.id))
+    .orderBy(sql`${deals.position} desc`)
+    .limit(1);
+
+  await db.insert(deals).values({
+    userId: user.id,
+    clientName,
+    valuePln,
+    stage: "do-podpisania",
+    probability,
+    position: (last?.position ?? -1) + 1,
+    touchedAt: new Date(),
+  });
+
+  refresh();
+  const czesci = [
+    valuePln > 0 ? `na ${formatMoney(valuePln, settings.currency)}` : null,
+    probability !== null ? `szansa ${probability}%` : null,
+  ].filter(Boolean);
+  return { ok: `Dodano do lejka: ${clientName}${czesci.length > 0 ? ` (${czesci.join(", ")})` : ""}.` };
 }

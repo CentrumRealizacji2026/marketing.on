@@ -13,11 +13,12 @@ import {
   Plus,
   TrendingDown,
   TrendingUp,
+  UserPlus,
   X,
 } from "lucide-react";
 
 import { CashForm, Result, SmartForm, Submit, TaskForm, control } from "@/components/layout/quick-forms";
-import { addContract, addSalesActivity, addWater, type QuickState } from "@/lib/actions/quick";
+import { addContract, addDeal, addSalesActivity, addWater, type QuickState } from "@/lib/actions/quick";
 import { cn } from "@/lib/utils";
 
 /**
@@ -76,8 +77,11 @@ function InstantButton({ icon: Icon, label }: { icon: typeof Phone; label: strin
 function SalesPanel({ currency }: { currency: string }) {
   const [state, formAction] = useActionState<QuickState, FormData>(addSalesActivity, undefined);
   const [contractState, contractAction] = useActionState<QuickState, FormData>(addContract, undefined);
+  const [dealState, dealAction] = useActionState<QuickState, FormData>(addDeal, undefined);
   const [showContract, setShowContract] = useState(false);
+  const [showDeal, setShowDeal] = useState(false);
   const [contractKey, setContractKey] = useState(0);
+  const [dealKey, setDealKey] = useState(0);
   const [banner, setBanner] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,6 +95,14 @@ function SalesPanel({ currency }: { currency: string }) {
       setContractKey((key) => key + 1);
     }
   }, [contractState]);
+
+  useEffect(() => {
+    if (dealState?.ok) {
+      setBanner(dealState.ok);
+      setShowDeal(false);
+      setDealKey((key) => key + 1);
+    }
+  }, [dealState]);
 
   const liczniki = [
     { name: "calls", icon: Phone, label: "+1 rozmowa" },
@@ -143,11 +155,58 @@ function SalesPanel({ currency }: { currency: string }) {
           onClick={() => {
             setBanner(null);
             setShowContract(true);
+            setShowDeal(false);
           }}
           className="flex w-full items-center gap-2 rounded-lg border border-edge px-2.5 py-2 text-left text-sm text-ink hover:bg-surface-2"
         >
           <FileSignature className="h-4 w-4 shrink-0 text-series-2" />
           Dodaj umowę
+        </button>
+      )}
+
+      {showDeal ? (
+        <div key={dealKey} className="flex flex-col gap-2 border-t border-line pt-2">
+          {dealState?.error ? <Result state={dealState} /> : null}
+          <form action={dealAction} className="flex flex-col gap-2">
+            <input
+              name="clientName"
+              type="text"
+              autoFocus
+              required
+              placeholder="Potencjalny klient"
+              aria-label="Nazwa potencjalnego klienta"
+              className={control}
+            />
+            <input
+              name="valuePln"
+              type="text"
+              inputMode="decimal"
+              placeholder={`Szacowana kwota (${currency})`}
+              aria-label="Szacowana kwota"
+              className={cn(control, "tabular")}
+            />
+            <select name="probability" aria-label="Szansa wygranej" className={control} defaultValue="">
+              <option value="">Szansa: licz średnią</option>
+              <option value="20">Szansa 20%</option>
+              <option value="50">Szansa 50%</option>
+              <option value="80">Szansa 80%</option>
+              <option value="100">Szansa 100%</option>
+            </select>
+            <Submit label="Dodaj do lejka" />
+          </form>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setBanner(null);
+            setShowDeal(true);
+            setShowContract(false);
+          }}
+          className="flex w-full items-center gap-2 rounded-lg border border-edge px-2.5 py-2 text-left text-sm text-ink hover:bg-surface-2"
+        >
+          <UserPlus className="h-4 w-4 shrink-0 text-series-3" />
+          Dodaj potencjalnego klienta
         </button>
       )}
     </div>

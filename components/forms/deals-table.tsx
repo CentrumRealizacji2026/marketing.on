@@ -19,6 +19,9 @@ type Row = {
   stage: string;
   nextAction: string;
   nextActionDate: string;
+  note: string;
+  /** Szansa wygranej jako string selecta; "" = licz stawką globalną. */
+  probability: string;
   /** Wyliczone na serwerze z zapisanego stanu — edycja w polach tego nie odświeża. */
   stale: boolean;
 };
@@ -31,6 +34,8 @@ export type DealRow = {
   stage: string;
   nextAction: string | null;
   nextActionDate: string | null;
+  note: string | null;
+  probability: number | null;
   stale: boolean;
 };
 
@@ -43,6 +48,8 @@ function emptyRow(index: number): Row {
     stage: "do-podpisania",
     nextAction: "",
     nextActionDate: "",
+    note: "",
+    probability: "",
     stale: false,
   };
 }
@@ -82,6 +89,8 @@ export function DealsTable({
       stage: row.stage,
       nextAction: row.nextAction ?? "",
       nextActionDate: row.nextActionDate ?? "",
+      note: row.note ?? "",
+      probability: row.probability === null ? "" : String(row.probability),
       stale: row.stale,
     }));
     // Na start dziesięć miejsc; przy uzupełnionej tabeli dokładamy jeden wolny wiersz.
@@ -113,20 +122,24 @@ export function DealsTable({
             stage: row.stage,
             nextAction: row.nextAction,
             nextActionDate: row.nextActionDate,
+            note: row.note,
+            probability: row.probability,
           })),
         )}
       />
       <FormError>{state?.error}</FormError>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[58rem] text-sm">
+        <table className="w-full min-w-[74rem] text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs text-muted">
               <th className="pb-2 font-medium">Klient / firma</th>
               <th className="pb-2 font-medium">Szacowana kwota</th>
+              <th className="pb-2 font-medium">Szansa</th>
               <th className="pb-2 font-medium">Spodziewany podpis</th>
               <th className="pb-2 font-medium">Następna akcja</th>
               <th className="pb-2 font-medium">Termin akcji</th>
+              <th className="pb-2 font-medium">Notatka</th>
               <th className="pb-2 font-medium">Status</th>
               <th className="pb-2" />
             </tr>
@@ -162,6 +175,19 @@ export function DealsTable({
                   />
                 </td>
                 <td className="py-1.5 pr-2">
+                  <Select
+                    aria-label="Szansa wygranej"
+                    value={row.probability}
+                    onChange={(e) => update(index, { probability: e.target.value })}
+                  >
+                    <option value="">—</option>
+                    <option value="20">20%</option>
+                    <option value="50">50%</option>
+                    <option value="80">80%</option>
+                    <option value="100">100%</option>
+                  </Select>
+                </td>
+                <td className="py-1.5 pr-2">
                   <Input
                     type="date"
                     value={row.expectedDate}
@@ -181,6 +207,14 @@ export function DealsTable({
                     type="date"
                     value={row.nextActionDate}
                     onChange={(e) => update(index, { nextActionDate: e.target.value })}
+                  />
+                </td>
+                <td className="py-1.5 pr-2">
+                  <Input
+                    type="text"
+                    placeholder="np. dzwoniłem 20.07, wraca 5.08"
+                    value={row.note}
+                    onChange={(e) => update(index, { note: e.target.value })}
                   />
                 </td>
                 <td className="py-1.5 pr-2">
@@ -214,7 +248,7 @@ export function DealsTable({
                 {open.length === 1 ? "kontrakt" : open.length >= 2 && open.length <= 4 ? "kontrakty" : "kontraktów"}
               </td>
               <td className="tabular pt-3 text-base font-semibold text-ink">{formatMoney(openPln, currency)}</td>
-              <td colSpan={3} className={cn("pt-3 text-xs", won.length > 0 ? "text-[var(--delta-up)]" : "text-muted")}>
+              <td colSpan={5} className={cn("pt-3 text-xs", won.length > 0 ? "text-[var(--delta-up)]" : "text-muted")}>
                 {won.length > 0
                   ? `Podpisane w tabeli: ${formatNumber(won.length)} na ${formatMoney(wonPln, currency)}`
                   : "Podpisane pozycje nie liczą się do sumy."}

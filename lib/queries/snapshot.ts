@@ -276,6 +276,7 @@ export async function buildSnapshot(userId: string, settings: Settings, today: s
           spodziewanyPodpis: row.expectedDate,
           nastepnaAkcja: row.nextAction,
           terminAkcji: row.nextActionDate,
+          szansaProc: row.probability,
           stygnie: isDealStale(row, today),
         })),
       stygnacych: dealRows.filter((row) => isDealStale(row, today)).length,

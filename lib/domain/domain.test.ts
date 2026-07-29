@@ -654,13 +654,33 @@ describe("stygnące szanse i prognoza lejka", () => {
   it("prognoza bierze winRate przed konwersją i normalizuje do ułamka", () => {
     const summary = { open: 2, openPln: 10000, won: 3, wonPln: 0, lost: 1, lostPln: 0, winRate: 75 };
     const wynik = pipelineForecast(summary, 0.2);
-    expect(wynik).toEqual({ expectedPln: 7500, rate: 0.75, source: "winRate" });
+    expect(wynik).toEqual({ expectedPln: 7500, rate: 0.75, source: "winRate", ownCount: 0 });
   });
 
   it("bez historii bierze konwersję ze spotkań, a bez niczego 50%", () => {
     const summary = { open: 1, openPln: 1000, won: 0, wonPln: 0, lost: 0, lostPln: 0, winRate: null };
-    expect(pipelineForecast(summary, 0.3)).toEqual({ expectedPln: 300, rate: 0.3, source: "konwersja" });
-    expect(pipelineForecast(summary, null)).toEqual({ expectedPln: 500, rate: 0.5, source: "domyslna" });
+    expect(pipelineForecast(summary, 0.3)).toMatchObject({ expectedPln: 300, rate: 0.3, source: "konwersja" });
+    expect(pipelineForecast(summary, null)).toMatchObject({ expectedPln: 500, rate: 0.5, source: "domyslna" });
+  });
+
+  it("własna szansa pozycji liczy się indywidualnie, reszta stawką globalną", () => {
+    const summary = { open: 2, openPln: 30000, won: 0, wonPln: 0, lost: 0, lostPln: 0, winRate: null };
+    const wynik = pipelineForecast(summary, null, [
+      { valuePln: 20000, stage: "do-podpisania", probability: 80 },
+      { valuePln: 10000, stage: "do-podpisania", probability: null },
+    ]);
+    // 20 000 × 80% + 10 000 × 50% = 21 000
+    expect(wynik.expectedPln).toBe(21000);
+    expect(wynik.ownCount).toBe(1);
+  });
+
+  it("szansa 0% wyłącza pozycję z prognozy, a zamknięte nie wchodzą wcale", () => {
+    const summary = { open: 1, openPln: 5000, won: 1, wonPln: 8000, lost: 0, lostPln: 0, winRate: 100 };
+    const wynik = pipelineForecast(summary, null, [
+      { valuePln: 5000, stage: "do-podpisania", probability: 0 },
+      { valuePln: 8000, stage: "podpisana", probability: 90 },
+    ]);
+    expect(wynik.expectedPln).toBe(0);
   });
 });
 

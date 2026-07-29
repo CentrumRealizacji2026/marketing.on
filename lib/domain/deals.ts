@@ -101,14 +101,15 @@ export function isDealStale(
 }
 
 /**
- * Prognoza przychodu z lejka: otwarta kwota × szansa wygranej. Stawka z własnej
- * historii (winRate z zamkniętych pozycji), zapasowo z konwersji spotkanie→umowa,
- * a bez żadnych danych — uczciwe 50%.
+ * Prognoza przychodu z lejka. Pozycje z własną szansą (probability) liczą się
+ * indywidualnie — kwota × szansa; reszta stawką globalną: winRate z własnej
+ * historii, zapasowo konwersja spotkanie→umowa, a bez danych uczciwe 50%.
  */
 export function pipelineForecast(
   summary: DealsSummary,
   heldToContract: number | null,
-): { expectedPln: number; rate: number; source: "winRate" | "konwersja" | "domyslna" } {
+  positions?: Array<{ valuePln: number; stage: DealStage; probability?: number | null }>,
+): { expectedPln: number; rate: number; source: "winRate" | "konwersja" | "domyslna"; ownCount: number } {
   // winRate jest w procentach (0–100), konwersja ułamkiem — normalizujemy do ułamka.
   const rate =
     summary.winRate !== null
@@ -118,9 +119,24 @@ export function pipelineForecast(
         : 0.5;
   const source = summary.winRate !== null ? "winRate" : heldToContract !== null ? "konwersja" : "domyslna";
 
+  const open = (positions ?? []).filter((position) => position.stage === "do-podpisania");
+  const own = open.filter((position) => position.probability !== null && position.probability !== undefined);
+
+  let expected: number;
+  if (positions && open.length > 0) {
+    const wlasne = own.reduce((sum, position) => sum + position.valuePln * (position.probability! / 100), 0);
+    const reszta = open
+      .filter((position) => position.probability === null || position.probability === undefined)
+      .reduce((sum, position) => sum + position.valuePln * rate, 0);
+    expected = wlasne + reszta;
+  } else {
+    expected = summary.openPln * rate;
+  }
+
   return {
-    expectedPln: Math.round(summary.openPln * rate * 100) / 100,
+    expectedPln: Math.round(expected * 100) / 100,
     rate,
     source,
+    ownCount: own.length,
   };
 }

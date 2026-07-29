@@ -464,6 +464,7 @@ export async function saveDeals(_prev: FormState, formData: FormData): Promise<F
       note: row.note,
       nextAction: row.nextAction,
       nextActionDate: row.nextActionDate,
+      probability: row.probability,
       position: index,
     };
 
@@ -477,7 +478,8 @@ export async function saveDeals(_prev: FormState, formData: FormData): Promise<F
         before.stage !== values.stage ||
         (before.note ?? null) !== (values.note ?? null) ||
         (before.nextAction ?? null) !== (values.nextAction ?? null) ||
-        (before.nextActionDate ?? null) !== (values.nextActionDate ?? null);
+        (before.nextActionDate ?? null) !== (values.nextActionDate ?? null) ||
+        (before.probability ?? null) !== (values.probability ?? null);
 
       await db
         .update(deals)
