@@ -165,6 +165,11 @@ export const dealSchema = z.object({
   note: optionalText,
   nextAction: optionalText,
   nextActionDate: optionalDate,
+  /** Szansa wygranej 0–100; pusta = licz stawką globalną. */
+  probability: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? null : Number(value)),
+    z.number().int().min(0).max(100).nullable().default(null),
+  ),
 });
 
 /* ------------------------------------------------------------------ rodzina */

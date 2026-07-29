@@ -455,6 +455,8 @@ export const deals = pgTable(
     /** Następny ruch w tej sprawie — lejek ma zawsze wiedzieć, co dalej. */
     nextAction: text("next_action"),
     nextActionDate: date("next_action_date", { mode: "string" }),
+    /** Szansa wygranej 0–100%; NULL = licz stawką globalną (winRate / konwersja). */
+    probability: integer("probability"),
     /** Ostatnia realna zmiana wiersza — z tego liczy się „stygnięcie" szansy. */
     touchedAt: timestamp("touched_at", { withTimezone: true }),
     position: integer("position").notNull().default(0),

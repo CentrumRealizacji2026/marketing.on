@@ -65,7 +65,7 @@ export default async function SalesPage() {
 
   // Prognoza z lejka i stygnące szanse — liczone z zapisanego stanu tabeli.
   const dealsSummary = summarizeDeals(dealRows);
-  const forecast = pipelineForecast(dealsSummary, rates.heldToContract);
+  const forecast = pipelineForecast(dealsSummary, rates.heldToContract, dealRows);
   const staleDeals = dealRows.filter((row) => isDealStale(row, today));
 
   const sections = [
@@ -181,13 +181,19 @@ export default async function SalesPage() {
             <StatTile
               label="Prognoza z lejka"
               value={formatMoney(forecast.expectedPln, settings.currency)}
-              footer={`${formatMoney(dealsSummary.openPln, settings.currency)} × ${Math.round(forecast.rate * 100)}% (${
-                forecast.source === "winRate"
-                  ? "Twoja skuteczność zamykania"
-                  : forecast.source === "konwersja"
-                    ? "konwersja spotkanie → umowa"
-                    : "wartość domyślna 50%"
-              })`}
+              footer={
+                forecast.ownCount > 0
+                  ? `${forecast.ownCount} z ${dealsSummary.open} pozycji z własną szansą, reszta × ${Math.round(
+                      forecast.rate * 100,
+                    )}%`
+                  : `${formatMoney(dealsSummary.openPln, settings.currency)} × ${Math.round(forecast.rate * 100)}% (${
+                      forecast.source === "winRate"
+                        ? "Twoja skuteczność zamykania"
+                        : forecast.source === "konwersja"
+                          ? "konwersja spotkanie → umowa"
+                          : "wartość domyślna 50%"
+                    })`
+              }
             />
             <StatTile
               label="Do zdobycia"
@@ -225,6 +231,8 @@ export default async function SalesPage() {
             stage: row.stage,
             nextAction: row.nextAction,
             nextActionDate: row.nextActionDate,
+            note: row.note,
+            probability: row.probability,
             stale: isDealStale(row, today),
           }))}
           action={saveDeals}
