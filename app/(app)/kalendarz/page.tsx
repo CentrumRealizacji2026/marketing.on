@@ -130,10 +130,27 @@ export default async function CalendarPage({
 
                 {headline ? <span className="truncate text-[10px] leading-tight text-muted">{headline}</span> : null}
 
-                {day.zadania.total > 0 ? (
-                  <span className="tabular mt-auto text-[10px] text-muted">
-                    zadania {day.zadania.done}/{day.zadania.total}
-                  </span>
+                {/* Trzy najważniejsze zadania dnia — entries są posortowane
+                    priorytetami przed side questami, więc slice wystarcza. */}
+                {day.zadania.entries.length > 0 ? (
+                  <ul className="flex flex-col gap-0.5">
+                    {day.zadania.entries.slice(0, 3).map((task, index) => (
+                      <li
+                        key={`${task.label}-${index}`}
+                        className={cn(
+                          "truncate text-[10px] leading-tight",
+                          task.done ? "text-muted line-through" : "text-ink-2",
+                        )}
+                      >
+                        {task.done ? "✓ " : "• "}
+                        {task.label}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                {day.zadania.total > 3 ? (
+                  <span className="tabular mt-auto text-[10px] text-muted">+{day.zadania.total - 3} kolejnych</span>
                 ) : null}
               </Link>
             );
