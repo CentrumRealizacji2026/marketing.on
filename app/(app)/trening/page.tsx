@@ -187,7 +187,8 @@ export default async function TrainingPage() {
 
       <Card id="dziennik">
         <CardHeader title="Dziennik" subtitle="Ostatnie 30 dni" />
-        {logs.length === 0 ? (
+        {/* Wpisy „świadomie odpuszczone" (done=false) to decyzje, nie treningi. */}
+        {logs.filter((log) => log.done).length === 0 ? (
           <EmptyState message="Brak odbytych treningów w tym okresie." href="/raport" cta="Zapisz w raporcie" />
         ) : (
           <div className="overflow-x-auto">
@@ -202,7 +203,7 @@ export default async function TrainingPage() {
                 </tr>
               </thead>
               <tbody>
-                {logs.map((log) => (
+                {logs.filter((log) => log.done).map((log) => (
                   <tr key={log.id} className="border-b border-line last:border-0">
                     <td className="py-2 text-muted">{log.date}</td>
                     <td className="py-2 text-ink">{log.title || log.discipline}</td>

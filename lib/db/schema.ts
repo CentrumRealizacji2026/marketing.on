@@ -295,6 +295,8 @@ export const medicationLogs = pgTable(
     slot: text("slot").notNull(),
     taken: boolean("taken").notNull().default(false),
     takenAt: timestamp("taken_at", { withTimezone: true }),
+    /** Świadome „nie biorę dziś" — zamyka dawkę bez odhaczania (i bez przypominania). */
+    skipped: boolean("skipped").notNull().default(false),
   },
   (t) => [
     uniqueIndex("medication_logs_unique").on(t.medicationId, t.date, t.slot),

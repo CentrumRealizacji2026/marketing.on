@@ -15,8 +15,8 @@ export type AgendaCategory = "zdrowie" | "trening" | "nauka" | "zadania";
  * miejscem, w którym domyka się dzień.
  */
 export type AgendaAction =
-  | { type: "dose"; medicationId: string; slot: string; taken: boolean }
-  | { type: "training"; planId: string; done: boolean }
+  | { type: "dose"; medicationId: string; slot: string; taken: boolean; skipped: boolean }
+  | { type: "training"; planId: string; done: boolean; skipped: boolean }
   /** null = brak decyzji — nauka ma trzy stany, jak LearningBlockStatus. */
   | { type: "learning"; planId: string; done: boolean | null }
   | { type: "task"; taskId: string; done: boolean };
@@ -31,6 +31,8 @@ export type AgendaItem = {
   title: string;
   detail: string | null;
   done: boolean;
+  /** Świadome „nie zrobiono" — zamyka pozycję bez odhaczania. */
+  skipped: boolean;
   href: string;
   action: AgendaAction;
 };
@@ -79,6 +81,8 @@ export function buildAgenda({
     startTime: string | null;
     durationMin: number | null;
     done: boolean;
+    /** Świadomie odpuszczony dziś (wpis done=false w dzienniku). */
+    skipped: boolean;
   }>;
   learning: Array<{
     id: string;
@@ -108,8 +112,15 @@ export function buildAgenda({
       title: dose.name,
       detail: dose.doseAmount !== null ? `${dose.doseAmount}${dose.doseUnit ? ` ${dose.doseUnit}` : ""}` : null,
       done: dose.taken,
+      skipped: !dose.taken && dose.skipped,
       href: "/zdrowie",
-      action: { type: "dose" as const, medicationId: dose.medicationId, slot: dose.slot, taken: dose.taken },
+      action: {
+        type: "dose" as const,
+        medicationId: dose.medicationId,
+        slot: dose.slot,
+        taken: dose.taken,
+        skipped: !dose.taken && dose.skipped,
+      },
     })),
 
     ...training.map((entry) => ({
@@ -120,8 +131,9 @@ export function buildAgenda({
       title: entry.title || entry.discipline,
       detail: [entry.discipline, entry.durationMin ? `${entry.durationMin} min` : null].filter(Boolean).join(" · "),
       done: entry.done,
+      skipped: !entry.done && entry.skipped,
       href: "/trening",
-      action: { type: "training" as const, planId: entry.id, done: entry.done },
+      action: { type: "training" as const, planId: entry.id, done: entry.done, skipped: !entry.done && entry.skipped },
     })),
 
     ...learning.map((entry) => ({
@@ -132,6 +144,7 @@ export function buildAgenda({
       title: entry.skill,
       detail: [entry.focus, entry.durationMin ? `${entry.durationMin} min` : null].filter(Boolean).join(" · ") || null,
       done: entry.done === true,
+      skipped: entry.done === false,
       href: "/nauka",
       action: { type: "learning" as const, planId: entry.id, done: entry.done },
     })),
@@ -149,6 +162,7 @@ export function buildAgenda({
         .filter(Boolean)
         .join(" · "),
       done: task.done,
+      skipped: false,
       href: "/zadania",
       action: { type: "task" as const, taskId: task.id, done: task.done },
     })),
@@ -240,7 +254,8 @@ export function annotateAgenda(items: AgendaItem[], nowMin: number): TimedAgenda
  * nadchodzącymi. Przeszłych nie wskrzeszamy — zaległości widać na osi.
  */
 export function selectSpotlight(items: TimedAgendaItem[], limit = 3): TimedAgendaItem[] {
-  const pending = items.filter((item) => !item.done);
+  // Pominięte jest decyzją jak zrobione — nie ma o czym świecić w spotlighcie.
+  const pending = items.filter((item) => !item.done && !item.skipped);
   return [
     ...pending.filter((item) => item.state === "teraz"),
     ...pending.filter((item) => item.state === "wkrotce"),
@@ -281,8 +296,9 @@ export function dayLoad(
   nowMin: number,
   dayEndMin = DAY_END_MIN,
 ): { plannedMin: number; leftMin: number; overloaded: boolean } {
+  // Pominięte nie obciąża budżetu — świadomie zdjęte z dnia.
   const plannedMin = items
-    .filter((item) => !item.done)
+    .filter((item) => !item.done && !item.skipped)
     .reduce((sum, item) => sum + (item.durationMin ?? 0), 0);
   const leftMin = Math.max(0, dayEndMin - nowMin);
   return { plannedMin, leftMin, overloaded: plannedMin > leftMin };
