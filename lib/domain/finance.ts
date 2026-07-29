@@ -1,5 +1,3 @@
-import { addDays } from "./dates";
-
 /**
  * Skąd wiadomo, ile tego dnia ubyło albo przybyło środków.
  *
@@ -151,42 +149,70 @@ export function liveBalance(rows: BalanceRow[]): LiveBalance | null {
   };
 }
 
-/* ------------------------------------------------------- prognoza salda */
+/* --------------------------------------------- słupki wpływów i wydatków */
 
-export type ForecastEvent = { name: string; amountPln: number; dueDate: string };
-export type ForecastPoint = { date: string; valuePln: number; events: ForecastEvent[] };
+export type PlannedPayment = { name: string; amountPln: number; dueDate: string };
+
+export type FlowColumn = {
+  date: string;
+  /** Wpłynęło tego dnia (dodatnia liczba) albo null, gdy brak danych. */
+  inPln: number | null;
+  /** Wydane tego dnia (dodatnia liczba) albo null, gdy brak danych. */
+  outPln: number | null;
+  /** Suma nieopłaconych płatności z terminem tego dnia — plan, nie przepływ. */
+  plannedOutPln: number | null;
+  /** Nazwy zaplanowanych płatności — do podpisu słupka. */
+  paymentNames: string[];
+  /** Skąd przepływy: wpisane kwoty czy różnica sald; null = brak wpisu. */
+  source: CashFlowSource | null;
+  /** Dzień przyszły — przepływów jeszcze nie ma, może być tylko plan. */
+  future: boolean;
+};
 
 /**
- * Prognoza salda w przód: od dzisiejszego stanu, dzień po dniu, średnia dzienna
- * zmiana plus zaplanowane, jeszcze NIEOPŁACONE płatności w dniu ich terminu
- * (opłacone siedzą już w saldzie). Bez średniej linia jest płaska — schodzą ją
- * tylko raty, co uczciwie pokazuje sam kalendarz zobowiązań.
+ * Kolumny pod wykres słupkowy przepływów: historia dzień po dniu (wpływy
+ * i wydatki osobno) plus najbliższe dni. Nieopłacone płatności wiszą na dniu
+ * swojego terminu — także dzisiejszym, żeby rata nie znikała w dniu, w którym
+ * schodzi. Dzień znany tylko z różnicy sald pokazuje netto po właściwej
+ * stronie i zachowuje source "saldo" — zero zmiany to wciąż wpis, nie dziura.
  */
-export function projectBalance(
-  startPln: number,
-  avgDailyPln: number | null,
-  payments: ForecastEvent[],
-  startDate: string,
-  days: number,
-): ForecastPoint[] {
-  const byDate = new Map<string, ForecastEvent[]>();
-  for (const payment of payments) {
-    const list = byDate.get(payment.dueDate) ?? [];
-    list.push(payment);
-    byDate.set(payment.dueDate, list);
-  }
+export function flowColumns(input: {
+  historyDates: string[];
+  flows: Array<{ date: string; flow: DayCashFlow }>;
+  futureDates: string[];
+  plannedPayments: PlannedPayment[];
+}): FlowColumn[] {
+  const byDate = new Map(input.flows.map((entry) => [entry.date, entry.flow]));
 
-  const points: ForecastPoint[] = [];
-  let running = startPln;
-  let date = startDate;
-  for (let i = 0; i < days; i += 1) {
-    date = addDays(date, 1);
-    running += avgDailyPln ?? 0;
-    const events = byDate.get(date) ?? [];
-    for (const event of events) running -= event.amountPln;
-    points.push({ date, valuePln: Math.round(running * 100) / 100, events });
-  }
-  return points;
+  const plan = (date: string) => {
+    const due = input.plannedPayments.filter((payment) => payment.dueDate === date);
+    return {
+      plannedOutPln:
+        due.length > 0 ? roundGrosze(due.reduce((sum, payment) => sum + payment.amountPln, 0)) : null,
+      paymentNames: due.map((payment) => payment.name),
+    };
+  };
+
+  const history = input.historyDates.map((date): FlowColumn => {
+    const flow = byDate.get(date);
+    const bazowa = { date, inPln: null, outPln: null, source: null, future: false, ...plan(date) };
+    if (!flow || flow.netPln === null) return bazowa;
+    if (flow.source === "saldo") {
+      return {
+        ...bazowa,
+        inPln: flow.netPln > 0 ? roundGrosze(flow.netPln) : null,
+        outPln: flow.netPln < 0 ? roundGrosze(-flow.netPln) : null,
+        source: "saldo",
+      };
+    }
+    return { ...bazowa, inPln: flow.incomePln, outPln: flow.expensesPln, source: "raport" };
+  });
+
+  const future = input.futureDates.map(
+    (date): FlowColumn => ({ date, inPln: null, outPln: null, source: null, future: true, ...plan(date) }),
+  );
+
+  return [...history, ...future];
 }
 
 /**
