@@ -72,6 +72,12 @@ export default async function SettingsOverview() {
       desc: "Szkolenia, kursy i książki przypisane do dziedzin nauki.",
       count: status.materials,
     },
+    {
+      href: "/ustawienia/powiadomienia",
+      title: "Powiadomienia",
+      desc: "Push na telefon: leki, raty, trening, nauka, poranek i wieczorny raport.",
+      count: null,
+    },
     { href: "/ustawienia/konto", title: "Konto", desc: "Hasło i ponowne przejście kreatora.", count: null },
   ];
 

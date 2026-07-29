@@ -93,7 +93,10 @@ mentora mówi wprost, czego brakuje.
 | `DATABASE_URL` | tak | Postgres. Na produkcji connection string z Neon (Vercel Marketplace) |
 | `ANTHROPIC_API_KEY` | do mentora | Klucz z [console.anthropic.com](https://console.anthropic.com). Bez niego reszta aplikacji działa normalnie, a mentor mówi, czego brakuje |
 | `ALLOWED_SIGNUP_EMAILS` | nie | Lista adresów po przecinku, które mogą założyć konto po pierwszym |
-| `CRON_SECRET` | do crona | Chroni `/api/cron/mentor`, który generuje rekomendacje o poranku |
+| `CRON_SECRET` | do cronów | Chroni `/api/cron/mentor` (rekomendacje o poranku) i `/api/cron/przypomnienia` (push co 15 min z GitHub Actions) |
+| `VAPID_PUBLIC_KEY` | do push | Klucze VAPID: `npx web-push generate-vapid-keys`. Bez nich strona Powiadomień pokazuje instrukcję zamiast włącznika |
+| `VAPID_PRIVATE_KEY` | do push | j.w. — klucz prywatny, tylko na serwerze |
+| `VAPID_SUBJECT` | nie | Kontakt dla usług push, np. `mailto:adres@example.com` |
 
 ## Skrypty
 

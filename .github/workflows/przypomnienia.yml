@@ -1,0 +1,25 @@
+# Budzik przypomnień push. Vercel Hobby umie crona raz dziennie, więc częsty
+# tick robi GitHub Actions: co 15 minut w godzinach 6:00–24:00 czasu polskiego
+# woła endpoint, który sam wylicza, co jest należne, i pilnuje deduplikacji.
+#
+# Sekrety (Settings → Secrets and variables → Actions):
+#   CRON_SECRET — ta sama wartość co w Vercelu,
+#   APP_URL    — adres aplikacji bez ukośnika na końcu.
+# Repo jest publiczne — sekrety trzymamy WYŁĄCZNIE w GitHub Actions secrets.
+
+name: Przypomnienia push
+
+on:
+  schedule:
+    - cron: "*/15 4-22 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Zawołaj endpoint przypomnień
+        run: |
+          curl -fsS -m 30 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/przypomnienia"
