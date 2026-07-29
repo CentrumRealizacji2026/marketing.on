@@ -157,7 +157,26 @@ export default async function SalesPage() {
           </div>
         ) : null}
 
+        {/* Odcisk zapisanych danych jako klucz: po każdej rewalidacji (zapis
+            tabeli, szybkie dodanie z paska) tabela montuje się od nowa ze stanem
+            z bazy — bez tego trzymała stary stan i „Zapisz tabelę" potrafiło
+            nadpisać świeżo dodanego klienta albo jego szansę. */}
         <DealsTable
+          key={dealRows
+            .map((row) =>
+              [
+                row.id,
+                row.clientName,
+                row.valuePln,
+                row.probability ?? "",
+                row.note ?? "",
+                row.stage,
+                row.expectedDate ?? "",
+                row.nextAction ?? "",
+                row.nextActionDate ?? "",
+              ].join("~"),
+            )
+            .join("|")}
           initial={dealRows.map((row) => ({
             id: row.id,
             clientName: row.clientName,

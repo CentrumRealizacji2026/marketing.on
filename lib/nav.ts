@@ -30,6 +30,18 @@ export type NavCategory = {
  */
 export const NAV: NavCategory[] = [
   {
+    key: "zadania",
+    label: "Zadania",
+    href: "/zadania",
+    icon: ListTodo,
+    items: [
+      { label: "3 priorytety", href: "/zadania#priorytety" },
+      { label: "Side questy", href: "/zadania#side" },
+      { label: "Zaległe", href: "/zadania#zalegle" },
+      { label: "Archiwum", href: "/zadania#archiwum" },
+    ],
+  },
+  {
     key: "kalendarz",
     label: "Kalendarz",
     href: "/kalendarz",
@@ -91,18 +103,6 @@ export const NAV: NavCategory[] = [
       { label: "Nawodnienie", href: "/zdrowie#nawodnienie" },
       { label: "Testy psychiczne", href: "/zdrowie#testy" },
       { label: "Puls dnia", href: "/zdrowie#psychika" },
-    ],
-  },
-  {
-    key: "zadania",
-    label: "Zadania",
-    href: "/zadania",
-    icon: ListTodo,
-    items: [
-      { label: "3 priorytety", href: "/zadania#priorytety" },
-      { label: "Side questy", href: "/zadania#side" },
-      { label: "Zaległe", href: "/zadania#zalegle" },
-      { label: "Archiwum", href: "/zadania#archiwum" },
     ],
   },
   {
