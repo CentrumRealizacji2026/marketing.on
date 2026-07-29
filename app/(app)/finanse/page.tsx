@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
 import { CalendarClock, CheckCircle2, Globe, PiggyBank, Wallet } from "lucide-react";
 
-import { ForecastChart } from "@/components/charts/forecast-chart";
+import { FlowBars } from "@/components/charts/flow-bars";
 import { BarRow, Meter, Sparkline } from "@/components/charts/sparkline";
 import { Card, CardHeader, EmptyState, StatTile } from "@/components/ui/card";
 import { getUserSettings, requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { contracts, dailyLogs } from "@/lib/db/schema";
 import { addDays, formatDatePl, lastNDays, startOfMonth, todayInTz } from "@/lib/domain/dates";
-import { dayCashFlow, liveBalance, liveBalanceSeries, projectBalance, sumExpenses, sumIncome } from "@/lib/domain/finance";
+import { dayCashFlow, flowColumns, liveBalance, liveBalanceSeries, sumExpenses, sumIncome } from "@/lib/domain/finance";
 import { PLN_PER_PPP_USD, describeRank, formatTopPct, incomeRank } from "@/lib/domain/income-rank";
 import { dueLabel, upcomingPaymentAlert } from "@/lib/domain/obligations";
 import { getBalanceRowsBefore } from "@/lib/queries/finance";
@@ -45,7 +45,7 @@ export default async function FinancePage() {
     getSavingsOverview(user.id, today),
     getRecentContributions(user.id, 8),
     getObligationsOverview(user.id, today),
-    getPaymentsInRange(user.id, today, addDays(today, 90), today),
+    getPaymentsInRange(user.id, today, addDays(today, 7), today),
   ]);
 
   const dates = lastNDays(today, RANGE);
@@ -83,9 +83,6 @@ export default async function FinancePage() {
   const spent = sumExpenses(periodFlows);
   const earned = sumIncome(periodFlows);
 
-  // Średnie tempo z dziennej serii salda — dzielone przez dni kalendarzowe.
-  const avgDaily = change !== null ? change / (series.length - 1 - firstIdx) : null;
-
   // Pozycja zarobkowa liczona z ostatnich 30 dni — pełny miesiąc danych, niezależnie
   // od tego, w którym dniu kalendarzowego miesiąca akurat jesteśmy.
   const rankFrom = addDays(today, -29);
@@ -98,12 +95,32 @@ export default async function FinancePage() {
   const signedMonth = contractRows.filter((row) => row.signedOn >= monthStart && row.status === "podpisana");
   const pipeline = contractRows.filter((row) => row.status === "negocjacje");
 
-  // Prognoza 90 dni: nieopłacone płatności schodzą w dniu terminu; alert łapie najbliższą.
-  const forecastEvents = futurePayments
-    .filter((payment) => payment.status === "do-zaplaty")
-    .map((payment) => ({ name: payment.name, amountPln: payment.amountPln, dueDate: payment.dueDate }));
-  const forecast =
-    live !== null ? projectBalance(live.valuePln, avgDaily, forecastEvents, today, 90) : [];
+  // Słupki: ostatni tydzień przepływów plus 2 najbliższe dni; nieopłacone
+  // płatności wiszą na dniu terminu (dzisiejsza rata też), a alert łapie
+  // najbliższą. Różnica sald wchodzi TYLKO między wpisami z dnia na dzień —
+  // diff rozpięty na kilka dni zawiera przepływy, które mają już własne słupki.
+  const balanceChangeDzienPoDniu = new Map<string, number>();
+  for (let i = 1; i < reported.length; i += 1) {
+    if (addDays(reported[i - 1].date, 1) === reported[i].date) {
+      balanceChangeDzienPoDniu.set(reported[i].date, reported[i].cashBalancePln! - reported[i - 1].cashBalancePln!);
+    }
+  }
+  const bars = flowColumns({
+    historyDates: lastNDays(today, 7),
+    flows: logs.map((log) => ({
+      date: log.date,
+      flow: dayCashFlow({
+        expensesPln: log.expensesPln,
+        incomePln: log.incomePln,
+        balanceChangePln: balanceChangeDzienPoDniu.get(log.date) ?? null,
+      }),
+    })),
+    futureDates: [addDays(today, 1), addDays(today, 2)],
+    plannedPayments: futurePayments
+      .filter((payment) => payment.status === "do-zaplaty")
+      .map((payment) => ({ name: payment.name, amountPln: payment.amountPln, dueDate: payment.dueDate })),
+  });
+  const hasBars = bars.some((col) => col.source !== null || col.plannedOutPln !== null);
   const paymentAlert = upcomingPaymentAlert(futurePayments, today);
 
   return (
@@ -211,39 +228,35 @@ export default async function FinancePage() {
           )}
         </Card>
 
-        <Card id="prognoza">
-          <CardHeader title="Prognoza" subtitle="Prosta ekstrapolacja średniej dziennej zmiany" />
-          {avgDaily === null || live === null ? (
-            <EmptyState message="Potrzeba salda i przynajmniej dnia przepływów po nim." />
+        <Card id="wplywy">
+          <CardHeader
+            title="Wpływy i wydatki"
+            subtitle="Ostatni tydzień dzień po dniu i zaplanowane płatności do pojutrza"
+          />
+          {!hasBars ? (
+            <EmptyState
+              message="Brak danych o przepływach. Uzupełnij w raporcie, ile wydałeś i ile wpłynęło."
+              href="/raport"
+              cta="Wypełnij raport"
+            />
           ) : (
-            <>
-            <div className="mb-4">
-              <ForecastChart history={{ values: series }} forecast={forecast} currency={settings.currency} />
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <StatTile
-                label="Średnia zmiana dzienna"
-                value={formatMoney(avgDaily, settings.currency)}
-                footer="Liczona z dziennych zmian salda w tym okresie."
-              />
-              <StatTile
-                label="Za 30 dni przy tym tempie"
-                value={formatMoney(live.valuePln + avgDaily * 30, settings.currency)}
-                footer="To ekstrapolacja, nie plan finansowy."
-              />
-              {settings.monthlyRevenueGoalPln ? (
-                <StatTile
-                  label="Cel przychodu miesięcznie"
-                  value={formatMoney(settings.monthlyRevenueGoalPln, settings.currency)}
-                  footer={`W tym miesiącu podpisane: ${formatMoney(
-                    signedMonth.reduce((sum, row) => sum + row.valuePln, 0),
-                    settings.currency,
-                  )}`}
-                />
-              ) : null}
-            </div>
-            </>
+            <FlowBars columns={bars} today={today} currency={settings.currency} />
           )}
+          {settings.monthlyRevenueGoalPln ? (
+            <p className="mt-4 border-t border-line pt-3 text-xs text-muted">
+              Cel przychodu miesięcznie:{" "}
+              <span className="tabular font-medium text-ink">
+                {formatMoney(settings.monthlyRevenueGoalPln, settings.currency)}
+              </span>{" "}
+              · podpisane w tym miesiącu:{" "}
+              <span className="tabular font-medium text-ink">
+                {formatMoney(
+                  signedMonth.reduce((sum, row) => sum + row.valuePln, 0),
+                  settings.currency,
+                )}
+              </span>
+            </p>
+          ) : null}
         </Card>
       </div>
 

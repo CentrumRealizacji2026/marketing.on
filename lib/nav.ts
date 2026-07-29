@@ -51,7 +51,7 @@ export const NAV: NavCategory[] = [
       { label: "Płatności", href: "/finanse#platnosci" },
       { label: "Na tle świata", href: "/finanse#pozycja" },
       { label: "Kontrakty", href: "/finanse#kontrakty" },
-      { label: "Prognoza", href: "/finanse#prognoza" },
+      { label: "Wpływy i wydatki", href: "/finanse#wplywy" },
     ],
   },
   {

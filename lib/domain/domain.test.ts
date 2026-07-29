@@ -26,7 +26,7 @@ import { countdownFor, describeCountdown, formatDaysPl, sortCountdowns } from ".
 import { isDealStale, pipelineForecast, summarizeDeals } from "./deals";
 import { familyDatesInRange, nextAnnualOccurrence, occurrencesInRange, upcomingFamilyDates } from "./family";
 import { GESTURES, planGesturesForWeek, seedFromId } from "./gestures";
-import { dayCashFlow, liveBalance, liveBalanceSeries, projectBalance, sumExpenses, sumIncome } from "./finance";
+import { dayCashFlow, flowColumns, liveBalance, liveBalanceSeries, sumExpenses, sumIncome } from "./finance";
 import type { BalanceRow } from "./finance";
 import {
   bestStreak,
@@ -576,27 +576,85 @@ describe("stan środków na żywo", () => {
   });
 });
 
-describe("prognoza salda", () => {
-  it("bez rat rośnie liniowo o średnią dzienną", () => {
-    const punkty = projectBalance(1000, 10, [], "2026-07-01", 3);
-    expect(punkty.map((p) => p.valuePln)).toEqual([1010, 1020, 1030]);
-    expect(punkty[0].date).toBe("2026-07-02");
+describe("słupki wpływów i wydatków", () => {
+  it("dzień z raportu ma wpływy i wydatki po właściwych stronach", () => {
+    const kolumny = flowColumns({
+      historyDates: ["2026-07-01"],
+      flows: [{ date: "2026-07-01", flow: dayCashFlow({ incomePln: 500, expensesPln: 120 }) }],
+      futureDates: [],
+      plannedPayments: [],
+    });
+    expect(kolumny).toEqual([
+      {
+        date: "2026-07-01",
+        inPln: 500,
+        outPln: 120,
+        plannedOutPln: null,
+        paymentNames: [],
+        source: "raport",
+        future: false,
+      },
+    ]);
   });
 
-  it("rata obniża prognozę od dnia terminu", () => {
-    const punkty = projectBalance(1000, 0, [{ name: "Rata", amountPln: 300, dueDate: "2026-07-03" }], "2026-07-01", 4);
-    expect(punkty.map((p) => p.valuePln)).toEqual([1000, 700, 700, 700]);
+  it("dzień znany z różnicy salda pokazuje netto po jednej stronie", () => {
+    const kolumny = flowColumns({
+      historyDates: ["2026-07-01", "2026-07-02"],
+      flows: [
+        { date: "2026-07-01", flow: dayCashFlow({ balanceChangePln: 250 }) },
+        { date: "2026-07-02", flow: dayCashFlow({ balanceChangePln: -80 }) },
+      ],
+      futureDates: [],
+      plannedPayments: [],
+    });
+    expect(kolumny[0]).toMatchObject({ inPln: 250, outPln: null, source: "saldo" });
+    expect(kolumny[1]).toMatchObject({ inPln: null, outPln: 80, source: "saldo" });
   });
 
-  it("wydarzenia wiszą na właściwym dniu", () => {
-    const punkty = projectBalance(1000, 0, [{ name: "Rata", amountPln: 300, dueDate: "2026-07-03" }], "2026-07-01", 3);
-    expect(punkty[1].events).toHaveLength(1);
-    expect(punkty[0].events).toHaveLength(0);
+  it("zero z różnicy salda to nadal wpis, nie dziura w danych", () => {
+    const kolumny = flowColumns({
+      historyDates: ["2026-07-01", "2026-07-02"],
+      flows: [{ date: "2026-07-01", flow: dayCashFlow({ balanceChangePln: 0 }) }],
+      futureDates: [],
+      plannedPayments: [],
+    });
+    expect(kolumny[0]).toMatchObject({ inPln: null, outPln: null, source: "saldo" });
+    expect(kolumny[1]).toMatchObject({ source: null });
   });
 
-  it("bez średniej linia jest płaska z samymi ratami", () => {
-    const punkty = projectBalance(500, null, [{ name: "Rata", amountPln: 100, dueDate: "2026-07-02" }], "2026-07-01", 2);
-    expect(punkty.map((p) => p.valuePln)).toEqual([400, 400]);
+  it("dzień bez wpisu zostaje pusty, a nie zerowy", () => {
+    const kolumny = flowColumns({
+      historyDates: ["2026-07-01"],
+      flows: [],
+      futureDates: [],
+      plannedPayments: [],
+    });
+    expect(kolumny[0]).toMatchObject({ inPln: null, outPln: null, source: null, future: false });
+  });
+
+  it("zaplanowane płatności wiszą na dniu terminu — także dzisiejszym", () => {
+    const kolumny = flowColumns({
+      historyDates: ["2026-07-01"],
+      flows: [{ date: "2026-07-01", flow: dayCashFlow({ expensesPln: 40 }) }],
+      futureDates: ["2026-07-02", "2026-07-03"],
+      plannedPayments: [
+        { name: "Rata dziś", amountPln: 480, dueDate: "2026-07-01" },
+        { name: "Biuro", amountPln: 650, dueDate: "2026-07-02" },
+        { name: "Leasing", amountPln: 1200.5, dueDate: "2026-07-02" },
+        { name: "Za tydzień", amountPln: 99, dueDate: "2026-07-08" },
+      ],
+    });
+    expect(kolumny[0]).toMatchObject({ outPln: 40, plannedOutPln: 480, paymentNames: ["Rata dziś"] });
+    expect(kolumny[1]).toEqual({
+      date: "2026-07-02",
+      inPln: null,
+      outPln: null,
+      plannedOutPln: 1850.5,
+      paymentNames: ["Biuro", "Leasing"],
+      source: null,
+      future: true,
+    });
+    expect(kolumny[2]).toMatchObject({ plannedOutPln: null, paymentNames: [], future: true });
   });
 
   it("alert wskazuje najbliższą nieopłaconą ratę w 3 dniach", () => {
