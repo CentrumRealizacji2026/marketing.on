@@ -1,0 +1,52 @@
+<!-- marketing.on — plansza wyboru fontu: 10 propozycji na jednej stronie -->
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="fonts/fonts2.css">
+<link rel="stylesheet" href="fonts/fonts3.css">
+<style>
+  :root{--ink:#0A0E1A;--paper:#F6F4EF;--lime:#C8F031;--muted:#5B6272;--line:#E3DFD4}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}
+  .sheet{width:1080px;padding:64px 64px 48px}
+  .head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:44px}
+  .head h1{font-size:40px;font-weight:800;letter-spacing:-.02em}
+  .head span{font-size:22px;color:var(--muted);font-weight:500}
+  .row{background:#fff;border:1.5px solid var(--line);border-radius:24px;padding:30px 36px 32px;margin-bottom:22px;position:relative}
+  .tag{position:absolute;top:-16px;left:28px;display:flex;align-items:center;gap:10px}
+  .tag b{background:var(--ink);color:#fff;border-radius:999px;padding:6px 18px;font-size:21px;font-weight:700}
+  .tag span{background:var(--lime);border-radius:999px;padding:6px 16px;font-size:19px;font-weight:700}
+  .big{font-weight:700;font-size:52px;line-height:1.08;letter-spacing:-.02em;margin-top:10px}
+  .big em{font-style:normal;background:var(--lime);border-radius:8px;padding:0 10px 3px}
+  .small{margin-top:16px;display:flex;align-items:center;gap:12px}
+  .bub{background:#EFEDE4;border-radius:16px;border-bottom-left-radius:5px;padding:10px 18px;font-size:23px;font-weight:500;color:#2A3040}
+  .bub.d{background:var(--ink);color:#fff;border-radius:16px;border-bottom-right-radius:5px}
+</style>
+<body>
+<div class="sheet">
+  <div class="head"><h1>Wybór fontu — marketing.on</h1><span>ten sam tekst w 10 krojach</span></div>
+  <div id="rows"></div>
+</div>
+<script>
+const fonts = [
+  ["1","Space Grotesk (obecny)","Space Grotesk"],
+  ["2","Plus Jakarta Sans","Plus Jakarta Sans"],
+  ["3","Outfit","Outfit"],
+  ["4","Bricolage Grotesque","Bricolage Grotesque"],
+  ["5","Manrope","Manrope"],
+  ["6","Sora","Sora"],
+  ["7","Onest","Onest"],
+  ["8","Urbanist","Urbanist"],
+  ["9","Gabarito","Gabarito"],
+  ["10","Unbounded","Unbounded"],
+];
+document.getElementById('rows').innerHTML = fonts.map(([n,label,fam])=>`
+  <div class="row" style="font-family:'${fam}'">
+    <div class="tag"><b style="font-family:'Inter'">${n}</b><span style="font-family:'Inter'">${label}</span></div>
+    <div class="big">Nie masz zdjęć? <em>Świetnie się składa.</em></div>
+    <div class="small">
+      <span class="bub d">Nie mam zdjęć firmy…</span>
+      <span class="bub">Spokojnie — przyjedziemy z aparatem 📸</span>
+    </div>
+  </div>`).join('');
+</script>
+</body>

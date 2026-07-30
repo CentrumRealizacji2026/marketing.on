@@ -1,0 +1,87 @@
+<!-- propozycja 2: proces w 3 krokach — od wiadomosci do gotowej strony -->
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts.css"><link rel="stylesheet" href="fonts/fonts2.css">
+<style>
+  :root{--ink:#0A0E1A;--lime:#C8F031;--muted:#9AA3B8;--line:#232C44}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Plus Jakarta Sans',sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+  .canvas{position:relative;width:1080px;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(1200px 800px at 85% -10%,#1C2743 0%,transparent 60%),
+               radial-gradient(900px 700px at -15% 108%,#18233E 0%,transparent 55%),var(--ink)}
+  body.story  .canvas{height:1920px;padding:256px 76px 352px}
+  body.feed   .canvas{height:1350px;padding:56px 64px 138px}
+  body.square .canvas{height:1080px;padding:52px 60px 60px}
+  .glow{position:absolute;width:760px;height:760px;border-radius:50%;pointer-events:none;filter:blur(130px);opacity:.22;
+    background:radial-gradient(circle,var(--lime) 0%,transparent 62%);top:-300px;right:-260px}
+  .wordmark{font-weight:700;font-size:50px;letter-spacing:-.02em;display:flex;align-items:center;position:relative}
+  .on-badge{display:inline-flex;align-items:center;gap:9px;background:var(--lime);border-radius:999px;padding:9px 20px 9px 11px;margin-left:9px}
+  .on-badge i{width:24px;height:24px;border-radius:50%;background:var(--ink)}
+  .on-badge b{font-weight:700;font-size:31px;color:var(--ink);letter-spacing:.02em}
+  .headline{position:relative;font-weight:700;letter-spacing:-.02em;font-size:78px;line-height:1.1;margin-top:40px}
+  .headline em{font-style:normal;color:var(--lime)}
+  .steps{flex:1;display:flex;flex-direction:column;justify-content:center;gap:0;position:relative;min-height:0}
+  .step{display:flex;gap:30px;position:relative;padding:26px 0}
+  .rail{flex:none;width:84px;display:flex;flex-direction:column;align-items:center}
+  .num{width:84px;height:84px;border-radius:50%;background:var(--lime);color:var(--ink);display:flex;align-items:center;justify-content:center;
+    font-size:36px;font-weight:800;box-shadow:0 0 40px rgba(200,240,49,.35)}
+  .step.mid .num,.step.last .num{background:rgba(255,255,255,.06);color:var(--lime);border:2px solid rgba(200,240,49,.5);box-shadow:none}
+  .rail::after{content:"";flex:1;width:3px;margin-top:10px;background:linear-gradient(180deg,rgba(200,240,49,.5),rgba(200,240,49,.08))}
+  .step.last .rail::after{display:none}
+  .body{padding-top:8px}
+  .body h2{font-size:40px;font-weight:700;letter-spacing:-.01em}
+  .body p{margin-top:10px;font-size:28px;line-height:1.4;color:var(--muted);font-weight:500;max-width:720px}
+  .body p b{color:#fff;font-weight:700}
+  .tag{display:inline-flex;margin-top:14px;border:1.5px solid rgba(200,240,49,.45);color:var(--lime);border-radius:999px;
+    padding:7px 18px;font-size:21px;font-weight:700;letter-spacing:.05em}
+  .cta-row{position:relative;display:flex;justify-content:center}
+  .cta{background:var(--lime);color:var(--ink);border-radius:999px;padding:28px 54px;font-size:32px;font-weight:800;
+    box-shadow:0 24px 60px -16px rgba(200,240,49,.45)}
+
+  /* feed 4:5 */
+  body.feed .wordmark{font-size:46px}
+  body.feed .headline{font-size:58px;margin-top:28px}
+  body.feed .step{padding:18px 0;gap:24px}
+  body.feed .rail{width:68px}
+  body.feed .num{width:68px;height:68px;font-size:30px}
+  body.feed .body h2{font-size:33px}
+  body.feed .body p{font-size:24px;margin-top:7px}
+  body.feed .tag{font-size:18px;padding:6px 15px;margin-top:10px}
+  body.feed .cta{font-size:28px;padding:22px 46px}
+
+  /* square 1:1 */
+  body.square .wordmark{font-size:42px}
+  body.square .on-badge{padding:7px 16px 7px 9px;margin-left:8px}
+  body.square .on-badge i{width:20px;height:20px}
+  body.square .on-badge b{font-size:26px}
+  body.square .headline{font-size:45px;margin-top:20px}
+  body.square .step{padding:12px 0;gap:18px}
+  body.square .rail{width:54px}
+  body.square .num{width:54px;height:54px;font-size:24px}
+  body.square .body{padding-top:4px}
+  body.square .body h2{font-size:27px}
+  body.square .body p{font-size:20px;margin-top:5px}
+  body.square .tag{font-size:15px;padding:5px 12px;margin-top:8px}
+  body.square .cta{font-size:23px;padding:16px 36px}
+</style>
+<body class="story">
+<div class="canvas">
+  <div class="glow"></div>
+  <div class="wordmark">marketing<span class="on-badge"><i></i><b>on</b></span></div>
+  <div class="headline">Gotowa strona<br>w <em>3 krokach</em> —<br>bez pracy po Twojej stronie</div>
+  <div class="steps">
+    <div class="step">
+      <div class="rail"><span class="num">1</span></div>
+      <div class="body"><h2>Piszesz do nas</h2><p>Krótka rozmowa i <b>bezpłatna wycena w 24 h</b>. Bez zobowiązań.</p></div>
+    </div>
+    <div class="step mid">
+      <div class="rail"><span class="num">2</span></div>
+      <div class="body"><h2>Przyjeżdżamy do Ciebie</h2><p>Robimy <b>sesję zdjęciową i nagrywamy wideo</b> na miejscu — Ty niczego nie dostarczasz.</p><span class="tag">W CENIE STRONY</span></div>
+    </div>
+    <div class="step last">
+      <div class="rail"><span class="num">3</span></div>
+      <div class="body"><h2>Odbierasz stronę</h2><p>Strona, która wyróżnia Cię na tle konkurencji — <b>od 980 zł netto</b>.</p><span class="tag">+ MIESIĄC SOCIAL MEDIÓW GRATIS</span></div>
+    </div>
+  </div>
+  <div class="cta-row"><span class="cta">Zacznij od bezpłatnej wyceny →</span></div>
+</div>
+</body>

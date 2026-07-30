@@ -1,0 +1,161 @@
+<!-- marketing.on — wariant 1: jasny premium (styl invette) -->
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts.css"><link rel="stylesheet" href="fonts/fonts2.css">
+<style>
+  :root{
+    --ink:#0A0E1A; --paper:#F6F4EF; --lime:#C8F031; --lime-deep:#9CC410;
+    --muted:#5B6272; --line:#E3DFD4; --card:#FFFFFF;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  .canvas{position:relative;width:1080px;overflow:hidden;background:var(--paper);display:flex;flex-direction:column}
+  body.story .canvas{height:1920px;padding:88px 72px 76px}
+  body.feed  .canvas{height:1350px;padding:64px 64px 56px}
+  .grid-bg{position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:90px 90px;
+    -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 30%,#000 30%,transparent 75%)}
+  .blob{position:absolute;width:900px;height:900px;border-radius:50%;filter:blur(120px);opacity:.55;pointer-events:none;
+    background:radial-gradient(circle,#E9F7B8 0%,transparent 65%);top:-260px;right:-320px}
+
+  .brand{display:flex;align-items:center;gap:14px;position:relative}
+  .wordmark{font-family:'Plus Jakarta Sans';font-weight:700;font-size:52px;letter-spacing:-.02em}
+  .wordmark .dot{color:var(--lime-deep)}
+  .on-badge{display:inline-flex;align-items:center;gap:10px;background:var(--ink);border-radius:999px;padding:10px 22px 10px 12px;margin-left:6px;vertical-align:6px}
+  .on-badge i{width:26px;height:26px;border-radius:50%;background:var(--lime);box-shadow:0 0 18px rgba(200,240,49,.9)}
+  .on-badge b{font-family:'Plus Jakarta Sans';font-weight:700;font-size:34px;color:#fff;letter-spacing:.02em}
+
+  .headline{position:relative;font-family:'Plus Jakarta Sans';font-weight:700;letter-spacing:-.03em}
+  body.story .headline{font-size:116px;line-height:1.02;margin-top:84px}
+  body.feed  .headline{font-size:92px;line-height:1.0;margin-top:52px}
+  .headline .hl{color:#B4AD9C}
+  .headline .mark{position:relative;white-space:nowrap}
+  .headline .mark::after{content:"";position:absolute;left:-6px;right:-6px;bottom:8px;height:34px;background:var(--lime);z-index:-1;border-radius:6px}
+  .sub{position:relative;color:var(--muted);font-size:37px;line-height:1.45;font-weight:500;max-width:860px}
+  body.story .sub{margin-top:44px}
+  body.feed  .sub{margin-top:30px;font-size:33px}
+  .sub b{color:var(--ink);font-weight:700}
+
+  .stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+  .wrap{position:relative;transform:rotate(-1.2deg)}
+  .browser{position:relative;width:840px;background:#fff;border-radius:28px;border:1.5px solid var(--line);
+    box-shadow:0 40px 90px -30px rgba(10,14,26,.28),0 12px 30px -12px rgba(10,14,26,.14);overflow:hidden}
+  body.feed .browser{width:760px}
+  .bar{display:flex;align-items:center;gap:10px;padding:20px 24px;border-bottom:1.5px solid #EFECE3;background:#FBFAF6}
+  .bar i{width:16px;height:16px;border-radius:50%;background:#E4E0D4}
+  .bar .url{margin-left:14px;flex:1;background:#F1EFE7;border-radius:999px;padding:10px 22px;font-size:20px;color:#9A937F;font-weight:500}
+  .site{padding:38px 40px 34px}
+  .site nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:34px}
+  .site nav .lg{font-family:'Plus Jakarta Sans';font-weight:700;font-size:24px}
+  .site nav .lnk{display:flex;gap:22px}
+  .site nav .lnk i{width:64px;height:10px;border-radius:5px;background:#E8E5DA}
+  .site nav .btn{background:var(--ink);color:#fff;font-size:16px;font-weight:600;padding:12px 22px;border-radius:999px}
+  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:30px;align-items:center}
+  .hero h1{font-family:'Plus Jakarta Sans';font-weight:700;font-size:42px;line-height:1.05;letter-spacing:-.02em}
+  .hero h1 span{color:var(--lime-deep)}
+  .hero .l{display:flex;flex-direction:column;gap:18px}
+  .hero .p i{display:block;height:11px;border-radius:6px;background:#EDEAE0;margin-bottom:9px}
+  .hero .p i:nth-child(2){width:86%}.hero .p i:nth-child(3){width:62%}
+  .hero .cta{display:flex;gap:12px;margin-top:4px}
+  .hero .cta u{text-decoration:none;white-space:nowrap;background:var(--lime);font-weight:700;font-size:17px;padding:13px 24px;border-radius:999px}
+  .hero .cta s{text-decoration:none;white-space:nowrap;border:1.5px solid #DCD8CB;font-weight:600;font-size:17px;padding:13px 24px;border-radius:999px;color:#6E6A5C}
+  .hero .ph{height:250px;border-radius:20px;background:
+      radial-gradient(120px 90px at 75% 22%,rgba(255,255,255,.5),transparent 60%),
+      linear-gradient(150deg,#101728 0%,#1E2B48 48%,#3E5178 100%)}
+  .strip{display:flex;gap:16px;margin-top:30px}
+  .strip div{flex:1;background:#FBFAF5;border:1.5px solid #EFECE1;border-radius:16px;padding:16px 18px}
+  .strip div b{display:block;font-family:'Plus Jakarta Sans';font-size:22px;margin-bottom:6px}
+  .strip div i{display:block;height:9px;border-radius:5px;background:#ECE9DE;width:80%}
+
+  .float{position:absolute;background:#fff;border-radius:20px;border:1.5px solid var(--line);
+    box-shadow:0 24px 50px -18px rgba(10,14,26,.25);padding:22px 28px;display:flex;align-items:center;gap:16px}
+  .float .ic{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;background:#F1F8D2}
+  .float b{display:block;font-size:24px;font-weight:700;letter-spacing:-.01em}
+  .float span{font-size:19px;color:var(--muted);font-weight:500}
+  .f1{top:-34px;left:-14px;transform:rotate(2deg)}
+  .f2{bottom:-30px;right:-16px;transform:rotate(-2deg)}
+
+  .perks{position:relative;display:flex;flex-wrap:wrap;gap:16px;justify-content:center}
+  body.story .perks{margin-top:10px}
+  .perk{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:16px 28px;font-size:27px;font-weight:600;letter-spacing:-.01em}
+  .perk em{font-style:normal;width:34px;height:34px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:800}
+  .perk.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .perk.dark small{font-size:20px;font-weight:500;color:#AEB6C8;margin-left:2px}
+
+  .cta-row{position:relative;display:flex;align-items:center;gap:26px;justify-content:center}
+  body.story .cta-row{margin-top:44px}
+  body.feed  .cta-row{margin-top:34px}
+  .cta-main{display:flex;align-items:center;gap:18px;background:var(--ink);color:#fff;border-radius:999px;padding:28px 52px;
+    font-size:34px;font-weight:700;letter-spacing:-.01em;box-shadow:0 22px 45px -14px rgba(10,14,26,.45)}
+  .cta-main i{width:44px;height:44px;border-radius:50%;background:var(--lime);color:var(--ink);display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:800;font-size:24px}
+  .handle{font-size:26px;font-weight:600;color:var(--muted)}
+
+  /* ciasniejszy uklad dla formatu feed 1080x1350 */
+  body.feed .sub{display:none}
+  body.feed .headline{margin-top:44px}
+  body.feed .browser{width:660px}
+  body.feed .site{padding:28px 32px 26px}
+  body.feed .strip{display:none}
+  body.feed .hero .ph{height:190px}
+  body.feed .hero h1{font-size:34px}
+  body.feed .float{padding:16px 22px}
+  body.feed .float .ic{width:44px;height:44px;font-size:22px}
+  body.feed .float b{font-size:21px}
+  body.feed .float span{font-size:17px}
+  body.feed .perk{font-size:24px;padding:13px 24px}
+  body.feed .perk em{width:30px;height:30px;font-size:17px}
+  body.feed .cta-main{font-size:30px;padding:24px 46px}
+</style>
+<body class="story">
+<div class="canvas">
+  <div class="grid-bg"></div><div class="blob"></div>
+
+  <div class="brand">
+    <div class="wordmark">marketing<span class="on-badge"><i></i><b>on</b></span></div>
+  </div>
+
+  <div class="headline">Ładna strona<br>to <span class="hl">za mało.</span><br>Ma <span class="mark">sprzedawać.</span></div>
+  <div class="sub">Projektujemy strony, które <b>wyróżniają się na tle konkurencji</b> — i prowadzą klienta prosto do zakupu lub kontaktu.</div>
+
+  <div class="stage">
+    <div class="wrap">
+    <div class="browser">
+      <div class="bar"><i></i><i></i><i></i><span class="url">twojafirma.pl</span></div>
+      <div class="site">
+        <nav>
+          <span class="lg">Twoja<span style="color:var(--lime-deep)">Firma</span></span>
+          <span class="lnk"><i></i><i></i><i></i></span>
+          <span class="btn">Kontakt</span>
+        </nav>
+        <div class="hero">
+          <div class="l">
+            <h1>Nowa jakość<br>w Twojej <span>branży</span></h1>
+            <div class="p"><i></i><i></i><i></i></div>
+            <div class="cta"><u>Umów wizytę</u><s>Zobacz ofertę</s></div>
+          </div>
+          <div class="ph"></div>
+        </div>
+        <div class="strip">
+          <div><b>12 lat</b><i></i></div>
+          <div><b>500+ klientów</b><i></i></div>
+          <div><b>4.9 ★</b><i></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="float f1"><span class="ic">📸</span><span><b>Sesja zdjęciowa</b><span>w cenie strony</span></span></div>
+    <div class="float f2"><span class="ic">🎬</span><span><b>Krótkie wideo</b><span>gratis do strony</span></span></div>
+    </div>
+  </div>
+
+  <div class="perks">
+    <span class="perk dark">od 980 zł <small>netto</small></span>
+    <span class="perk"><em>✓</em> sesja zdjęć gratis</span>
+    <span class="perk"><em>✓</em> wideo gratis</span>
+    <span class="perk"><em>✓</em> miesiąc social mediów gratis</span>
+  </div>
+
+  <div class="cta-row">
+    <span class="cta-main">Umów bezpłatną wycenę <i>→</i></span>
+  </div>
+</div>
+</body>

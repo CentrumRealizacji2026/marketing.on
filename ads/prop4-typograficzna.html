@@ -1,0 +1,75 @@
+<!-- propozycja 4: typograficzna Q&A na limonkowym tle -->
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts/fonts.css"><link rel="stylesheet" href="fonts/fonts2.css">
+<style>
+  :root{--ink:#0A0E1A;--paper:#F6F4EF;--lime:#C8F031;--muted:#5B6272}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  .canvas{position:relative;width:1080px;overflow:hidden;background:var(--lime);display:flex;flex-direction:column}
+  body.story  .canvas{height:1920px;padding:256px 84px 352px}
+  body.feed   .canvas{height:1350px;padding:64px 72px 138px}
+  body.square .canvas{height:1080px;padding:56px 64px 60px}
+  .grain{position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:radial-gradient(rgba(10,14,26,.08) 1.5px,transparent 1.5px);background-size:38px 38px;
+    -webkit-mask-image:linear-gradient(200deg,#000 0%,transparent 60%)}
+  .wordmark{font-weight:700;font-size:50px;letter-spacing:-.02em;display:flex;align-items:center;position:relative}
+  .on-badge{display:inline-flex;align-items:center;gap:9px;background:var(--ink);border-radius:999px;padding:9px 20px 9px 11px;margin-left:9px}
+  .on-badge i{width:24px;height:24px;border-radius:50%;background:var(--lime)}
+  .on-badge b{font-weight:700;font-size:31px;color:#fff;letter-spacing:.02em}
+  .q{position:relative;margin-top:110px}
+  .q .quote{font-size:56px;font-weight:600;line-height:1.25;color:#3A4A10}
+  .q .quote::before{content:"„"}
+  .q .quote::after{content:""}
+  .big{position:relative;font-weight:800;letter-spacing:-.03em;font-size:118px;line-height:1.3;margin-top:30px}
+  .big span{background:var(--ink);color:var(--lime);border-radius:20px;padding:2px 30px 6px;
+    -webkit-box-decoration-break:clone;box-decoration-break:clone}
+  .sub{position:relative;margin-top:56px;font-size:40px;line-height:1.42;font-weight:600;color:#1E2606;max-width:880px}
+  .sub b{background:var(--paper);border-radius:10px;padding:2px 14px 6px;white-space:nowrap}
+  .foot{position:relative;margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:24px}
+  .price{font-size:34px;font-weight:700;color:#1E2606}
+  .price b{font-size:52px;font-weight:800;color:var(--ink)}
+  .price small{font-size:24px;font-weight:600;color:#4A5A18}
+  .cta{background:var(--ink);color:#fff;border-radius:999px;padding:26px 48px;font-size:31px;font-weight:800;flex:none}
+  .cta em{font-style:normal;color:var(--lime)}
+
+  /* feed 4:5 */
+  body.feed .wordmark{font-size:46px}
+  body.feed .q{margin-top:44px}
+  body.feed .q .quote{font-size:44px}
+  body.feed .big{font-size:96px;margin-top:26px}
+  body.feed .big span{padding:0 22px 9px;border-radius:16px}
+  body.feed .sub{font-size:32px;margin-top:36px}
+  body.feed .price{font-size:28px}
+  body.feed .price b{font-size:42px}
+  body.feed .price small{font-size:20px}
+  body.feed .cta{font-size:27px;padding:21px 40px}
+
+  /* square 1:1 */
+  body.square .wordmark{font-size:42px}
+  body.square .on-badge{padding:7px 16px 7px 9px;margin-left:8px}
+  body.square .on-badge i{width:20px;height:20px}
+  body.square .on-badge b{font-size:26px}
+  body.square .q{margin-top:26px}
+  body.square .q .quote{font-size:35px}
+  body.square .big{font-size:76px;margin-top:20px}
+  body.square .big span{padding:0 18px 7px;border-radius:13px}
+  body.square .sub{font-size:26px;margin-top:26px}
+  body.square .sub b{padding:1px 10px 4px}
+  body.square .price{font-size:23px}
+  body.square .price b{font-size:34px}
+  body.square .price small{font-size:17px}
+  body.square .cta{font-size:23px;padding:16px 32px}
+</style>
+<body class="story">
+<div class="canvas">
+  <div class="grain"></div>
+  <div class="wordmark">marketing<span class="on-badge"><i></i><b>on</b></span></div>
+  <div class="q"><div class="quote">Chcę mieć dobrą stronę, ale nie znam się na tym. Nie mam nawet zdjęć…"</div></div>
+  <div class="big">Nie musisz.<br><span>My zrobimy to<br>za&nbsp;Ciebie.</span></div>
+  <div class="sub">Ty skupiasz się na prowadzeniu biznesu. My przyjeżdżamy do Ciebie: <b>sesja zdjęciowa</b> i <b>wideo</b> w cenie strony, do tego <b>miesiąc social mediów</b> gratis.</div>
+  <div class="foot">
+    <span class="price">Strony <b>od 980 zł</b> <small>netto</small></span>
+    <span class="cta">Bezpłatna wycena <em>→</em></span>
+  </div>
+</div>
+</body>
